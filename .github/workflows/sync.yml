@@ -17,3 +17,4 @@ jobs:
           owner: hyperledger-labs
           base: main
           head: main
+          auto_approve: true
