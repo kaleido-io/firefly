@@ -16,7 +16,7 @@
 
 package restclient
 
-import "github.com/kaleido-io/firefly/internal/config"
+import "github.com/hyperledger-labs/firefly/internal/config"
 
 const (
 	defaultRetryEnabled     = false
@@ -29,6 +29,8 @@ const (
 const (
 	// HTTPConfigURL is the url to connect to for this HTTP configuration
 	HTTPConfigURL = "url"
+	// HTTPConfigProxyURL adds a proxy
+	HTTPConfigProxyURL = "proxy.url"
 	// HTTPConfigHeaders adds custom headers to the requests
 	HTTPConfigHeaders = "headers"
 	// HTTPConfigAuthUsername HTTPS Basic Auth configuration - username
@@ -52,6 +54,7 @@ const (
 
 func InitPrefix(prefix config.Prefix) {
 	prefix.AddKnownKey(HTTPConfigURL)
+	prefix.AddKnownKey(HTTPConfigProxyURL)
 	prefix.AddKnownKey(HTTPConfigHeaders)
 	prefix.AddKnownKey(HTTPConfigAuthUsername)
 	prefix.AddKnownKey(HTTPConfigAuthPassword)

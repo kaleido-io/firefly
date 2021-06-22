@@ -21,10 +21,10 @@ import (
 	"database/sql"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 var (
@@ -35,7 +35,7 @@ var (
 		"name",
 		"current",
 	}
-	offsetFilterTypeMap = map[string]string{
+	offsetFilterFieldMap = map[string]string{
 		"type": "otype",
 	}
 )
@@ -152,7 +152,7 @@ func (s *SQLCommon) GetOffset(ctx context.Context, t fftypes.OffsetType, ns, nam
 
 func (s *SQLCommon) GetOffsets(ctx context.Context, filter database.Filter) (message []*fftypes.Offset, err error) {
 
-	query, err := s.filterSelect(ctx, "", sq.Select(offsetColumns...).From("offsets"), filter, offsetFilterTypeMap)
+	query, err := s.filterSelect(ctx, "", sq.Select(offsetColumns...).From("offsets"), filter, offsetFilterFieldMap, []string{"sequence"})
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +184,7 @@ func (s *SQLCommon) UpdateOffset(ctx context.Context, id *fftypes.UUID, update d
 	}
 	defer s.rollbackTx(ctx, tx, autoCommit)
 
-	query, err := s.buildUpdate(sq.Update("offsets"), update, offsetFilterTypeMap)
+	query, err := s.buildUpdate(sq.Update("offsets"), update, offsetFilterFieldMap)
 	if err != nil {
 		return err
 	}

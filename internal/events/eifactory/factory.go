@@ -19,14 +19,16 @@ package eifactory
 import (
 	"context"
 
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/events/websockets"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/pkg/events"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/events/webhooks"
+	"github.com/hyperledger-labs/firefly/internal/events/websockets"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/pkg/events"
 )
 
 var plugins = []events.Plugin{
 	&websockets.WebSockets{},
+	&webhooks.WebHooks{},
 }
 
 var pluginsByName = make(map[string]events.Plugin)

@@ -21,17 +21,17 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/kaleido-io/firefly/internal/batch"
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/data"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/blockchain"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/dataexchange"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
-	"github.com/kaleido-io/firefly/pkg/identity"
-	"github.com/kaleido-io/firefly/pkg/publicstorage"
+	"github.com/hyperledger-labs/firefly/internal/batch"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/data"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/blockchain"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/dataexchange"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/pkg/identity"
+	"github.com/hyperledger-labs/firefly/pkg/publicstorage"
 )
 
 type Manager interface {
@@ -99,20 +99,19 @@ func (bm *broadcastManager) dispatchBatch(ctx context.Context, batch *fftypes.Ba
 		return i18n.WrapError(ctx, err, i18n.MsgSerializationFailed)
 	}
 
-	// Write it to IPFS to get a payload reference hash (might not be the sha256 data hash).
+	// Write it to IPFS to get a payload reference
 	// The payload ref will be persisted back to the batch, as well as being used in the TX
-	var publicstorageID string
-	batch.PayloadRef, publicstorageID, err = bm.publicstorage.PublishData(ctx, bytes.NewReader(payload))
+	batch.PayloadRef, err = bm.publicstorage.PublishData(ctx, bytes.NewReader(payload))
 	if err != nil {
 		return err
 	}
 
 	return bm.database.RunAsGroup(ctx, func(ctx context.Context) error {
-		return bm.submitTXAndUpdateDB(ctx, batch, pins, publicstorageID)
+		return bm.submitTXAndUpdateDB(ctx, batch, pins)
 	})
 }
 
-func (bm *broadcastManager) submitTXAndUpdateDB(ctx context.Context, batch *fftypes.Batch, contexts []*fftypes.Bytes32, publicstorageID string) error {
+func (bm *broadcastManager) submitTXAndUpdateDB(ctx context.Context, batch *fftypes.Batch, contexts []*fftypes.Bytes32) error {
 
 	id, err := bm.identity.Resolve(ctx, batch.Author)
 	if err == nil {
@@ -162,6 +161,7 @@ func (bm *broadcastManager) submitTXAndUpdateDB(ctx context.Context, batch *ffty
 	// The pending blockchain transaction
 	op := fftypes.NewTXOperation(
 		bm.blockchain,
+		batch.Namespace,
 		batch.Payload.TX.ID,
 		blockchainTrackingID,
 		fftypes.OpTypeBlockchainBatchPin,
@@ -174,8 +174,9 @@ func (bm *broadcastManager) submitTXAndUpdateDB(ctx context.Context, batch *ffty
 	// The completed PublicStorage upload
 	op = fftypes.NewTXOperation(
 		bm.publicstorage,
+		batch.Namespace,
 		batch.Payload.TX.ID,
-		publicstorageID,
+		batch.PayloadRef,
 		fftypes.OpTypePublicStorageBatchBroadcast,
 		fftypes.OpStatusSucceeded, // Note we performed the action synchronously above
 		"")

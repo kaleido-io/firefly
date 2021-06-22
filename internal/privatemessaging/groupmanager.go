@@ -21,11 +21,11 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/kaleido-io/firefly/internal/data"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/data"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 	"github.com/karlseguin/ccache"
 )
 
@@ -33,6 +33,7 @@ type GroupManager interface {
 	GetGroupByID(ctx context.Context, id string) (*fftypes.Group, error)
 	GetGroups(ctx context.Context, filter database.AndFilter) ([]*fftypes.Group, error)
 	ResolveInitGroup(ctx context.Context, msg *fftypes.Message) (*fftypes.Group, error)
+	EnsureLocalGroup(ctx context.Context, group *fftypes.Group) (ok bool, err error)
 }
 
 type groupManager struct {
@@ -42,18 +43,51 @@ type groupManager struct {
 	groupCache    *ccache.Cache
 }
 
+type groupHashEntry struct {
+	group *fftypes.Group
+	nodes []*fftypes.Node
+}
+
+func (gm *groupManager) EnsureLocalGroup(ctx context.Context, group *fftypes.Group) (ok bool, err error) {
+	// In the case that we've received a private message for a group, it's possible (likely actually)
+	// that the private message using the group will arrive before the group init message confirming
+	// the group via the blockchain.
+	// So this method checks if a group exists, and if it doesn't inserts it.
+	// We do assume the other side has sent the batch init of the group (rather than generating a second one)
+	if g, err := gm.database.GetGroupByHash(ctx, group.Hash); err != nil {
+		return false, err
+	} else if g != nil {
+		// The group already exists
+		return true, nil
+	}
+
+	err = group.Validate(ctx, true)
+	if err != nil {
+		log.L(ctx).Errorf("Attempt to insert invalid group %s:%s: %s", group.Namespace, group.Hash, err)
+		return false, nil
+	}
+	err = gm.database.UpsertGroup(ctx, group, false)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (gm *groupManager) groupInit(ctx context.Context, signer *fftypes.Identity, group *fftypes.Group) (err error) {
 
 	// Serialize it into a data object, as a piece of data we can write to a message
 	data := &fftypes.Data{
 		Validator: fftypes.ValidatorTypeSystemDefinition,
 		ID:        fftypes.NewUUID(),
-		Namespace: fftypes.SystemNamespace,
+		Namespace: group.Namespace, // must go in the same ordering context as the message
 		Created:   fftypes.Now(),
 	}
 	data.Value, err = json.Marshal(&group)
 	if err == nil {
-		err = data.Seal(ctx)
+		err = group.Validate(ctx, true)
+		if err == nil {
+			err = data.Seal(ctx)
+		}
 	}
 	if err != nil {
 		return i18n.WrapError(ctx, err, i18n.MsgSerializationFailed)
@@ -76,7 +110,7 @@ func (gm *groupManager) groupInit(ctx context.Context, signer *fftypes.Identity,
 	msg := &fftypes.Message{
 		Header: fftypes.MessageHeader{
 			Group:     group.Hash,
-			Namespace: fftypes.SystemNamespace,
+			Namespace: group.Namespace, // Must go into the same ordering context as the message itself
 			Type:      fftypes.MessageTypeGroupInit,
 			Author:    signer.Identifier,
 			Tag:       string(fftypes.SystemTagDefineGroup),
@@ -92,9 +126,11 @@ func (gm *groupManager) groupInit(ctx context.Context, signer *fftypes.Identity,
 	err = msg.Seal(ctx)
 	if err == nil {
 		// Store the message - this asynchronously triggers the next step in process
-		err = gm.database.UpsertMessage(ctx, msg, false /* newly generated UUID in Seal */, false)
+		err = gm.database.InsertMessageLocal(ctx, msg)
 	}
-
+	if err == nil {
+		log.L(ctx).Infof("Created new group %s", group.Hash)
+	}
 	return err
 
 }
@@ -111,19 +147,20 @@ func (gm *groupManager) GetGroups(ctx context.Context, filter database.AndFilter
 	return gm.database.GetGroups(ctx, filter)
 }
 
-func (gm *groupManager) getGroupNodes(ctx context.Context, groupHash *fftypes.Bytes32) ([]*fftypes.Node, error) {
+func (gm *groupManager) getGroupNodes(ctx context.Context, groupHash *fftypes.Bytes32) (*fftypes.Group, []*fftypes.Node, error) {
 
 	if cached := gm.groupCache.Get(groupHash.String()); cached != nil {
 		cached.Extend(gm.groupCacheTTL)
-		return cached.Value().([]*fftypes.Node), nil
+		ghe := cached.Value().(*groupHashEntry)
+		return ghe.group, ghe.nodes, nil
 	}
 
 	group, err := gm.database.GetGroupByHash(ctx, groupHash)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if group == nil {
-		return nil, i18n.NewError(ctx, i18n.MsgGroupNotFound, groupHash)
+		return nil, nil, i18n.NewError(ctx, i18n.MsgGroupNotFound, groupHash)
 	}
 
 	// We de-duplicate nodes in the case that the payload needs to be received by multiple org identities
@@ -133,10 +170,10 @@ func (gm *groupManager) getGroupNodes(ctx context.Context, groupHash *fftypes.By
 	for _, r := range group.Members {
 		node, err := gm.database.GetNodeByID(ctx, r.Node)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if node == nil {
-			return nil, i18n.NewError(ctx, i18n.MsgNodeNotFound, r.Node)
+			return nil, nil, i18n.NewError(ctx, i18n.MsgNodeNotFound, r.Node)
 		}
 		if !knownIDs[*node.ID] {
 			knownIDs[*node.ID] = true
@@ -144,8 +181,11 @@ func (gm *groupManager) getGroupNodes(ctx context.Context, groupHash *fftypes.By
 		}
 	}
 
-	gm.groupCache.Set(group.Hash.String(), nodes, gm.groupCacheTTL)
-	return nodes, nil
+	gm.groupCache.Set(group.Hash.String(), &groupHashEntry{
+		group: group,
+		nodes: nodes,
+	}, gm.groupCacheTTL)
+	return group, nodes, nil
 }
 
 // ResolveInitGroup is called when a message comes in as the first private message on a particular context.
@@ -154,7 +194,7 @@ func (gm *groupManager) getGroupNodes(ctx context.Context, groupHash *fftypes.By
 //
 // Errors are only returned for database issues. For validation issues, a nil group is returned without an error.
 func (gm *groupManager) ResolveInitGroup(ctx context.Context, msg *fftypes.Message) (*fftypes.Group, error) {
-	if msg.Header.Namespace == fftypes.SystemNamespace && msg.Header.Tag == string(fftypes.SystemTagDefineGroup) {
+	if msg.Header.Tag == string(fftypes.SystemTagDefineGroup) {
 		// Store the new group
 		data, foundAll, err := gm.data.GetMessageData(ctx, msg, true)
 		if err != nil || !foundAll || len(data) == 0 {
@@ -181,10 +221,6 @@ func (gm *groupManager) ResolveInitGroup(ctx context.Context, msg *fftypes.Messa
 		if err != nil {
 			return nil, err
 		}
-		event := fftypes.NewEvent(fftypes.EventTypeGroupConfirmed, newGroup.Namespace, nil, newGroup.Hash)
-		if err = gm.database.UpsertEvent(ctx, event, false); err != nil {
-			return nil, err
-		}
 		return &newGroup, nil
 	}
 
@@ -194,7 +230,7 @@ func (gm *groupManager) ResolveInitGroup(ctx context.Context, msg *fftypes.Messa
 		return group, err
 	}
 	if group == nil {
-		log.L(ctx).Warnf("Group %s not found", msg.Header.Group)
+		log.L(ctx).Warnf("Group %s not found for first message in context. type=%s namespace=%s", msg.Header.Group, msg.Header.Type, msg.Header.Namespace)
 		return nil, nil
 	}
 	return group, nil

@@ -22,10 +22,10 @@ import (
 	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 var (
@@ -39,7 +39,7 @@ var (
 		"dx_endpoint",
 		"created",
 	}
-	nodeFilterTypeMap = map[string]string{
+	nodeFilterFieldMap = map[string]string{
 		"message":     "message_id",
 		"dx.peer":     "dx_peer",
 		"dx.endpoint": "dx_endpoint",
@@ -173,7 +173,7 @@ func (s *SQLCommon) GetNodeByID(ctx context.Context, id *fftypes.UUID) (message 
 
 func (s *SQLCommon) GetNodes(ctx context.Context, filter database.Filter) (message []*fftypes.Node, err error) {
 
-	query, err := s.filterSelect(ctx, "", sq.Select(nodeColumns...).From("nodes"), filter, nodeFilterTypeMap)
+	query, err := s.filterSelect(ctx, "", sq.Select(nodeColumns...).From("nodes"), filter, nodeFilterFieldMap, []string{"sequence"})
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +205,7 @@ func (s *SQLCommon) UpdateNode(ctx context.Context, id *fftypes.UUID, update dat
 	}
 	defer s.rollbackTx(ctx, tx, autoCommit)
 
-	query, err := s.buildUpdate(sq.Update("nodes"), update, nodeFilterTypeMap)
+	query, err := s.buildUpdate(sq.Update("nodes"), update, nodeFilterFieldMap)
 	if err != nil {
 		return err
 	}

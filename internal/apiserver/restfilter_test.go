@@ -20,34 +20,54 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/kaleido-io/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/database"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBuildFilter(t *testing.T) {
-	maxFilterLimit = 250
+func TestBuildFilterDescending(t *testing.T) {
+	as := &apiServer{
+		maxFilterLimit: 250,
+	}
 
 	req := httptest.NewRequest("GET", "/things?created=0&confirmed=!0&Tag=>abc&TAG=<abc&tag=<=abc&tag=>=abc&tag=@abc&tag=^abc&tag=!@abc&tag=!^abc&skip=10&limit=50&sort=tag,sequence&descending", nil)
-	filter, err := buildFilter(req, database.MessageQueryFactory)
+	filter, err := as.buildFilter(req, database.MessageQueryFactory)
 	assert.NoError(t, err)
 	fi, err := filter.Finalize()
 	assert.NoError(t, err)
 
-	assert.Equal(t, "( confirmed != 0 ) && ( created == 0 ) && ( ( tag %! 'abc' ) || ( tag ^! 'abc' ) || ( tag <= 'abc' ) || ( tag < 'abc' ) || ( tag >= 'abc' ) || ( tag > 'abc' ) || ( tag %= 'abc' ) || ( tag ^= 'abc' ) ) sort=tag,sequence descending skip=10 limit=50", fi.String())
+	assert.Equal(t, "( confirmed != 0 ) && ( created == 0 ) && ( ( tag %! 'abc' ) || ( tag ^! 'abc' ) || ( tag <= 'abc' ) || ( tag < 'abc' ) || ( tag >= 'abc' ) || ( tag > 'abc' ) || ( tag %= 'abc' ) || ( tag ^= 'abc' ) ) sort=-tag,-sequence skip=10 limit=50", fi.String())
+}
+
+func TestBuildFilterAscending(t *testing.T) {
+	as := &apiServer{
+		maxFilterLimit: 250,
+	}
+
+	req := httptest.NewRequest("GET", "/things?created=0&sort=tag,sequence&ascending", nil)
+	filter, err := as.buildFilter(req, database.MessageQueryFactory)
+	assert.NoError(t, err)
+	fi, err := filter.Finalize()
+	assert.NoError(t, err)
+
+	assert.Equal(t, "( created == 0 ) sort=tag,sequence", fi.String())
 }
 
 func TestBuildFilterLimitSkip(t *testing.T) {
-	maxFilterSkip = 250
+	as := &apiServer{
+		maxFilterSkip: 250,
+	}
 
 	req := httptest.NewRequest("GET", "/things?skip=251", nil)
-	_, err := buildFilter(req, database.MessageQueryFactory)
+	_, err := as.buildFilter(req, database.MessageQueryFactory)
 	assert.Regexp(t, "FF10183.*250", err)
 }
 
 func TestBuildFilterLimitLimit(t *testing.T) {
-	maxFilterLimit = 500
+	as := &apiServer{
+		maxFilterLimit: 500,
+	}
 
 	req := httptest.NewRequest("GET", "/things?limit=501", nil)
-	_, err := buildFilter(req, database.MessageQueryFactory)
+	_, err := as.buildFilter(req, database.MessageQueryFactory)
 	assert.Regexp(t, "FF10184.*500", err)
 }

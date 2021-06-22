@@ -19,9 +19,9 @@ package database
 import (
 	"context"
 
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 var (
@@ -323,11 +323,36 @@ type PeristenceInterface interface {
 
 	// DeleteNextPin - delete a next hash, using its local database ID
 	DeleteNextPin(ctx context.Context, sequence int64) (err error)
+
+	// InsertBlob - insert a blob
+	InsertBlob(ctx context.Context, blob *fftypes.Blob) (err error)
+
+	// GetBlobMatchingHash - lookup first blob batching a hash
+	GetBlobMatchingHash(ctx context.Context, hash *fftypes.Bytes32) (message *fftypes.Blob, err error)
+
+	// GetBlobs - get blobs
+	GetBlobs(ctx context.Context, filter Filter) (message []*fftypes.Blob, err error)
+
+	// DeleteBlob - delete a blob, using its local database ID
+	DeleteBlob(ctx context.Context, sequence int64) (err error)
+
+	// UpsertConfigRecord - Upsert a config record
+	// Throws IDMismatch error if updating and ids don't match
+	UpsertConfigRecord(ctx context.Context, data *fftypes.ConfigRecord, allowExisting bool) (err error)
+
+	// GetConfigRecord - Get an config record by key
+	GetConfigRecord(ctx context.Context, key string) (offset *fftypes.ConfigRecord, err error)
+
+	// GetConfigRecords - Get config records
+	GetConfigRecords(ctx context.Context, filter Filter) (offset []*fftypes.ConfigRecord, err error)
+
+	// DeleteConfigRecord - Delete config record
+	DeleteConfigRecord(ctx context.Context, key string) (err error)
 }
 
 // Callbacks are the methods for passing data from plugin to core
 //
-// If Capabilities returns ClusterEvents=true then these should be brodcast to every instance within
+// If Capabilities returns ClusterEvents=true then these should be broadcast to every instance within
 // a cluster that is connected to the database.
 //
 // If Capabilities returns ClusterEvents=false then these events can be simply coupled in-process to
@@ -374,13 +399,15 @@ var MessageQueryFactory = &queryFields{
 	"author":    &StringField{},
 	"topics":    &FFNameArrayField{},
 	"tag":       &StringField{},
-	"group":     &StringField{},
+	"group":     &Bytes32Field{},
 	"created":   &TimeField{},
-	"hash":      &StringField{},
-	"pins":      &StringField{},
+	"hash":      &Bytes32Field{},
+	"pins":      &FFNameArrayField{},
+	"rejected":  &BoolField{},
+	"pending":   &SortableBoolField{},
 	"confirmed": &TimeField{},
 	"sequence":  &Int64Field{},
-	"tx.type":   &StringField{},
+	"txtype":    &StringField{},
 	"batch":     &UUIDField{},
 	"local":     &BoolField{},
 }
@@ -391,8 +418,8 @@ var BatchQueryFactory = &queryFields{
 	"namespace":  &StringField{},
 	"type":       &StringField{},
 	"author":     &StringField{},
-	"group":      &StringField{},
-	"hash":       &StringField{},
+	"group":      &Bytes32Field{},
+	"hash":       &Bytes32Field{},
 	"payloadref": &StringField{},
 	"created":    &TimeField{},
 	"confirmed":  &TimeField{},
@@ -421,7 +448,9 @@ var DataQueryFactory = &queryFields{
 	"validator":        &StringField{},
 	"datatype.name":    &StringField{},
 	"datatype.version": &StringField{},
-	"hash":             &StringField{},
+	"hash":             &Bytes32Field{},
+	"blob.hash":        &Bytes32Field{},
+	"blob.public":      &StringField{},
 	"created":          &TimeField{},
 }
 
@@ -450,6 +479,7 @@ var OperationQueryFactory = &queryFields{
 	"tx":        &UUIDField{},
 	"type":      &StringField{},
 	"member":    &StringField{},
+	"namespace": &StringField{},
 	"status":    &StringField{},
 	"error":     &StringField{},
 	"plugin":    &StringField{},
@@ -479,7 +509,7 @@ var EventQueryFactory = &queryFields{
 	"type":      &StringField{},
 	"namespace": &StringField{},
 	"reference": &UUIDField{},
-	"group":     &StringField{},
+	"group":     &Bytes32Field{},
 	"sequence":  &Int64Field{},
 	"created":   &TimeField{},
 }
@@ -488,7 +518,7 @@ var EventQueryFactory = &queryFields{
 var PinQueryFactory = &queryFields{
 	"sequence":   &Int64Field{},
 	"masked":     &BoolField{},
-	"hash":       &StringField{},
+	"hash":       &Bytes32Field{},
 	"batch":      &UUIDField{},
 	"index":      &Int64Field{},
 	"dispatched": &BoolField{},
@@ -520,7 +550,7 @@ var NodeQueryFactory = &queryFields{
 
 // GroupQueryFactory filter fields for nodes
 var GroupQueryFactory = &queryFields{
-	"hash":        &StringField{},
+	"hash":        &Bytes32Field{},
 	"message":     &UUIDField{},
 	"namespace":   &StringField{},
 	"description": &StringField{},
@@ -532,14 +562,27 @@ var GroupQueryFactory = &queryFields{
 var NonceQueryFactory = &queryFields{
 	"context": &StringField{},
 	"nonce":   &Int64Field{},
-	"group":   &StringField{},
+	"group":   &Bytes32Field{},
 	"topic":   &StringField{},
 }
 
 // NextPinQueryFactory filter fields for nodes
 var NextPinQueryFactory = &queryFields{
-	"context":  &StringField{},
+	"context":  &Bytes32Field{},
 	"identity": &StringField{},
-	"hash":     &StringField{},
+	"hash":     &Bytes32Field{},
 	"nonce":    &Int64Field{},
+}
+
+// ConfigRecordQueryFactory filter fields for config records
+var ConfigRecordQueryFactory = &queryFields{
+	"key":   &StringField{},
+	"value": &StringField{},
+}
+
+// BlobQueryFactory filter fields for config records
+var BlobQueryFactory = &queryFields{
+	"hash":       &Bytes32Field{},
+	"payloadref": &StringField{},
+	"created":    &TimeField{},
 }

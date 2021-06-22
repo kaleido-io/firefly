@@ -22,18 +22,16 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/kaleido-io/firefly/mocks/broadcastmocks"
-	"github.com/kaleido-io/firefly/mocks/orchestratormocks"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/mocks/broadcastmocks"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestPostDatatypes(t *testing.T) {
-	o := &orchestratormocks.Orchestrator{}
+	o, r := newTestAPIServer()
 	mbm := &broadcastmocks.Manager{}
 	o.On("Broadcast").Return(mbm)
-	r := createMuxRouter(o)
 	input := fftypes.Datatype{}
 	var buf bytes.Buffer
 	json.NewEncoder(&buf).Encode(&input)

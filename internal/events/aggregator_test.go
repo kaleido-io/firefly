@@ -22,13 +22,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/mocks/broadcastmocks"
-	"github.com/kaleido-io/firefly/mocks/databasemocks"
-	"github.com/kaleido-io/firefly/mocks/datamocks"
-	"github.com/kaleido-io/firefly/mocks/privatemessagingmocks"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/mocks/broadcastmocks"
+	"github.com/hyperledger-labs/firefly/mocks/databasemocks"
+	"github.com/hyperledger-labs/firefly/mocks/datamocks"
+	"github.com/hyperledger-labs/firefly/mocks/privatemessagingmocks"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -138,7 +138,28 @@ func TestAggregationMaskedZeroNonceMatch(t *testing.T) {
 	// Set the pin to dispatched
 	mdi.On("SetPinDispatched", ag.ctx, int64(10001)).Return(nil)
 	// Update the message
-	mdi.On("UpdateMessage", ag.ctx, mock.Anything, mock.Anything).Return(nil)
+	mdi.On("UpdateMessage", ag.ctx, mock.Anything, mock.MatchedBy(func(u database.Update) bool {
+		update, err := u.Finalize()
+		assert.NoError(t, err)
+		assert.Len(t, update.SetOperations, 3)
+
+		assert.Equal(t, "pending", update.SetOperations[0].Field)
+		v, err := update.SetOperations[0].Value.Value()
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0) /* sortable bool false */, v)
+
+		assert.Equal(t, "confirmed", update.SetOperations[1].Field)
+		v, err = update.SetOperations[1].Value.Value()
+		assert.NoError(t, err)
+		assert.Greater(t, v, int64(0))
+
+		assert.Equal(t, "rejected", update.SetOperations[2].Field)
+		v, err = update.SetOperations[2].Value.Value()
+		assert.NoError(t, err)
+		assert.Equal(t, false, v)
+
+		return true
+	})).Return(nil)
 	// Confirm the offset
 	mdi.On("UpdateOffset", ag.ctx, mock.Anything, mock.Anything).Return(nil)
 
@@ -809,6 +830,33 @@ func TestAttemptMessageDispatchFailValidateData(t *testing.T) {
 
 }
 
+func TestAttemptMessageDispatchMissingBlobs(t *testing.T) {
+	ag, cancel := newTestAggregator()
+	defer cancel()
+
+	blobHash := fftypes.NewRandB32()
+
+	mdm := ag.data.(*datamocks.Manager)
+	mdm.On("GetMessageData", ag.ctx, mock.Anything, true).Return([]*fftypes.Data{
+		{ID: fftypes.NewUUID(), Hash: fftypes.NewRandB32(), Blob: &fftypes.BlobRef{
+			Hash:   blobHash,
+			Public: "public-ref",
+		}},
+	}, true, nil)
+
+	mdi := ag.database.(*databasemocks.Plugin)
+	mdi.On("GetBlobMatchingHash", ag.ctx, blobHash).Return(nil, nil)
+
+	mdm.On("CopyBlobPStoDX", ag.ctx, mock.Anything).Return(nil, nil)
+
+	dispatched, err := ag.attemptMessageDispatch(ag.ctx, &fftypes.Message{
+		Header: fftypes.MessageHeader{ID: fftypes.NewUUID()},
+	})
+	assert.NoError(t, err)
+	assert.False(t, dispatched)
+
+}
+
 func TestAttemptMessageDispatchFailValidateBadSystem(t *testing.T) {
 	ag, cancel := newTestAggregator()
 	defer cancel()
@@ -820,6 +868,28 @@ func TestAttemptMessageDispatchFailValidateBadSystem(t *testing.T) {
 	mdm.On("GetMessageData", ag.ctx, mock.Anything, true).Return([]*fftypes.Data{}, true, nil)
 
 	mdi := ag.database.(*databasemocks.Plugin)
+	mdi.On("UpdateMessage", ag.ctx, mock.Anything, mock.MatchedBy(func(u database.Update) bool {
+		update, err := u.Finalize()
+		assert.NoError(t, err)
+		assert.Len(t, update.SetOperations, 3)
+
+		assert.Equal(t, "pending", update.SetOperations[0].Field)
+		v, err := update.SetOperations[0].Value.Value()
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0) /* sortable bool */, v)
+
+		assert.Equal(t, "confirmed", update.SetOperations[1].Field)
+		v, err = update.SetOperations[1].Value.Value()
+		assert.NoError(t, err)
+		assert.Greater(t, v, int64(0))
+
+		assert.Equal(t, "rejected", update.SetOperations[2].Field)
+		v, err = update.SetOperations[2].Value.Value()
+		assert.NoError(t, err)
+		assert.Equal(t, true, v)
+
+		return true
+	})).Return(nil)
 	mdi.On("UpsertEvent", ag.ctx, mock.Anything, false).Return(nil)
 
 	_, err := ag.attemptMessageDispatch(ag.ctx, &fftypes.Message{
@@ -876,6 +946,27 @@ func TestAttemptMessageDispatchEventFail(t *testing.T) {
 
 }
 
+func TestAttemptMessageDispatchGroupInit(t *testing.T) {
+	ag, cancel := newTestAggregator()
+	defer cancel()
+
+	mdi := ag.database.(*databasemocks.Plugin)
+	mdm := ag.data.(*datamocks.Manager)
+	mdm.On("GetMessageData", ag.ctx, mock.Anything, true).Return([]*fftypes.Data{}, true, nil)
+	mdm.On("ValidateAll", ag.ctx, mock.Anything).Return(true, nil)
+	mdi.On("UpdateMessage", ag.ctx, mock.Anything, mock.Anything).Return(nil)
+	mdi.On("UpsertEvent", ag.ctx, mock.Anything, false).Return(nil)
+
+	_, err := ag.attemptMessageDispatch(ag.ctx, &fftypes.Message{
+		Header: fftypes.MessageHeader{
+			ID:   fftypes.NewUUID(),
+			Type: fftypes.MessageTypeGroupInit,
+		},
+	})
+	assert.NoError(t, err)
+
+}
+
 func TestAttemptMessageUpdateMessageFail(t *testing.T) {
 	ag, cancel := newTestAggregator()
 	defer cancel()
@@ -910,6 +1001,7 @@ func TestRewindOffchainBatchesBatchesNoRewind(t *testing.T) {
 
 	ag, cancel := newTestAggregator()
 	defer cancel()
+	go ag.offchainListener()
 
 	ag.offchainBatches <- fftypes.NewUUID()
 	ag.offchainBatches <- fftypes.NewUUID()
@@ -929,6 +1021,7 @@ func TestRewindOffchainBatchesBatchesRewind(t *testing.T) {
 
 	ag, cancel := newTestAggregator()
 	defer cancel()
+	go ag.offchainListener()
 
 	ag.offchainBatches <- fftypes.NewUUID()
 	ag.offchainBatches <- fftypes.NewUUID()
@@ -942,7 +1035,7 @@ func TestRewindOffchainBatchesBatchesRewind(t *testing.T) {
 
 	rewind, offset := ag.rewindOffchainBatches()
 	assert.True(t, rewind)
-	assert.Equal(t, int64(12345), offset)
+	assert.Equal(t, int64(12344) /* one before the batch */, offset)
 }
 
 func TestRewindOffchainBatchesBatchesError(t *testing.T) {
@@ -951,11 +1044,137 @@ func TestRewindOffchainBatchesBatchesError(t *testing.T) {
 	ag, cancel := newTestAggregator()
 	cancel()
 
-	ag.offchainBatches <- fftypes.NewUUID()
+	ag.queuedRewinds <- fftypes.NewUUID()
 
 	mdi := ag.database.(*databasemocks.Plugin)
 	mdi.On("GetPins", ag.ctx, mock.Anything, mock.Anything).Return(nil, fmt.Errorf("pop"))
 
 	rewind, _ := ag.rewindOffchainBatches()
 	assert.False(t, rewind)
+}
+
+func TestResolveBlobsNoop(t *testing.T) {
+	ag, cancel := newTestAggregator()
+	defer cancel()
+
+	resolved, err := ag.resolveBlobs(ag.ctx, []*fftypes.Data{
+		{ID: fftypes.NewUUID(), Blob: &fftypes.BlobRef{}},
+	})
+
+	assert.NoError(t, err)
+	assert.True(t, resolved)
+}
+
+func TestResolveBlobsErrorGettingHash(t *testing.T) {
+	ag, cancel := newTestAggregator()
+	defer cancel()
+
+	mdi := ag.database.(*databasemocks.Plugin)
+	mdi.On("GetBlobMatchingHash", ag.ctx, mock.Anything).Return(nil, fmt.Errorf("pop"))
+
+	resolved, err := ag.resolveBlobs(ag.ctx, []*fftypes.Data{
+		{ID: fftypes.NewUUID(), Blob: &fftypes.BlobRef{
+			Hash: fftypes.NewRandB32(),
+		}},
+	})
+
+	assert.EqualError(t, err, "pop")
+	assert.False(t, resolved)
+}
+
+func TestResolveBlobsNotFoundPrivate(t *testing.T) {
+	ag, cancel := newTestAggregator()
+	defer cancel()
+
+	mdi := ag.database.(*databasemocks.Plugin)
+	mdi.On("GetBlobMatchingHash", ag.ctx, mock.Anything).Return(nil, nil)
+
+	resolved, err := ag.resolveBlobs(ag.ctx, []*fftypes.Data{
+		{ID: fftypes.NewUUID(), Blob: &fftypes.BlobRef{
+			Hash: fftypes.NewRandB32(),
+		}},
+	})
+
+	assert.NoError(t, err)
+	assert.False(t, resolved)
+}
+
+func TestResolveBlobsFoundPrivate(t *testing.T) {
+	ag, cancel := newTestAggregator()
+	defer cancel()
+
+	mdi := ag.database.(*databasemocks.Plugin)
+	mdi.On("GetBlobMatchingHash", ag.ctx, mock.Anything).Return(&fftypes.Blob{}, nil)
+
+	resolved, err := ag.resolveBlobs(ag.ctx, []*fftypes.Data{
+		{ID: fftypes.NewUUID(), Blob: &fftypes.BlobRef{
+			Hash: fftypes.NewRandB32(),
+		}},
+	})
+
+	assert.NoError(t, err)
+	assert.True(t, resolved)
+}
+
+func TestResolveBlobsCopyNotFound(t *testing.T) {
+	ag, cancel := newTestAggregator()
+	defer cancel()
+
+	mdi := ag.database.(*databasemocks.Plugin)
+	mdi.On("GetBlobMatchingHash", ag.ctx, mock.Anything).Return(nil, nil)
+
+	mdm := ag.data.(*datamocks.Manager)
+	mdm.On("CopyBlobPStoDX", ag.ctx, mock.Anything).Return(nil, nil)
+
+	resolved, err := ag.resolveBlobs(ag.ctx, []*fftypes.Data{
+		{ID: fftypes.NewUUID(), Blob: &fftypes.BlobRef{
+			Hash:   fftypes.NewRandB32(),
+			Public: "public-ref",
+		}},
+	})
+
+	assert.NoError(t, err)
+	assert.False(t, resolved)
+}
+
+func TestResolveBlobsCopyFail(t *testing.T) {
+	ag, cancel := newTestAggregator()
+	defer cancel()
+
+	mdi := ag.database.(*databasemocks.Plugin)
+	mdi.On("GetBlobMatchingHash", ag.ctx, mock.Anything).Return(nil, nil)
+
+	mdm := ag.data.(*datamocks.Manager)
+	mdm.On("CopyBlobPStoDX", ag.ctx, mock.Anything).Return(nil, fmt.Errorf("pop"))
+
+	resolved, err := ag.resolveBlobs(ag.ctx, []*fftypes.Data{
+		{ID: fftypes.NewUUID(), Blob: &fftypes.BlobRef{
+			Hash:   fftypes.NewRandB32(),
+			Public: "public-ref",
+		}},
+	})
+
+	assert.EqualError(t, err, "pop")
+	assert.False(t, resolved)
+}
+
+func TestResolveBlobsCopyOk(t *testing.T) {
+	ag, cancel := newTestAggregator()
+	defer cancel()
+
+	mdi := ag.database.(*databasemocks.Plugin)
+	mdi.On("GetBlobMatchingHash", ag.ctx, mock.Anything).Return(nil, nil)
+
+	mdm := ag.data.(*datamocks.Manager)
+	mdm.On("CopyBlobPStoDX", ag.ctx, mock.Anything).Return(&fftypes.Blob{}, nil)
+
+	resolved, err := ag.resolveBlobs(ag.ctx, []*fftypes.Data{
+		{ID: fftypes.NewUUID(), Blob: &fftypes.BlobRef{
+			Hash:   fftypes.NewRandB32(),
+			Public: "public-ref",
+		}},
+	})
+
+	assert.NoError(t, err)
+	assert.True(t, resolved)
 }

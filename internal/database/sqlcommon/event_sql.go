@@ -21,10 +21,10 @@ import (
 	"database/sql"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 var (
@@ -36,7 +36,7 @@ var (
 		"group_hash",
 		"created",
 	}
-	eventFilterTypeMap = map[string]string{
+	eventFilterFieldMap = map[string]string{
 		"type":      "etype",
 		"reference": "ref",
 		"group":     "group_hash",
@@ -153,7 +153,7 @@ func (s *SQLCommon) GetEvents(ctx context.Context, filter database.Filter) (mess
 
 	cols := append([]string{}, eventColumns...)
 	cols = append(cols, s.provider.SequenceField(""))
-	query, err := s.filterSelect(ctx, "", sq.Select(cols...).From("events"), filter, eventFilterTypeMap)
+	query, err := s.filterSelect(ctx, "", sq.Select(cols...).From("events"), filter, eventFilterFieldMap, []string{"sequence"})
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (s *SQLCommon) UpdateEvent(ctx context.Context, id *fftypes.UUID, update da
 	}
 	defer s.rollbackTx(ctx, tx, autoCommit)
 
-	query, err := s.buildUpdate(sq.Update("events"), update, eventFilterTypeMap)
+	query, err := s.buildUpdate(sq.Update("events"), update, eventFilterFieldMap)
 	if err != nil {
 		return err
 	}

@@ -16,7 +16,7 @@
 
 package apiserver
 
-import "github.com/kaleido-io/firefly/internal/oapispec"
+import "github.com/hyperledger-labs/firefly/internal/oapispec"
 
 const emptyObjectSchema = `{"type": "object"}`
 
@@ -25,6 +25,7 @@ var routes = []*oapispec.Route{
 	getBatchByID,
 	getBatches,
 	getData,
+	getDataBlob,
 	getDataByID,
 	getDataDefByID,
 	getDataDefs,
@@ -45,6 +46,7 @@ var routes = []*oapispec.Route{
 	getNamespaces,
 	getOpByID,
 	getOps,
+	getStatus,
 	getSubscriptionByID,
 	getSubscriptions,
 	getTxnByID,

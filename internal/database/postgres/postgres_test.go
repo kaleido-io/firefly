@@ -21,9 +21,9 @@ import (
 	"testing"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/database/sqlcommon"
-	"github.com/kaleido-io/firefly/mocks/databasemocks"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/database/sqlcommon"
+	"github.com/hyperledger-labs/firefly/mocks/databasemocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,4 +50,6 @@ func TestPostgresProvider(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "INSERT INTO test (col1) VALUES (?)  RETURNING seq", sql)
 	assert.True(t, query)
+
+	assert.True(t, psql.IndividualSort())
 }

@@ -22,10 +22,10 @@ import (
 	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 var (
@@ -41,7 +41,7 @@ var (
 		"options",
 		"created",
 	}
-	subscriptionFilterTypeMap = map[string]string{
+	subscriptionFilterFieldMap = map[string]string{
 		"filter.events": "filter_events",
 		"filter.topics": "filter_topics",
 		"filter.tag":    "filter_tag",
@@ -195,7 +195,7 @@ func (s *SQLCommon) GetSubscriptionByName(ctx context.Context, ns, name string) 
 
 func (s *SQLCommon) GetSubscriptions(ctx context.Context, filter database.Filter) (message []*fftypes.Subscription, err error) {
 
-	query, err := s.filterSelect(ctx, "", sq.Select(subscriptionColumns...).From("subscriptions"), filter, subscriptionFilterTypeMap)
+	query, err := s.filterSelect(ctx, "", sq.Select(subscriptionColumns...).From("subscriptions"), filter, subscriptionFilterFieldMap, []string{"sequence"})
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +227,7 @@ func (s *SQLCommon) UpdateSubscription(ctx context.Context, namespace, name stri
 	}
 	defer s.rollbackTx(ctx, tx, autoCommit)
 
-	query, err := s.buildUpdate(sq.Update("subscriptions"), update, subscriptionFilterTypeMap)
+	query, err := s.buildUpdate(sq.Update("subscriptions"), update, subscriptionFilterFieldMap)
 	if err != nil {
 		return err
 	}

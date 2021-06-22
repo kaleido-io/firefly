@@ -25,9 +25,9 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	migratedb "github.com/golang-migrate/migrate/v4/database"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/database/sqlcommon"
-	"github.com/kaleido-io/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/database/sqlcommon"
+	"github.com/hyperledger-labs/firefly/pkg/database"
 
 	// Import pq driver
 	_ "github.com/lib/pq"
@@ -67,4 +67,8 @@ func (psql *Postgres) Open(url string) (*sql.DB, error) {
 
 func (psql *Postgres) GetMigrationDriver(db *sql.DB) (migratedb.Driver, error) {
 	return postgres.WithInstance(db, &postgres.Config{})
+}
+
+func (psql *Postgres) IndividualSort() bool {
+	return true
 }

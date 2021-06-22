@@ -21,10 +21,10 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/blockchain"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/blockchain"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 // BatchPinComplete is called in-line with a particular ledger's stream of events, so while we
@@ -41,7 +41,7 @@ func (em *eventManager) BatchPinComplete(bi blockchain.Plugin, batchPin *blockch
 	}()
 	log.L(em.ctx).Tracef("BatchPinComplete info: %+v", additionalInfo)
 
-	if batchPin.BatchPaylodRef != nil {
+	if batchPin.BatchPaylodRef != "" {
 		return em.handleBroadcastPinComplete(batchPin, signingIdentity, protocolTxID, additionalInfo)
 	}
 	return em.handlePrivatePinComplete(batchPin, signingIdentity, protocolTxID, additionalInfo)

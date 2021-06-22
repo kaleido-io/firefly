@@ -25,9 +25,9 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	migratedb "github.com/golang-migrate/migrate/v4/database"
 	migratesqlite "github.com/golang-migrate/migrate/v4/database/sqlite"
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/database/sqlcommon"
-	"github.com/kaleido-io/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/database/sqlcommon"
+	"github.com/hyperledger-labs/firefly/pkg/database"
 
 	// Import the SQLite driver
 	_ "modernc.org/sqlite"
@@ -67,4 +67,8 @@ func (sqlite *SQLite) Open(url string) (*sql.DB, error) {
 
 func (sqlite *SQLite) GetMigrationDriver(db *sql.DB) (migratedb.Driver, error) {
 	return migratesqlite.WithInstance(db, &migratesqlite.Config{})
+}
+
+func (sqlite *SQLite) IndividualSort() bool {
+	return true
 }

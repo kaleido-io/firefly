@@ -25,9 +25,9 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	migratedb "github.com/golang-migrate/migrate/v4/database"
 	migrateql "github.com/golang-migrate/migrate/v4/database/ql"
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/database/sqlcommon"
-	"github.com/kaleido-io/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/database/sqlcommon"
+	"github.com/hyperledger-labs/firefly/pkg/database"
 
 	// Import QL driver
 	_ "modernc.org/ql/driver"
@@ -65,4 +65,8 @@ func (ql *QL) Open(url string) (*sql.DB, error) {
 
 func (ql *QL) GetMigrationDriver(db *sql.DB) (migratedb.Driver, error) {
 	return migrateql.WithInstance(db, &migrateql.Config{})
+}
+
+func (ql *QL) IndividualSort() bool {
+	return false
 }

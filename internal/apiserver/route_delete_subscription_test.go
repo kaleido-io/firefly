@@ -23,15 +23,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/kaleido-io/firefly/mocks/orchestratormocks"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestDeleteSubscription(t *testing.T) {
-	o := &orchestratormocks.Orchestrator{}
-	r := createMuxRouter(o)
+	o, r := newTestAPIServer()
 	input := fftypes.Subscription{}
 	var buf bytes.Buffer
 	json.NewEncoder(&buf).Encode(&input)

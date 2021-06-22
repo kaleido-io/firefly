@@ -20,26 +20,26 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kaleido-io/firefly/internal/batch"
-	"github.com/kaleido-io/firefly/internal/blockchain/bifactory"
-	"github.com/kaleido-io/firefly/internal/broadcast"
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/data"
-	"github.com/kaleido-io/firefly/internal/database/difactory"
-	"github.com/kaleido-io/firefly/internal/dataexchange/dxfactory"
-	"github.com/kaleido-io/firefly/internal/events"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/identity/iifactory"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/internal/networkmap"
-	"github.com/kaleido-io/firefly/internal/privatemessaging"
-	"github.com/kaleido-io/firefly/internal/publicstorage/psfactory"
-	"github.com/kaleido-io/firefly/pkg/blockchain"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/dataexchange"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
-	"github.com/kaleido-io/firefly/pkg/identity"
-	"github.com/kaleido-io/firefly/pkg/publicstorage"
+	"github.com/hyperledger-labs/firefly/internal/batch"
+	"github.com/hyperledger-labs/firefly/internal/blockchain/bifactory"
+	"github.com/hyperledger-labs/firefly/internal/broadcast"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/data"
+	"github.com/hyperledger-labs/firefly/internal/database/difactory"
+	"github.com/hyperledger-labs/firefly/internal/dataexchange/dxfactory"
+	"github.com/hyperledger-labs/firefly/internal/events"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/identity/iifactory"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/internal/networkmap"
+	"github.com/hyperledger-labs/firefly/internal/privatemessaging"
+	"github.com/hyperledger-labs/firefly/internal/publicstorage/psfactory"
+	"github.com/hyperledger-labs/firefly/pkg/blockchain"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/dataexchange"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/pkg/identity"
+	"github.com/hyperledger-labs/firefly/pkg/publicstorage"
 )
 
 var (
@@ -52,7 +52,7 @@ var (
 
 // Orchestrator is the main interface behind the API, implementing the actions
 type Orchestrator interface {
-	Init(ctx context.Context) error
+	Init(ctx context.Context, cancelCtx context.CancelFunc) error
 	Start() error
 	WaitStop() // The close itself is performed by canceling the context
 	Broadcast() broadcast.Manager
@@ -60,6 +60,10 @@ type Orchestrator interface {
 	Events() events.EventManager
 	NetworkMap() networkmap.Manager
 	Data() data.Manager
+	IsPreInit() bool
+
+	// Status
+	GetStatus(ctx context.Context) (*fftypes.NodeStatus, error)
 
 	// Subscription management
 	GetSubscriptions(ctx context.Context, ns string, filter database.AndFilter) ([]*fftypes.Subscription, error)
@@ -90,10 +94,19 @@ type Orchestrator interface {
 	GetOperations(ctx context.Context, ns string, filter database.AndFilter) ([]*fftypes.Operation, error)
 	GetEventByID(ctx context.Context, ns, id string) (*fftypes.Event, error)
 	GetEvents(ctx context.Context, ns string, filter database.AndFilter) ([]*fftypes.Event, error)
+
+	// Config Managemnet
+	GetConfig(ctx context.Context) fftypes.JSONObject
+	GetConfigRecord(ctx context.Context, key string) (*fftypes.ConfigRecord, error)
+	GetConfigRecords(ctx context.Context, filter database.AndFilter) ([]*fftypes.ConfigRecord, error)
+	PutConfigRecord(ctx context.Context, key string, configRecord fftypes.Byteable) (outputValue fftypes.Byteable, err error)
+	DeleteConfigRecord(ctx context.Context, key string) (err error)
+	ResetConfig(ctx context.Context)
 }
 
 type orchestrator struct {
 	ctx           context.Context
+	cancelCtx     context.CancelFunc
 	started       bool
 	database      database.Plugin
 	blockchain    blockchain.Plugin
@@ -107,6 +120,7 @@ type orchestrator struct {
 	messaging     privatemessaging.Manager
 	data          data.Manager
 	bc            boundCallbacks
+	preInitMode   bool
 }
 
 func NewOrchestrator() Orchestrator {
@@ -121,9 +135,13 @@ func NewOrchestrator() Orchestrator {
 	return or
 }
 
-func (or *orchestrator) Init(ctx context.Context) (err error) {
+func (or *orchestrator) Init(ctx context.Context, cancelCtx context.CancelFunc) (err error) {
 	or.ctx = ctx
+	or.cancelCtx = cancelCtx
 	err = or.initPlugins(ctx)
+	if or.preInitMode {
+		return nil
+	}
 	if err == nil {
 		err = or.initComponents(ctx)
 	}
@@ -138,6 +156,10 @@ func (or *orchestrator) Init(ctx context.Context) (err error) {
 }
 
 func (or *orchestrator) Start() error {
+	if or.preInitMode {
+		log.L(or.ctx).Infof("Orchestrator in pre-init mode, waiting for initialization")
+		return nil
+	}
 	err := or.blockchain.Start()
 	if err == nil {
 		err = or.batch.Start()
@@ -170,6 +192,10 @@ func (or *orchestrator) WaitStop() {
 	or.started = false
 }
 
+func (or *orchestrator) IsPreInit() bool {
+	return or.preInitMode
+}
+
 func (or *orchestrator) Broadcast() broadcast.Manager {
 	return or.broadcast
 }
@@ -190,7 +216,7 @@ func (or *orchestrator) Data() data.Manager {
 	return or.data
 }
 
-func (or *orchestrator) initPlugins(ctx context.Context) (err error) {
+func (or *orchestrator) initDatabaseCheckPreinit(ctx context.Context) (err error) {
 
 	if or.database == nil {
 		diType := config.GetString(config.DatabaseType)
@@ -200,6 +226,27 @@ func (or *orchestrator) initPlugins(ctx context.Context) (err error) {
 	}
 	if err = or.database.Init(ctx, databaseConfig.SubPrefix(or.database.Name()), or); err != nil {
 		return err
+	}
+
+	// Read configuration from DB and merge with existing config
+	var configRecords []*fftypes.ConfigRecord
+	filter := database.ConfigRecordQueryFactory.NewFilter(ctx).And()
+	if configRecords, err = or.GetConfigRecords(ctx, filter); err != nil {
+		return err
+	}
+	if len(configRecords) == 0 && config.GetBool(config.AdminPreinit) {
+		or.preInitMode = true
+		return nil
+	}
+	return config.MergeConfig(configRecords)
+}
+
+func (or *orchestrator) initPlugins(ctx context.Context) (err error) {
+
+	if err = or.initDatabaseCheckPreinit(ctx); err != nil {
+		return err
+	} else if or.preInitMode {
+		return nil
 	}
 
 	if or.identity == nil {
@@ -244,7 +291,7 @@ func (or *orchestrator) initPlugins(ctx context.Context) (err error) {
 func (or *orchestrator) initComponents(ctx context.Context) (err error) {
 
 	if or.data == nil {
-		or.data, err = data.NewDataManager(ctx, or.database, or.dataexchange)
+		or.data, err = data.NewDataManager(ctx, or.database, or.publicstorage, or.dataexchange)
 		if err != nil {
 			return err
 		}

@@ -23,9 +23,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
 	"github.com/jarcoal/httpmock"
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/i18n"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -93,6 +93,19 @@ func TestRequestRetry(t *testing.T) {
 	err = WrapRestErr(ctx, resp, err, i18n.MsgEthconnectRESTErr)
 	assert.Error(t, err)
 
+}
+
+func TestConfWithProxy(t *testing.T) {
+
+	ctx := context.Background()
+
+	resetConf()
+	utConfPrefix.Set(HTTPConfigURL, "http://localhost:12345")
+	utConfPrefix.Set(HTTPConfigProxyURL, "http://myproxy.example.com:12345")
+	utConfPrefix.Set(HTTPConfigRetryEnabled, false)
+
+	c := New(ctx, utConfPrefix)
+	assert.True(t, c.IsProxySet())
 }
 
 func TestLongResponse(t *testing.T) {

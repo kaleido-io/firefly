@@ -21,10 +21,10 @@ import (
 	"database/sql"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 var (
@@ -36,7 +36,7 @@ var (
 		"hash",
 		"created",
 	}
-	groupFilterTypeMap = map[string]string{
+	groupFilterFieldMap = map[string]string{
 		"message": "message_id",
 	}
 )
@@ -269,7 +269,7 @@ func (s *SQLCommon) getGroupsQuery(ctx context.Context, query sq.SelectBuilder) 
 }
 
 func (s *SQLCommon) GetGroups(ctx context.Context, filter database.Filter) (group []*fftypes.Group, err error) {
-	query, err := s.filterSelect(ctx, "", sq.Select(groupColumns...).From("groups"), filter, groupFilterTypeMap)
+	query, err := s.filterSelect(ctx, "", sq.Select(groupColumns...).From("groups"), filter, groupFilterFieldMap, []string{"sequence"})
 	if err != nil {
 		return nil, err
 	}
@@ -288,12 +288,12 @@ func (s *SQLCommon) UpdateGroups(ctx context.Context, filter database.Filter, up
 	}
 	defer s.rollbackTx(ctx, tx, autoCommit)
 
-	query, err := s.buildUpdate(sq.Update("groups"), update, groupFilterTypeMap)
+	query, err := s.buildUpdate(sq.Update("groups"), update, groupFilterFieldMap)
 	if err != nil {
 		return err
 	}
 
-	query, err = s.filterUpdate(ctx, "", query, filter, opFilterTypeMap)
+	query, err = s.filterUpdate(ctx, "", query, filter, opFilterFieldMap)
 	if err != nil {
 		return err
 	}

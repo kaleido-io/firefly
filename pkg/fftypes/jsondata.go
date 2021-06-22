@@ -21,9 +21,10 @@ import (
 	"crypto/sha256"
 	"database/sql/driver"
 	"encoding/json"
+	"strings"
 
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
 )
 
 // JSONObject is a holder of a hash, that can be used to correlate onchain data with off-chain data.
@@ -52,6 +53,18 @@ func (jd JSONObject) GetString(key string) string {
 	return s
 }
 
+func (jd JSONObject) GetBool(key string) bool {
+	vInterface := jd[key]
+	switch vt := vInterface.(type) {
+	case string:
+		return strings.EqualFold(vt, "true")
+	case bool:
+		return vt
+	default:
+		return false
+	}
+}
+
 func (jd JSONObject) GetStringOk(key string) (string, bool) {
 	vInterace, ok := jd[key]
 	if ok && vInterace != nil {
@@ -71,11 +84,17 @@ func (jd JSONObject) GetObject(key string) JSONObject {
 func (jd JSONObject) GetObjectOk(key string) (JSONObject, bool) {
 	vInterace, ok := jd[key]
 	if ok && vInterace != nil {
-		if vMap, ok := vInterace.(map[string]interface{}); ok {
+		vInterface := jd[key]
+		switch vMap := vInterface.(type) {
+		case map[string]interface{}:
 			return JSONObject(vMap), true
+		case JSONObject:
+			return vMap, true
+		default:
+			log.L(context.Background()).Errorf("Invalid object value '%+v' for key '%s'", vInterace, key)
+			return JSONObject{}, false // Ensures a non-nil return
 		}
 	}
-	log.L(context.Background()).Errorf("Invalid object value '%+v' for key '%s'", vInterace, key)
 	return JSONObject{}, false // Ensures a non-nil return
 }
 

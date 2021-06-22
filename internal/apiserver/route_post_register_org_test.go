@@ -22,18 +22,16 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/kaleido-io/firefly/mocks/networkmapmocks"
-	"github.com/kaleido-io/firefly/mocks/orchestratormocks"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/mocks/networkmapmocks"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestPostRegisterOrganization(t *testing.T) {
-	o := &orchestratormocks.Orchestrator{}
+	o, r := newTestAPIServer()
 	mnm := &networkmapmocks.Manager{}
 	o.On("NetworkMap").Return(mnm)
-	r := createMuxRouter(o)
 	input := fftypes.Organization{}
 	var buf bytes.Buffer
 	json.NewEncoder(&buf).Encode(&input)

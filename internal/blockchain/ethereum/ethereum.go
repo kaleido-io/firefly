@@ -25,25 +25,25 @@ import (
 	"strings"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/internal/restclient"
-	"github.com/kaleido-io/firefly/internal/wsclient"
-	"github.com/kaleido-io/firefly/pkg/blockchain"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/internal/restclient"
+	"github.com/hyperledger-labs/firefly/internal/wsclient"
+	"github.com/hyperledger-labs/firefly/pkg/blockchain"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 const (
-	broadcastBatchEventSignature = "BatchPin(address,uint256,string,bytes32,bytes32,bytes32,bytes32[])"
+	broadcastBatchEventSignature = "BatchPin(address,uint256,string,bytes32,bytes32,string,bytes32[])"
 )
-
-var zeroBytes32 = fftypes.Bytes32{}
 
 type Ethereum struct {
 	ctx          context.Context
 	topic        string
 	instancePath string
+	prefixShort  string
+	prefixLong   string
 	capabilities *blockchain.Capabilities
 	callbacks    blockchain.Callbacks
 	client       *resty.Client
@@ -122,6 +122,9 @@ func (e *Ethereum) Init(ctx context.Context, prefix config.Prefix, callbacks blo
 	if e.topic == "" {
 		return i18n.NewError(ctx, i18n.MsgMissingPluginConfig, "topic", "blockchain.ethconnect")
 	}
+
+	e.prefixShort = ethconnectConf.GetString(EthconnectPrefixShort)
+	e.prefixLong = ethconnectConf.GetString(EthconnectPrefixLong)
 
 	e.client = restclient.New(e.ctx, ethconnectConf)
 	e.capabilities = &blockchain.Capabilities{
@@ -272,8 +275,7 @@ func (e *Ethereum) handleBatchPinEvent(ctx context.Context, msgJSON fftypes.JSON
 		sTransactionHash == "" ||
 		authorAddress == "" ||
 		sUUIDs == "" ||
-		sBatchHash == "" ||
-		sPayloadRef == "" {
+		sBatchHash == "" {
 		log.L(ctx).Errorf("BatchPin event is not valid - missing data: %+v", msgJSON)
 		return nil // move on
 	}
@@ -301,17 +303,6 @@ func (e *Ethereum) handleBatchPinEvent(ctx context.Context, msgJSON fftypes.JSON
 		return nil // move on
 	}
 
-	var payloadRef fftypes.Bytes32
-	err = payloadRef.UnmarshalText([]byte(sPayloadRef))
-	if err != nil {
-		log.L(ctx).Errorf("BatchPin event is not valid - bad payloadRef (%s): %+v", err, msgJSON)
-		return nil // move on
-	}
-	payloadRefOrNil := &payloadRef
-	if *payloadRefOrNil == zeroBytes32 {
-		payloadRefOrNil = nil
-	}
-
 	contexts := make([]*fftypes.Bytes32, len(sContexts))
 	for i, sHash := range sContexts {
 		var hash fftypes.Bytes32
@@ -328,7 +319,7 @@ func (e *Ethereum) handleBatchPinEvent(ctx context.Context, msgJSON fftypes.JSON
 		TransactionID:  &txnID,
 		BatchID:        &batchID,
 		BatchHash:      &batchHash,
-		BatchPaylodRef: payloadRefOrNil,
+		BatchPaylodRef: sPayloadRef,
 		Contexts:       contexts,
 	}
 
@@ -455,14 +446,14 @@ func (e *Ethereum) SubmitBatchPin(ctx context.Context, ledgerID *fftypes.UUID, i
 		Namespace:  batch.Namespace,
 		UUIDs:      ethHexFormatB32(&uuids),
 		BatchHash:  ethHexFormatB32(batch.BatchHash),
-		PayloadRef: ethHexFormatB32(batch.BatchPaylodRef),
+		PayloadRef: batch.BatchPaylodRef,
 		Contexts:   ethHashes,
 	}
 	path := fmt.Sprintf("%s/pinBatch", e.instancePath)
 	res, err := e.client.R().
 		SetContext(ctx).
-		SetQueryParam("fly-from", identity.OnChain).
-		SetQueryParam("fly-sync", "false").
+		SetQueryParam(e.prefixShort+"-from", identity.OnChain).
+		SetQueryParam(e.prefixShort+"-sync", "false").
 		SetBody(input).
 		SetResult(tx).
 		Post(path)

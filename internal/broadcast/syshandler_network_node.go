@@ -19,8 +19,8 @@ package broadcast
 import (
 	"context"
 
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 func (bm *broadcastManager) handleNodeBroadcast(ctx context.Context, msg *fftypes.Message, data []*fftypes.Data) (valid bool, err error) {
@@ -77,7 +77,7 @@ func (bm *broadcastManager) handleNodeBroadcast(ctx context.Context, msg *fftype
 	}
 
 	// Tell the data exchange about this node. Treat these errors like database errors - and return for retry processing
-	if err = bm.exchange.AddPeer(ctx, &node); err != nil {
+	if err = bm.exchange.AddPeer(ctx, node.DX.Peer, node.DX.Endpoint); err != nil {
 		return false, err
 	}
 

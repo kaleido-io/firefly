@@ -20,10 +20,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 func (pm *privateMessaging) resolveReceipientList(ctx context.Context, sender *fftypes.Identity, in *fftypes.MessageInput) error {
@@ -41,7 +41,7 @@ func (pm *privateMessaging) resolveReceipientList(ctx context.Context, sender *f
 	log.L(ctx).Debugf("Resolved group '%s' for message. New=%t", group.Hash, isNew)
 	in.Message.Header.Group = group.Hash
 
-	// If the group is new, we need to do a group initialization, before we send the message itself
+	// If the group is new, we need to do a group initialization, before we send the message itself.
 	if isNew {
 		return pm.groupManager.groupInit(ctx, sender, group)
 	}
@@ -107,9 +107,10 @@ func (pm *privateMessaging) resolveNode(ctx context.Context, org *fftypes.Organi
 func (pm *privateMessaging) getReceipients(ctx context.Context, in *fftypes.MessageInput) (gi *fftypes.GroupIdentity, err error) {
 	foundLocal := false
 	gi = &fftypes.GroupIdentity{
-		Name:    in.Group.Name,
-		Ledger:  in.Group.Ledger,
-		Members: make(fftypes.Members, len(in.Group.Members)),
+		Namespace: in.Message.Header.Namespace,
+		Name:      in.Group.Name,
+		Ledger:    in.Group.Ledger,
+		Members:   make(fftypes.Members, len(in.Group.Members)),
 	}
 	for i, rInput := range in.Group.Members {
 		// Resolve the org

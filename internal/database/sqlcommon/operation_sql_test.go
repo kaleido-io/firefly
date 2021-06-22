@@ -23,8 +23,8 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,6 +38,7 @@ func TestOperationE2EWithDB(t *testing.T) {
 	operationID := fftypes.NewUUID()
 	operation := &fftypes.Operation{
 		ID:          operationID,
+		Namespace:   "ns1",
 		Type:        fftypes.OpTypeBlockchainBatchPin,
 		Transaction: fftypes.NewUUID(),
 		Status:      fftypes.OpStatusPending,
@@ -58,6 +59,7 @@ func TestOperationE2EWithDB(t *testing.T) {
 	// and does not account for the verification that happens at the higher level)
 	operationUpdated := &fftypes.Operation{
 		ID:          operationID,
+		Namespace:   "ns1",
 		Type:        fftypes.OpTypeBlockchainBatchPin,
 		Transaction: fftypes.NewUUID(),
 		Status:      fftypes.OpStatusFailed,

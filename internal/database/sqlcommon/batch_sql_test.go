@@ -23,8 +23,8 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -67,7 +67,7 @@ func TestBatch2EWithDB(t *testing.T) {
 	// and does not account for the verification that happens at the higher level)
 	txid := fftypes.NewUUID()
 	msgID2 := fftypes.NewUUID()
-	payloadRef := fftypes.NewRandB32()
+	payloadRef := ""
 	batchUpdated := &fftypes.Batch{
 		ID:        batchID,
 		Type:      fftypes.MessageTypeBroadcast,

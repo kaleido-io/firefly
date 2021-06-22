@@ -23,14 +23,14 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDataE2EWithDB(t *testing.T) {
-	log.SetLevel("debug")
+	log.SetLevel("trace")
 
 	s := newQLTestProvider(t)
 	defer s.Close()
@@ -88,6 +88,10 @@ func TestDataE2EWithDB(t *testing.T) {
 		Hash:    fftypes.NewRandB32(),
 		Created: fftypes.Now(),
 		Value:   []byte(val2.String()),
+		Blob: &fftypes.BlobRef{
+			Hash:   fftypes.NewRandB32(),
+			Public: "Qmf412jQZiuVUtdgnB36FXFX7xg5V6KEbSJ4dpQuhkLyfD",
+		},
 	}
 
 	// Check disallows hash update

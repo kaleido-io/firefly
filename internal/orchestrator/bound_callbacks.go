@@ -17,10 +17,10 @@
 package orchestrator
 
 import (
-	"github.com/kaleido-io/firefly/internal/events"
-	"github.com/kaleido-io/firefly/pkg/blockchain"
-	"github.com/kaleido-io/firefly/pkg/dataexchange"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/events"
+	"github.com/hyperledger-labs/firefly/pkg/blockchain"
+	"github.com/hyperledger-labs/firefly/pkg/dataexchange"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 type boundCallbacks struct {
@@ -37,14 +37,14 @@ func (bc *boundCallbacks) BatchPinComplete(batch *blockchain.BatchPin, signingId
 	return bc.ei.BatchPinComplete(bc.bi, batch, signingIdentity, protocolTxID, additionalInfo)
 }
 
-func (bc *boundCallbacks) TransferResult(trackingID string, status fftypes.OpStatus, info string, additionalInfo fftypes.JSONObject) {
-	bc.ei.TransferResult(bc.dx, trackingID, status, info, additionalInfo)
+func (bc *boundCallbacks) TransferResult(trackingID string, status fftypes.OpStatus, info string, additionalInfo fftypes.JSONObject) error {
+	return bc.ei.TransferResult(bc.dx, trackingID, status, info, additionalInfo)
 }
 
-func (bc *boundCallbacks) BLOBReceived(peerID string, ns string, id fftypes.UUID) {
-	bc.ei.BLOBReceived(bc.dx, peerID, ns, id)
+func (bc *boundCallbacks) BLOBReceived(peerID string, hash fftypes.Bytes32, payloadRef string) error {
+	return bc.ei.BLOBReceived(bc.dx, peerID, hash, payloadRef)
 }
 
-func (bc *boundCallbacks) MessageReceived(peerID string, data []byte) {
-	bc.ei.MessageReceived(bc.dx, peerID, data)
+func (bc *boundCallbacks) MessageReceived(peerID string, data []byte) error {
+	return bc.ei.MessageReceived(bc.dx, peerID, data)
 }

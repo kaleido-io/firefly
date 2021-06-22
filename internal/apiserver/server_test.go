@@ -19,165 +19,87 @@ package apiserver
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"io/ioutil"
-	"math/big"
-	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gorilla/mux"
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/oapispec"
-	"github.com/kaleido-io/firefly/mocks/orchestratormocks"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/oapispec"
+	"github.com/hyperledger-labs/firefly/mocks/orchestratormocks"
 	"github.com/stretchr/testify/assert"
 )
 
 const configDir = "../../test/data/config"
 
+func newTestAPIServer() (*orchestratormocks.Orchestrator, *mux.Router) {
+	InitConfig()
+	mor := &orchestratormocks.Orchestrator{}
+	as := &apiServer{}
+	r := as.createMuxRouter(mor)
+	return mor, r
+}
+
+func newTestAdminServer() (*orchestratormocks.Orchestrator, *mux.Router) {
+	InitConfig()
+	mor := &orchestratormocks.Orchestrator{}
+	as := &apiServer{}
+	r := as.createAdminMuxRouter(mor)
+	return mor, r
+}
+
 func TestStartStopServer(t *testing.T) {
 	config.Reset()
-	config.Set(config.HTTPPort, 0)
+	InitConfig()
+	apiConfigPrefix.Set(HTTPConfPort, 0)
+	adminConfigPrefix.Set(HTTPConfPort, 0)
 	config.Set(config.UIPath, "test")
+	config.Set(config.AdminEnabled, true)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // server will immediately shut down
-	err := Serve(ctx, &orchestratormocks.Orchestrator{})
+	as := NewAPIServer()
+	mor := &orchestratormocks.Orchestrator{}
+	mor.On("IsPreInit").Return(false)
+	err := as.Serve(ctx, mor)
 	assert.NoError(t, err)
 }
 
-func TestInvalidListener(t *testing.T) {
+func TestStartAPIFail(t *testing.T) {
 	config.Reset()
-	config.Set(config.HTTPAddress, "...")
-	_, err := createListener(context.Background())
-	assert.Error(t, err)
+	InitConfig()
+	apiConfigPrefix.Set(HTTPConfAddress, "...://")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // server will immediately shut down
+	as := NewAPIServer()
+	mor := &orchestratormocks.Orchestrator{}
+	mor.On("IsPreInit").Return(false)
+	err := as.Serve(ctx, mor)
+	assert.Regexp(t, "FF10104", err)
 }
 
-func TestServeFail(t *testing.T) {
-	l, _ := net.Listen("tcp", "127.0.0.1:0")
-	l.Close() // So server will fail
-	s := &http.Server{}
-	err := serveHTTP(context.Background(), l, s)
-	assert.Error(t, err)
-}
-
-func TestMissingCAFile(t *testing.T) {
+func TestStartAdminFail(t *testing.T) {
 	config.Reset()
-	config.Set(config.HTTPTLSCAFile, "badness")
-	r := mux.NewRouter()
-	_, err := createServer(context.Background(), r)
-	assert.Regexp(t, "FF10105", err)
-}
-
-func TestBadCAFile(t *testing.T) {
-	config.Reset()
-	config.Set(config.HTTPTLSCAFile, configDir+"/firefly.core.yaml")
-	r := mux.NewRouter()
-	_, err := createServer(context.Background(), r)
-	assert.Regexp(t, "FF10106", err)
-}
-
-func TestTLSServerSelfSignedWithClientAuth(t *testing.T) {
-
-	// Create an X509 certificate pair
-	privatekey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	publickey := &privatekey.PublicKey
-	var privateKeyBytes []byte = x509.MarshalPKCS1PrivateKey(privatekey)
-	privateKeyFile, _ := ioutil.TempFile("", "key.pem")
-	defer os.Remove(privateKeyFile.Name())
-	privateKeyBlock := &pem.Block{Type: "RSA PRIVATE KEY", Bytes: privateKeyBytes}
-	pem.Encode(privateKeyFile, privateKeyBlock)
-	serialNumber, _ := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
-	x509Template := &x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{"Unit Tests"},
-		},
-		NotBefore:             time.Now(),
-		NotAfter:              time.Now().Add(100 * time.Second),
-		KeyUsage:              x509.KeyUsageDigitalSignature,
-		BasicConstraintsValid: true,
-		IPAddresses:           []net.IP{net.IPv4(127, 0, 0, 1)},
-	}
-	derBytes, err := x509.CreateCertificate(rand.Reader, x509Template, x509Template, publickey, privatekey)
-	assert.NoError(t, err)
-	publicKeyFile, _ := ioutil.TempFile("", "cert.pem")
-	defer os.Remove(publicKeyFile.Name())
-	pem.Encode(publicKeyFile, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-
-	// Start up a listener configured for TLS Mutual auth
-	config.Reset()
-	config.Set(config.HTTPTLSEnabled, true)
-	config.Set(config.HTTPTLSClientAuth, true)
-	config.Set(config.HTTPTLSKeyFile, privateKeyFile.Name())
-	config.Set(config.HTTPTLSCertFile, publicKeyFile.Name())
-	config.Set(config.HTTPTLSCAFile, publicKeyFile.Name())
-	config.Set(config.HTTPPort, 0)
-	ctx, cancelCtx := context.WithCancel(context.Background())
-	l, err := createListener(ctx)
-	assert.NoError(t, err)
-	r := mux.NewRouter()
-	r.HandleFunc("/test", func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(200)
-		json.NewEncoder(res).Encode(map[string]interface{}{"hello": "world"})
-	})
-	s, err := createServer(ctx, r)
-	assert.NoError(t, err)
-
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		err := serveHTTP(ctx, l, s)
-		assert.NoError(t, err)
-		wg.Done()
-	}()
-
-	// Attempt a request, with a client certificate
-	rootCAs := x509.NewCertPool()
-	caPEM, _ := ioutil.ReadFile(publicKeyFile.Name())
-	ok := rootCAs.AppendCertsFromPEM(caPEM)
-	assert.True(t, ok)
-	c := http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				GetClientCertificate: func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
-					clientKeyPair, err := tls.LoadX509KeyPair(publicKeyFile.Name(), privateKeyFile.Name())
-					return &clientKeyPair, err
-				},
-				RootCAs: rootCAs,
-			},
-		},
-	}
-	httpsAddr := fmt.Sprintf("https://%s/test", l.Addr().String())
-	res, err := c.Get(httpsAddr)
-	assert.NoError(t, err)
-	if res != nil {
-		assert.Equal(t, 200, res.StatusCode)
-		var resBody map[string]interface{}
-		json.NewDecoder(res.Body).Decode(&resBody)
-		assert.Equal(t, "world", resBody["hello"])
-	}
-
-	// Close down the server and wait for it to complete
-	cancelCtx()
-	wg.Wait()
+	InitConfig()
+	adminConfigPrefix.Set(HTTPConfAddress, "...://")
+	config.Set(config.AdminEnabled, true)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // server will immediately shut down
+	as := NewAPIServer()
+	mor := &orchestratormocks.Orchestrator{}
+	mor.On("IsPreInit").Return(true)
+	err := as.Serve(ctx, mor)
+	assert.Regexp(t, "FF10104", err)
 }
 
 func TestJSONHTTPServePOST201(t *testing.T) {
 	mo := &orchestratormocks.Orchestrator{}
-	handler := routeHandler(mo, &oapispec.Route{
+	as := &apiServer{}
+	handler := as.routeHandler(mo, &oapispec.Route{
 		Name:            "testRoute",
 		Path:            "/test",
 		Method:          "POST",
@@ -203,7 +125,8 @@ func TestJSONHTTPServePOST201(t *testing.T) {
 
 func TestJSONHTTPResponseEncodeFail(t *testing.T) {
 	mo := &orchestratormocks.Orchestrator{}
-	handler := routeHandler(mo, &oapispec.Route{
+	as := &apiServer{}
+	handler := as.routeHandler(mo, &oapispec.Route{
 		Name:            "testRoute",
 		Path:            "/test",
 		Method:          "GET",
@@ -228,7 +151,8 @@ func TestJSONHTTPResponseEncodeFail(t *testing.T) {
 
 func TestJSONHTTPNilResponseNon204(t *testing.T) {
 	mo := &orchestratormocks.Orchestrator{}
-	handler := routeHandler(mo, &oapispec.Route{
+	as := &apiServer{}
+	handler := as.routeHandler(mo, &oapispec.Route{
 		Name:            "testRoute",
 		Path:            "/test",
 		Method:          "GET",
@@ -253,7 +177,8 @@ func TestJSONHTTPNilResponseNon204(t *testing.T) {
 
 func TestJSONHTTPDefault500Error(t *testing.T) {
 	mo := &orchestratormocks.Orchestrator{}
-	handler := routeHandler(mo, &oapispec.Route{
+	as := &apiServer{}
+	handler := as.routeHandler(mo, &oapispec.Route{
 		Name:            "testRoute",
 		Path:            "/test",
 		Method:          "GET",
@@ -278,7 +203,8 @@ func TestJSONHTTPDefault500Error(t *testing.T) {
 
 func TestStatusCodeHintMapping(t *testing.T) {
 	mo := &orchestratormocks.Orchestrator{}
-	handler := routeHandler(mo, &oapispec.Route{
+	as := &apiServer{}
+	handler := as.routeHandler(mo, &oapispec.Route{
 		Name:            "testRoute",
 		Path:            "/test",
 		Method:          "GET",
@@ -303,7 +229,8 @@ func TestStatusCodeHintMapping(t *testing.T) {
 
 func TestStatusInvalidContentType(t *testing.T) {
 	mo := &orchestratormocks.Orchestrator{}
-	handler := routeHandler(mo, &oapispec.Route{
+	as := &apiServer{}
+	handler := as.routeHandler(mo, &oapispec.Route{
 		Name:            "testRoute",
 		Path:            "/test",
 		Method:          "POST",
@@ -326,7 +253,8 @@ func TestStatusInvalidContentType(t *testing.T) {
 }
 
 func TestNotFound(t *testing.T) {
-	handler := apiWrapper(notFoundHandler)
+	as := &apiServer{}
+	handler := as.apiWrapper(as.notFoundHandler)
 	s := httptest.NewServer(http.HandlerFunc(handler))
 	defer s.Close()
 
@@ -339,7 +267,8 @@ func TestNotFound(t *testing.T) {
 }
 
 func TestSwaggerUI(t *testing.T) {
-	handler := apiWrapper(swaggerUIHandler)
+	as := &apiServer{}
+	handler := as.apiWrapper(as.swaggerUIHandler("http://localhost:5000/api/v1"))
 	s := httptest.NewServer(http.HandlerFunc(handler))
 	defer s.Close()
 
@@ -351,7 +280,8 @@ func TestSwaggerUI(t *testing.T) {
 }
 
 func TestSwaggerYAML(t *testing.T) {
-	handler := apiWrapper(swaggerHandler)
+	as := &apiServer{}
+	handler := as.apiWrapper(as.swaggerHandler(routes, "http://localhost:12345/api/v1"))
 	s := httptest.NewServer(http.HandlerFunc(handler))
 	defer s.Close()
 
@@ -366,8 +296,7 @@ func TestSwaggerYAML(t *testing.T) {
 }
 
 func TestSwaggerJSON(t *testing.T) {
-	mo := &orchestratormocks.Orchestrator{}
-	r := createMuxRouter(mo)
+	_, r := newTestAPIServer()
 	s := httptest.NewServer(r)
 	defer s.Close()
 
@@ -377,4 +306,33 @@ func TestSwaggerJSON(t *testing.T) {
 	b, _ := ioutil.ReadAll(res.Body)
 	err = json.Unmarshal(b, &openapi3.T{})
 	assert.NoError(t, err)
+}
+
+func TestSwaggerAdminJSON(t *testing.T) {
+	_, r := newTestAdminServer()
+	s := httptest.NewServer(r)
+	defer s.Close()
+
+	res, err := http.Get(fmt.Sprintf("http://%s/admin/api/swagger.json", s.Listener.Addr()))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, res.StatusCode)
+	b, _ := ioutil.ReadAll(res.Body)
+	err = json.Unmarshal(b, &openapi3.T{})
+	assert.NoError(t, err)
+}
+
+func TestWaitForServerStop(t *testing.T) {
+
+	chl1 := make(chan error, 1)
+	chl2 := make(chan error, 1)
+	chl1 <- fmt.Errorf("pop1")
+
+	as := &apiServer{}
+	err := as.waitForServerStop(chl1, chl2)
+	assert.EqualError(t, err, "pop1")
+
+	chl2 <- fmt.Errorf("pop2")
+	err = as.waitForServerStop(chl1, chl2)
+	assert.EqualError(t, err, "pop2")
+
 }

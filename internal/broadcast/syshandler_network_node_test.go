@@ -22,10 +22,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/kaleido-io/firefly/mocks/databasemocks"
-	"github.com/kaleido-io/firefly/mocks/dataexchangemocks"
-	"github.com/kaleido-io/firefly/mocks/identitymocks"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/mocks/databasemocks"
+	"github.com/hyperledger-labs/firefly/mocks/dataexchangemocks"
+	"github.com/hyperledger-labs/firefly/mocks/identitymocks"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -58,7 +58,7 @@ func TestHandleSystemBroadcastNodeOk(t *testing.T) {
 	mdi.On("GetNodeByID", mock.Anything, node.ID).Return(nil, nil)
 	mdi.On("UpsertNode", mock.Anything, mock.Anything, true).Return(nil)
 	mdx := bm.exchange.(*dataexchangemocks.Plugin)
-	mdx.On("AddPeer", mock.Anything, mock.Anything).Return(nil)
+	mdx.On("AddPeer", mock.Anything, "peer1", node.DX.Endpoint).Return(nil)
 	valid, err := bm.HandleSystemBroadcast(context.Background(), &fftypes.Message{
 		Header: fftypes.MessageHeader{
 			Namespace: "ns1",
@@ -142,7 +142,7 @@ func TestHandleSystemBroadcastNodeAddPeerFail(t *testing.T) {
 	mdi.On("GetNodeByID", mock.Anything, node.ID).Return(nil, nil)
 	mdi.On("UpsertNode", mock.Anything, mock.Anything, true).Return(nil)
 	mdx := bm.exchange.(*dataexchangemocks.Plugin)
-	mdx.On("AddPeer", mock.Anything, mock.Anything).Return(fmt.Errorf("pop"))
+	mdx.On("AddPeer", mock.Anything, "peer1", mock.Anything).Return(fmt.Errorf("pop"))
 	valid, err := bm.HandleSystemBroadcast(context.Background(), &fftypes.Message{
 		Header: fftypes.MessageHeader{
 			Namespace: "ns1",
@@ -223,7 +223,7 @@ func TestHandleSystemBroadcastNodeDupOK(t *testing.T) {
 	mdi.On("GetNode", mock.Anything, "0x23456", "node1").Return(&fftypes.Node{Owner: "0x23456"}, nil)
 	mdi.On("UpsertNode", mock.Anything, mock.Anything, true).Return(nil)
 	mdx := bm.exchange.(*dataexchangemocks.Plugin)
-	mdx.On("AddPeer", mock.Anything, mock.Anything).Return(nil)
+	mdx.On("AddPeer", mock.Anything, "peer1", mock.Anything).Return(nil)
 	valid, err := bm.HandleSystemBroadcast(context.Background(), &fftypes.Message{
 		Header: fftypes.MessageHeader{
 			Namespace: "ns1",

@@ -23,8 +23,8 @@ const (
 	// EventTypeMessageConfirmed is the most important event type in the system. This means a message and all of its data
 	// is available for processing by an application. Most applications only need to listen to this event type
 	EventTypeMessageConfirmed EventType = "message_confirmed"
-	// EventTypeMessageInvalid occurs if a message is received and confirmed from a sequencing perspective, but is invalid
-	EventTypeMessageInvalid EventType = "message_invalid"
+	// EventTypeMessageRejected occurs if a message is received and confirmed from a sequencing perspective, but is rejected as invalid (mismatch to schema, or duplicate system broadcast)
+	EventTypeMessageRejected EventType = "message_rejected"
 	// EventTypeNamespaceConfirmed occurs when a new namespace is ready for use (on the namespace itself)
 	EventTypeNamespaceConfirmed EventType = "namespace_confirmed"
 	// EventTypeDatatypeConfirmed occurs when a new datatype is ready for use (on the namespace of the datatype)
@@ -50,7 +50,6 @@ type EventDelivery struct {
 	Event
 	Subscription SubscriptionRef `json:"subscription"`
 	Message      *Message        `json:"message,omitempty"`
-	Data         *DataRef        `json:"data,omitempty"`
 }
 
 // EventDeliveryResponse is the payload an application sends back, to confirm it has accepted (or rejected) the event and as such
@@ -60,6 +59,7 @@ type EventDeliveryResponse struct {
 	Rejected     bool            `json:"rejected,omitempty"`
 	Info         string          `json:"info,omitempty"`
 	Subscription SubscriptionRef `json:"subscription"`
+	Reply        *MessageInput   `json:"reply,omitempty"`
 }
 
 func NewEvent(t EventType, ns string, ref *UUID, group *Bytes32) *Event {

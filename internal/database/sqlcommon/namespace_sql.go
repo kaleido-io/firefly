@@ -21,10 +21,10 @@ import (
 	"database/sql"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 var (
@@ -36,7 +36,7 @@ var (
 		"description",
 		"created",
 	}
-	namespaceFilterTypeMap = map[string]string{
+	namespaceFilterFieldMap = map[string]string{
 		"message": "message_id",
 		"type":    "ntype",
 	}
@@ -157,7 +157,7 @@ func (s *SQLCommon) GetNamespace(ctx context.Context, name string) (message *fft
 
 func (s *SQLCommon) GetNamespaces(ctx context.Context, filter database.Filter) (message []*fftypes.Namespace, err error) {
 
-	query, err := s.filterSelect(ctx, "", sq.Select(namespaceColumns...).From("namespaces"), filter, namespaceFilterTypeMap)
+	query, err := s.filterSelect(ctx, "", sq.Select(namespaceColumns...).From("namespaces"), filter, namespaceFilterFieldMap, []string{"sequence"})
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func (s *SQLCommon) UpdateNamespace(ctx context.Context, id *fftypes.UUID, updat
 	}
 	defer s.rollbackTx(ctx, tx, autoCommit)
 
-	query, err := s.buildUpdate(sq.Update("namespaces"), update, namespaceFilterTypeMap)
+	query, err := s.buildUpdate(sq.Update("namespaces"), update, namespaceFilterFieldMap)
 	if err != nil {
 		return err
 	}

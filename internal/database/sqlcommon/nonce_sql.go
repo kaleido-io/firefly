@@ -21,10 +21,10 @@ import (
 	"database/sql"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 var (
@@ -34,7 +34,7 @@ var (
 		"group_hash",
 		"topic",
 	}
-	nonceFilterTypeMap = map[string]string{
+	nonceFilterFieldMap = map[string]string{
 		"group": "group_hash",
 	}
 )
@@ -139,7 +139,7 @@ func (s *SQLCommon) GetNonce(ctx context.Context, context *fftypes.Bytes32) (mes
 
 func (s *SQLCommon) GetNonces(ctx context.Context, filter database.Filter) (message []*fftypes.Nonce, err error) {
 
-	query, err := s.filterSelect(ctx, "", sq.Select(nonceColumns...).From("nonces"), filter, nonceFilterTypeMap)
+	query, err := s.filterSelect(ctx, "", sq.Select(nonceColumns...).From("nonces"), filter, nonceFilterFieldMap, []string{"sequence"})
 	if err != nil {
 		return nil, err
 	}

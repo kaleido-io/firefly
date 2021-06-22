@@ -25,9 +25,9 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	migratedb "github.com/golang-migrate/migrate/v4/database"
 	"github.com/golang-migrate/migrate/v4/database/ql"
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/mocks/databasemocks"
-	"github.com/kaleido-io/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/mocks/databasemocks"
+	"github.com/hyperledger-labs/firefly/pkg/database"
 	"github.com/stretchr/testify/assert"
 
 	// Import the QL driver
@@ -86,4 +86,8 @@ func (tp *qlTestProvider) Open(url string) (*sql.DB, error) {
 
 func (tp *qlTestProvider) GetMigrationDriver(db *sql.DB) (migratedb.Driver, error) {
 	return ql.WithInstance(db, &ql.Config{})
+}
+
+func (tp *qlTestProvider) IndividualSort() bool {
+	return false // QL does not support individual column sorting
 }

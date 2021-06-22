@@ -21,15 +21,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/mocks/broadcastmocks"
-	"github.com/kaleido-io/firefly/mocks/databasemocks"
-	"github.com/kaleido-io/firefly/mocks/datamocks"
-	"github.com/kaleido-io/firefly/mocks/eventsmocks"
-	"github.com/kaleido-io/firefly/mocks/identitymocks"
-	"github.com/kaleido-io/firefly/mocks/privatemessagingmocks"
-	"github.com/kaleido-io/firefly/mocks/publicstoragemocks"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/mocks/broadcastmocks"
+	"github.com/hyperledger-labs/firefly/mocks/databasemocks"
+	"github.com/hyperledger-labs/firefly/mocks/datamocks"
+	"github.com/hyperledger-labs/firefly/mocks/eventsmocks"
+	"github.com/hyperledger-labs/firefly/mocks/identitymocks"
+	"github.com/hyperledger-labs/firefly/mocks/privatemessagingmocks"
+	"github.com/hyperledger-labs/firefly/mocks/publicstoragemocks"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -116,10 +116,7 @@ func TestEmitSubscriptionEventsNoops(t *testing.T) {
 	em.NewSubscriptions() <- fftypes.NewUUID()
 	<-getSubCalled
 
-	getSubCallReady <- true
 	em.DeletedSubscriptions() <- fftypes.NewUUID()
-	<-getSubCalled
-
 	close(getSubCallReady)
 }
 
@@ -177,7 +174,9 @@ func TestCreateDurableSubscriptionBadFirstEvent(t *testing.T) {
 			Name:      "sub1",
 		},
 		Options: fftypes.SubscriptionOptions{
-			FirstEvent: &wrongFirstEvent,
+			SubscriptionCoreOptions: fftypes.SubscriptionCoreOptions{
+				FirstEvent: &wrongFirstEvent,
+			},
 		},
 	}
 	mdi.On("GetSubscriptionByName", mock.Anything, "ns1", "sub1").Return(nil, nil)
@@ -197,7 +196,9 @@ func TestCreateDurableSubscriptionNegativeFirstEvent(t *testing.T) {
 			Name:      "sub1",
 		},
 		Options: fftypes.SubscriptionOptions{
-			FirstEvent: &wrongFirstEvent,
+			SubscriptionCoreOptions: fftypes.SubscriptionCoreOptions{
+				FirstEvent: &wrongFirstEvent,
+			},
 		},
 	}
 	mdi.On("GetSubscriptionByName", mock.Anything, "ns1", "sub1").Return(nil, nil)

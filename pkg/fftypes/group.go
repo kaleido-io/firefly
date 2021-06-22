@@ -21,8 +21,9 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"sort"
 
-	"github.com/kaleido-io/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
 )
 
 type GroupIdentity struct {
@@ -41,6 +42,10 @@ type Group struct {
 
 type Members []*Member
 
+func (m Members) Len() int           { return len(m) }
+func (m Members) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
+func (m Members) Less(i, j int) bool { return m[i].Identity < m[j].Identity } // Note there's a dupcheck in validate
+
 type Member struct {
 	Identity string `json:"identity,omitempty"`
 	Node     *UUID  `json:"node,omitempty"`
@@ -58,9 +63,12 @@ func (man *GroupIdentity) Hash() *Bytes32 {
 }
 
 func (group *Group) Validate(ctx context.Context, existing bool) (err error) {
+	if err = ValidateFFNameField(ctx, group.Namespace, "namespace"); err != nil {
+		return err
+	}
 	// We allow a blank name for a group (for auto creation)
 	if group.Name != "" {
-		if err = ValidateFFNameField(ctx, group.Namespace, "namespace"); err != nil {
+		if err = ValidateFFNameField(ctx, group.Name, "name"); err != nil {
 			return err
 		}
 	}
@@ -94,6 +102,7 @@ func (group *Group) Validate(ctx context.Context, existing bool) (err error) {
 }
 
 func (group *Group) Seal() {
+	sort.Sort(group.Members)
 	group.Hash = group.GroupIdentity.Hash()
 }
 

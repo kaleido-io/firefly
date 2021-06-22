@@ -20,19 +20,19 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/kaleido-io/firefly/internal/broadcast"
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/data"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/internal/privatemessaging"
-	"github.com/kaleido-io/firefly/internal/retry"
-	"github.com/kaleido-io/firefly/pkg/blockchain"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/dataexchange"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
-	"github.com/kaleido-io/firefly/pkg/identity"
-	"github.com/kaleido-io/firefly/pkg/publicstorage"
+	"github.com/hyperledger-labs/firefly/internal/broadcast"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/data"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/internal/privatemessaging"
+	"github.com/hyperledger-labs/firefly/internal/retry"
+	"github.com/hyperledger-labs/firefly/pkg/blockchain"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/dataexchange"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/pkg/identity"
+	"github.com/hyperledger-labs/firefly/pkg/publicstorage"
 )
 
 type EventManager interface {
@@ -50,9 +50,9 @@ type EventManager interface {
 	BatchPinComplete(bi blockchain.Plugin, batch *blockchain.BatchPin, signingIdentity string, protocolTxID string, additionalInfo fftypes.JSONObject) error
 
 	// Bound dataexchange callbacks
-	TransferResult(dx dataexchange.Plugin, trackingID string, status fftypes.OpStatus, info string, additionalInfo fftypes.JSONObject)
-	BLOBReceived(dx dataexchange.Plugin, peerID string, ns string, id fftypes.UUID)
-	MessageReceived(dx dataexchange.Plugin, peerID string, data []byte)
+	TransferResult(dx dataexchange.Plugin, trackingID string, status fftypes.OpStatus, info string, additionalInfo fftypes.JSONObject) error
+	BLOBReceived(dx dataexchange.Plugin, peerID string, hash fftypes.Bytes32, payloadRef string) error
+	MessageReceived(dx dataexchange.Plugin, peerID string, data []byte) error
 }
 
 type eventManager struct {
@@ -99,7 +99,10 @@ func NewEventManager(ctx context.Context, pi publicstorage.Plugin, di database.P
 	}
 
 	var err error
-	if em.subManager, err = newSubscriptionManager(ctx, di, newEventNotifier); err != nil {
+	if em.subManager, err = newSubscriptionManager(ctx, di, dm, newEventNotifier, &replySender{
+		broadcast: bm,
+		messaging: pm,
+	}); err != nil {
 		return nil, err
 	}
 

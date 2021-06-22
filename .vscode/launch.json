@@ -9,8 +9,11 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${workspaceRoot}/main.go",
-      "args": ["-f", "/Users/peterbroadhurst/.firefly/stacks/dev/firefly_0.core"]
+      "program": "${workspaceFolder}/main.go",
+      "args": [
+        "-f",
+        "/Users/peterbroadhurst/.firefly/stacks/firefly-e2e/firefly_0.core"
+      ]
     }
   ]
 }

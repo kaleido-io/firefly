@@ -22,10 +22,10 @@ import (
 	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 var (
@@ -35,7 +35,7 @@ var (
 		"hash",
 		"nonce",
 	}
-	nextpinFilterTypeMap = map[string]string{}
+	nextpinFilterFieldMap = map[string]string{}
 )
 
 func (s *SQLCommon) InsertNextPin(ctx context.Context, nextpin *fftypes.NextPin) (err error) {
@@ -122,7 +122,7 @@ func (s *SQLCommon) GetNextPins(ctx context.Context, filter database.Filter) (me
 
 	cols := append([]string{}, nextpinColumns...)
 	cols = append(cols, s.provider.SequenceField(""))
-	query, err := s.filterSelect(ctx, "", sq.Select(cols...).From("nextpins"), filter, nextpinFilterTypeMap)
+	query, err := s.filterSelect(ctx, "", sq.Select(cols...).From("nextpins"), filter, nextpinFilterFieldMap, []string{"sequence"})
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (s *SQLCommon) UpdateNextPin(ctx context.Context, sequence int64, update da
 	}
 	defer s.rollbackTx(ctx, tx, autoCommit)
 
-	query, err := s.buildUpdate(sq.Update("nextpins"), update, nodeFilterTypeMap)
+	query, err := s.buildUpdate(sq.Update("nextpins"), update, nodeFilterFieldMap)
 	if err != nil {
 		return err
 	}

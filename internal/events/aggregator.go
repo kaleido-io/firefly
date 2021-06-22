@@ -22,14 +22,14 @@ import (
 	"database/sql/driver"
 	"encoding/binary"
 
-	"github.com/kaleido-io/firefly/internal/broadcast"
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/data"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/internal/privatemessaging"
-	"github.com/kaleido-io/firefly/internal/retry"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/broadcast"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/data"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/internal/privatemessaging"
+	"github.com/hyperledger-labs/firefly/internal/retry"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 const (
@@ -45,6 +45,7 @@ type aggregator struct {
 	eventPoller     *eventPoller
 	newPins         chan int64
 	offchainBatches chan *fftypes.UUID
+	queuedRewinds   chan *fftypes.UUID
 	retry           *retry.Retry
 }
 
@@ -57,7 +58,8 @@ func newAggregator(ctx context.Context, di database.Plugin, bm broadcast.Manager
 		messaging:       pm,
 		data:            dm,
 		newPins:         make(chan int64),
-		offchainBatches: make(chan *fftypes.UUID, batchSize),
+		offchainBatches: make(chan *fftypes.UUID, 1), // hops to queuedRewinds with a shouldertab on the event poller
+		queuedRewinds:   make(chan *fftypes.UUID, batchSize),
 	}
 	firstEvent := fftypes.SubOptsFirstEvent(config.GetString(config.EventAggregatorFirstEvent))
 	ag.eventPoller = newEventPoller(ctx, di, en, &eventPollerConf{
@@ -87,7 +89,20 @@ func newAggregator(ctx context.Context, di database.Plugin, bm broadcast.Manager
 }
 
 func (ag *aggregator) start() error {
+	go ag.offchainListener()
 	return ag.eventPoller.start()
+}
+
+func (ag *aggregator) offchainListener() {
+	for {
+		select {
+		case uuid := <-ag.offchainBatches:
+			ag.queuedRewinds <- uuid
+			ag.eventPoller.shoulderTap()
+		case <-ag.ctx.Done():
+			return
+		}
+	}
 }
 
 func (ag *aggregator) rewindOffchainBatches() (rewind bool, offset int64) {
@@ -97,7 +112,7 @@ func (ag *aggregator) rewindOffchainBatches() (rewind bool, offset int64) {
 		draining := true
 		for draining {
 			select {
-			case batchID := <-ag.offchainBatches:
+			case batchID := <-ag.queuedRewinds:
 				batchIDs = append(batchIDs, batchID)
 			default:
 				draining = false
@@ -115,7 +130,7 @@ func (ag *aggregator) rewindOffchainBatches() (rewind bool, offset int64) {
 			}
 			if len(sequences) > 0 {
 				rewind = true
-				offset = sequences[0].Sequence
+				offset = sequences[0].Sequence - 1
 				log.L(ag.ctx).Debugf("Rewinding for off-chain data arrival. New local pin sequence %d", offset)
 			}
 		}
@@ -395,33 +410,45 @@ func (ag *aggregator) attemptMessageDispatch(ctx context.Context, msg *fftypes.M
 		return false, err
 	}
 
+	// Verify we have all the blobs for the data
+	if resolved, err := ag.resolveBlobs(ctx, data); err != nil || !resolved {
+		return false, err
+	}
+
 	// We're going to dispatch it at this point, but we need to validate the data first
 	valid := true
 	eventType := fftypes.EventTypeMessageConfirmed
-	if msg.Header.Namespace == fftypes.SystemNamespace {
+	switch {
+	case msg.Header.Namespace == fftypes.SystemNamespace:
 		// We handle system events in-line on the aggregator, as it would be confusing for apps to be
 		// dispatched subsequent events before we have processed the system events they depend on.
 		if valid, err = ag.broadcast.HandleSystemBroadcast(ctx, msg, data); err != nil {
 			// Should only return errors that are retryable
 			return false, err
 		}
-	} else if len(msg.Data) > 0 {
+	case msg.Header.Type == fftypes.MessageTypeGroupInit:
+		// Already handled as part of resolving the context.
+		valid = true
+		eventType = fftypes.EventTypeGroupConfirmed
+	case len(msg.Data) > 0:
 		valid, err = ag.data.ValidateAll(ctx, data)
 		if err != nil {
 			return false, err
 		}
 	}
-	if valid {
-		// This message is now confirmed
-		setConfirmed := database.MessageQueryFactory.NewUpdate(ctx).Set("confirmed", fftypes.Now())
-		err = ag.database.UpdateMessage(ctx, msg.Header.ID, setConfirmed)
-		if err != nil {
-			return false, err
-		}
-	} else {
+	// This message is now confirmed
+	setConfirmed := database.MessageQueryFactory.NewUpdate(ctx).
+		Set("pending", false).           // the sequence is locked
+		Set("confirmed", fftypes.Now()). // the timestamp of the aggregator provides ordering
+		Set("rejected", !valid)          // mark if the message was not accepted
+	err = ag.database.UpdateMessage(ctx, msg.Header.ID, setConfirmed)
+	if err != nil {
+		return false, err
+	}
+	if !valid {
 		// An message with invalid (but complete) data is still considered dispatched.
 		// However, we drive a different event to the applications.
-		eventType = fftypes.EventTypeMessageInvalid
+		eventType = fftypes.EventTypeMessageRejected
 	}
 
 	// Generate the appropriate event
@@ -432,4 +459,48 @@ func (ag *aggregator) attemptMessageDispatch(ctx context.Context, msg *fftypes.M
 	log.L(ctx).Infof("Emitting %s for message %s:%s", eventType, msg.Header.Namespace, msg.Header.ID)
 
 	return true, nil
+}
+
+// resolveBlobs ensures that the blobs for all the attachments in the data array, have been received into the
+// local data exchange blob store. Either because of a private transfer, or by downloading them from the public storage
+func (ag *aggregator) resolveBlobs(ctx context.Context, data []*fftypes.Data) (resolved bool, err error) {
+	l := log.L(ctx)
+
+	for _, d := range data {
+		if d.Blob == nil || d.Blob.Hash == nil {
+			continue
+		}
+
+		// See if we already have the data
+		blob, err := ag.database.GetBlobMatchingHash(ctx, d.Blob.Hash)
+		if err != nil {
+			return false, err
+		}
+		if blob != nil {
+			l.Debugf("Blob '%s' found in local DX with ref '%s'", blob.Hash, blob.PayloadRef)
+			continue
+		}
+
+		// If there's a public reference, download it from there and stream it into the blob store
+		// We double check the hash on the way, to ensure the streaming from A->B worked ok.
+		if d.Blob.Public != "" {
+			blob, err = ag.data.CopyBlobPStoDX(ctx, d)
+			if err != nil {
+				return false, err
+			}
+			if blob != nil {
+				l.Debugf("Blob '%s' downloaded from public storage to local DX with ref '%s'", blob.Hash, blob.PayloadRef)
+				continue
+			}
+		}
+
+		// If we've reached here, the data isn't available yet.
+		// This isn't an error, we just need to wait for it to arrive.
+		l.Debugf("Blob '%s' not available", d.Blob.Hash)
+		return false, nil
+
+	}
+
+	return true, nil
+
 }

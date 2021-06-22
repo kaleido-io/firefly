@@ -21,7 +21,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 
-	"github.com/kaleido-io/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
 )
 
 const (
@@ -66,10 +66,12 @@ type Message struct {
 	Header    MessageHeader `json:"header"`
 	Hash      *Bytes32      `json:"hash,omitempty"`
 	BatchID   *UUID         `json:"batchID,omitempty"`
+	Local     bool          `json:"local,omitempty"`
+	Rejected  bool          `json:"rejected,omitempty"`
+	Pending   SortableBool  `json:"pending"`
 	Confirmed *FFTime       `json:"confirmed,omitempty"`
 	Data      DataRefs      `json:"data"`
 	Pins      FFNameArray   `json:"pins,omitempty"`
-	Local     bool          `json:"local,omitempty"`
 	Sequence  int64         `json:"-"` // Local database sequence used internally for batch assembly
 }
 
@@ -99,6 +101,7 @@ type DataRefOrValue struct {
 	Validator ValidatorType `json:"validator,omitempty"`
 	Datatype  *DatatypeRef  `json:"datatype,omitempty"`
 	Value     Byteable      `json:"value,omitempty"`
+	Blob      *BlobRef      `json:"blob,omitempty"`
 }
 
 // MessageRef is a lightweight data structure that can be used to refer to a message
@@ -125,6 +128,7 @@ func (m *Message) Seal(ctx context.Context) (err error) {
 		m.Header.Created = Now()
 	}
 	m.Confirmed = nil
+	m.Pending = true
 	if m.Data == nil {
 		m.Data = DataRefs{}
 	}

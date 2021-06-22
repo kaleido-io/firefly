@@ -17,13 +17,15 @@
 package ethereum
 
 import (
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/wsclient"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/wsclient"
 )
 
 const (
 	defaultBatchSize    = 50
 	defaultBatchTimeout = 500
+	defaultPrefixShort  = "fly"
+	defaultPrefixLong   = "firefly"
 )
 
 const (
@@ -41,6 +43,10 @@ const (
 	EthconnectConfigBatchTimeout = "batchTimeout"
 	// EthconnectConfigSkipEventstreamInit disables auto-configuration of event streams
 	EthconnectConfigSkipEventstreamInit = "skipEventstreamInit"
+	// EthconnectPrefixShort is used in the query string in requests to ethconnect
+	EthconnectPrefixShort = "prefixShort"
+	// EthconnectPrefixLong is used in HTTP headers in requests to ethconnect
+	EthconnectPrefixLong = "prefixLong"
 )
 
 func (e *Ethereum) InitPrefix(prefix config.Prefix) {
@@ -51,4 +57,6 @@ func (e *Ethereum) InitPrefix(prefix config.Prefix) {
 	ethconnectConf.AddKnownKey(EthconnectConfigSkipEventstreamInit)
 	ethconnectConf.AddKnownKey(EthconnectConfigBatchSize, defaultBatchSize)
 	ethconnectConf.AddKnownKey(EthconnectConfigBatchTimeout, defaultBatchTimeout)
+	ethconnectConf.AddKnownKey(EthconnectPrefixShort, defaultPrefixShort)
+	ethconnectConf.AddKnownKey(EthconnectPrefixLong, defaultPrefixLong)
 }

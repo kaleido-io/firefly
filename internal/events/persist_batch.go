@@ -19,9 +19,9 @@ package events
 import (
 	"context"
 
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 func (em *eventManager) persistBatchFromBroadcast(ctx context.Context /* db TX context*/, batch *fftypes.Batch, onchainHash *fftypes.Bytes32, author string) error {
@@ -43,117 +43,132 @@ func (em *eventManager) persistBatchFromBroadcast(ctx context.Context /* db TX c
 		return nil // This is not retryable. skip this batch
 	}
 
-	return em.persistBatch(ctx, batch)
+	_, err = em.persistBatch(ctx, batch)
+	return err
 }
 
 // persistBatch performs very simple validation on each message/data element (hashes) and either persists
 // or discards them. Errors are returned only in the case of database failures, which should be retried.
-func (em *eventManager) persistBatch(ctx context.Context /* db TX context*/, batch *fftypes.Batch) error {
+func (em *eventManager) persistBatch(ctx context.Context /* db TX context*/, batch *fftypes.Batch) (valid bool, err error) {
 	l := log.L(ctx)
 	now := fftypes.Now()
 
 	if batch.ID == nil || batch.Payload.TX.ID == nil {
-		l.Errorf("Invalid batch '%s'. Missing ID (%v) or payload ID (%v)", batch.ID, batch.ID, batch.Payload.TX.ID)
-		return nil // This is not retryable. skip this batch
+		l.Errorf("Invalid batch '%s'. Missing ID (%v) or transaction ID (%v)", batch.ID, batch.ID, batch.Payload.TX.ID)
+		return false, nil // This is not retryable. skip this batch
 	}
 
 	// Verify the hash calculation
 	hash := batch.Payload.Hash()
 	if batch.Hash == nil || *batch.Hash != *hash {
 		l.Errorf("Invalid batch '%s'. Hash does not match payload. Found=%s Expected=%s", batch.ID, hash, batch.Hash)
-		return nil // This is not retryable. skip this batch
+		return false, nil // This is not retryable. skip this batch
 	}
 
 	// Set confirmed on the batch (the messages should not be confirmed at this point - that's the aggregator's job)
 	batch.Confirmed = now
 
 	// Upsert the batch itself, ensuring the hash does not change
-	err := em.database.UpsertBatch(ctx, batch, true, false)
+	err = em.database.UpsertBatch(ctx, batch, true, false)
 	if err != nil {
 		if err == database.HashMismatch {
 			l.Errorf("Invalid batch '%s'. Batch hash mismatch with existing record", batch.ID)
-			return nil // This is not retryable. skip this batch
+			return false, nil // This is not retryable. skip this batch
 		}
 		l.Errorf("Failed to insert batch '%s': %s", batch.ID, err)
-		return err // a peristence failure here is considered retryable (so returned)
+		return false, err // a peristence failure here is considered retryable (so returned)
 	}
 
 	// Insert the data entries
 	for i, data := range batch.Payload.Data {
 		if err = em.persistBatchData(ctx, batch, i, data); err != nil {
-			return err
+			return false, err
 		}
 	}
 
 	// Insert the message entries
 	for i, msg := range batch.Payload.Messages {
 		if err = em.persistBatchMessage(ctx, batch, i, msg); err != nil {
-			return err
+			return false, err
 		}
 	}
 
-	return nil
-
+	return true, nil
 }
 
 func (em *eventManager) persistBatchData(ctx context.Context /* db TX context*/, batch *fftypes.Batch, i int, data *fftypes.Data) error {
+	_, err := em.persistReceivedData(ctx, i, data, "batch", batch.ID)
+	return err
+}
+
+func (em *eventManager) persistReceivedData(ctx context.Context /* db TX context*/, i int, data *fftypes.Data, mType string, mID *fftypes.UUID) (bool, error) {
+
 	l := log.L(ctx)
-	l.Tracef("Batch %s data %d: %+v", batch.ID, i, data)
+	l.Tracef("%s '%s' data %d: %+v", mType, mID, i, data)
 
 	if data == nil {
-		l.Errorf("null data entry %d in batch '%s'", i, batch.ID)
-		return nil // skip data entry
+		l.Errorf("null data entry %d in %s '%s'", i, mType, mID)
+		return false, nil // skip data entry
 	}
 
-	hash := data.Value.Hash()
+	hash, err := data.CalcHash(ctx)
+	if err != nil {
+		log.L(ctx).Errorf("Invalid data entry %d in %s '%s': %s", i, mType, mID, err)
+		return false, nil //
+	}
 	if data.Hash == nil || *data.Hash != *hash {
-		l.Errorf("Invalid data entry %d in batch '%s'. Hash does not match value. Found=%s Expected=%s", i, batch.ID, hash, data.Hash)
-		return nil // skip data entry
+		log.L(ctx).Errorf("Invalid data entry %d in %s '%s': Hash=%v Expected=%v", i, mType, mID, data.Hash, hash)
+		return false, nil // skip data entry
 	}
 
 	// Insert the data, ensuring the hash doesn't change
 	if err := em.database.UpsertData(ctx, data, true, false); err != nil {
 		if err == database.HashMismatch {
-			l.Errorf("Invalid data entry %d in batch '%s'. Hash mismatch with existing record with same UUID '%s' Hash=%s", i, batch.ID, data.ID, data.Hash)
-			return nil // This is not retryable. skip this data entry
+			log.L(ctx).Errorf("Invalid data entry %d in %s '%s'. Hash mismatch with existing record with same UUID '%s' Hash=%s", i, mType, mID, data.ID, data.Hash)
+			return false, nil // This is not retryable. skip this data entry
 		}
-		l.Errorf("Failed to insert data entry %d in batch '%s': %s", i, batch.ID, err)
-		return err // a peristence failure here is considered retryable (so returned)
+		log.L(ctx).Errorf("Failed to insert data entry %d in %s '%s': %s", i, mType, mID, err)
+		return false, err // a peristence failure here is considered retryable (so returned)
 	}
 
-	return nil
+	return true, nil
 }
 
 func (em *eventManager) persistBatchMessage(ctx context.Context /* db TX context*/, batch *fftypes.Batch, i int, msg *fftypes.Message) error {
-	l := log.L(ctx)
-	l.Tracef("Batch %s message %d: %+v", batch.ID, i, msg)
-
-	if msg == nil {
-		l.Errorf("null message entry %d in batch '%s'", i, batch.ID)
+	if msg != nil && msg.Header.Author != batch.Author {
+		log.L(ctx).Errorf("Mismatched author '%s' on message entry %d in batch '%s'", msg.Header.Author, i, batch.ID)
 		return nil // skip entry
 	}
 
-	if msg.Header.Author != batch.Author {
-		l.Errorf("Mismatched author '%s' on message entry %d in batch '%s'", msg.Header.Author, i, batch.ID)
-		return nil // skip entry
+	_, err := em.persistReceivedMessage(ctx, i, msg, "batch", batch.ID)
+	return err
+}
+
+func (em *eventManager) persistReceivedMessage(ctx context.Context /* db TX context*/, i int, msg *fftypes.Message, mType string, mID *fftypes.UUID) (bool, error) {
+	l := log.L(ctx)
+	l.Tracef("%s '%s' message %d: %+v", mType, mID, i, msg)
+
+	if msg == nil {
+		l.Errorf("null message entry %d in %s '%s'", i, mType, mID)
+		return false, nil // skip entry
 	}
 
 	err := msg.Verify(ctx)
 	if err != nil {
-		l.Errorf("Invalid message entry %d in batch '%s': %s", i, batch.ID, err)
-		return nil // skip message entry
+		l.Errorf("Invalid message entry %d in %s '%s': %s", i, mType, mID, err)
+		return false, nil // skip message entry
 	}
 
 	// Insert the message, ensuring the hash doesn't change.
 	// We do not mark it as confirmed at this point, that's the job of the aggregator.
 	if err = em.database.UpsertMessage(ctx, msg, true, false); err != nil {
 		if err == database.HashMismatch {
-			l.Errorf("Invalid message entry %d in batch '%s'. Hash mismatch with existing record with same UUID '%s' Hash=%s", i, batch.ID, msg.Header.ID, msg.Hash)
-			return nil // This is not retryable. skip this data entry
+			l.Errorf("Invalid message entry %d in %s '%s'. Hash mismatch with existing record with same UUID '%s' Hash=%s", i, mType, mID, msg.Header.ID, msg.Hash)
+			return false, nil // This is not retryable. skip this data entry
 		}
-		l.Errorf("Failed to insert message entry %d in batch '%s': %s", i, batch.ID, err)
-		return err // a peristence failure here is considered retryable (so returned)
+		l.Errorf("Failed to insert message entry %d in %s '%s': %s", i, mType, mID, err)
+		return false, err // a peristence failure here is considered retryable (so returned)
 	}
 
-	return nil
+	return true, nil
 }

@@ -22,13 +22,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/data"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/internal/retry"
-	"github.com/kaleido-io/firefly/pkg/database"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/data"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/internal/retry"
+	"github.com/hyperledger-labs/firefly/pkg/database"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 const (
@@ -212,7 +212,7 @@ func (bm *batchManager) assembleMessageData(msg *fftypes.Message) (data []*fftyp
 	if !foundAll {
 		return nil, i18n.NewError(bm.ctx, i18n.MsgDataNotFound, msg.Header.ID)
 	}
-	log.L(bm.ctx).Infof("Added broadcast message %s", msg.Header.ID)
+	log.L(bm.ctx).Infof("Detected new batch-pinned message %s", msg.Header.ID)
 	return data, nil
 }
 
@@ -223,6 +223,7 @@ func (bm *batchManager) readPage() ([]*fftypes.Message, error) {
 		msgs, err = bm.database.GetMessages(bm.ctx, fb.And(
 			fb.Gt("sequence", bm.offset),
 			fb.Eq("local", true),
+			fb.Eq("txtype", fftypes.TransactionTypeBatchPin),
 		).Sort("sequence").Limit(bm.readPageSize))
 		if err != nil {
 			return !bm.closed, err // Retry indefinitely, until closed (or context cancelled)

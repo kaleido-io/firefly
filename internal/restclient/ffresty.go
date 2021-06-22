@@ -26,10 +26,10 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/kaleido-io/firefly/internal/config"
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/log"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/config"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 type retryCtxKey struct{}
@@ -77,6 +77,11 @@ func New(ctx context.Context, staticConfig config.Prefix) *resty.Client {
 	if url != "" {
 		client.SetHostURL(url)
 		log.L(ctx).Debugf("Created REST client to %s", url)
+	}
+
+	proxy := staticConfig.GetString(HTTPConfigProxyURL)
+	if proxy != "" {
+		client.SetProxy(proxy)
 	}
 
 	client.SetTimeout(staticConfig.GetDuration(HTTPConfigRequestTimeout))

@@ -22,7 +22,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 
-	"github.com/kaleido-io/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
 )
 
 type Batch struct {
@@ -35,7 +35,8 @@ type Batch struct {
 	Created    *FFTime      `json:"created"`
 	Confirmed  *FFTime      `json:"confirmed"`
 	Payload    BatchPayload `json:"payload"`
-	PayloadRef *Bytes32     `json:"payloadRef,omitempty"`
+	PayloadRef string       `json:"payloadRef,omitempty"`
+	Blobs      []*Bytes32   `json:"blobs,omitempty"` // only used in-flight
 }
 
 type BatchPayload struct {

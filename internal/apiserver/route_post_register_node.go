@@ -17,11 +17,12 @@
 package apiserver
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/kaleido-io/firefly/internal/i18n"
-	"github.com/kaleido-io/firefly/internal/oapispec"
-	"github.com/kaleido-io/firefly/pkg/fftypes"
+	"github.com/hyperledger-labs/firefly/internal/i18n"
+	"github.com/hyperledger-labs/firefly/internal/oapispec"
+	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
 
 var postRegisterNode = &oapispec.Route{
@@ -34,7 +35,7 @@ var postRegisterNode = &oapispec.Route{
 	Description:     i18n.MsgTBD,
 	JSONInputValue:  func() interface{} { return &fftypes.EmptyInput{} },
 	JSONInputMask:   nil,
-	JSONInputSchema: emptyObjectSchema,
+	JSONInputSchema: func(ctx context.Context) string { return emptyObjectSchema },
 	JSONOutputValue: func() interface{} { return &fftypes.Message{} },
 	JSONOutputCode:  http.StatusAccepted, // Async operation
 	JSONHandler: func(r oapispec.APIRequest) (output interface{}, err error) {
