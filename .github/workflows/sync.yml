@@ -11,9 +11,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: tgymnich/fork-sync@v1.4
+      - uses: tgymnich/fork-sync@v1.3
         with:
-          token: ${{ secrets.KALEIDOBOT_TOKEN }}
+          personal_token: ${{ secrets.KALEIDOBOT_TOKEN }}
           owner: hyperledger-labs
           base: main
           head: main
