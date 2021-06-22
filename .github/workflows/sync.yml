@@ -13,6 +13,7 @@ jobs:
     steps:
       - uses: tgymnich/fork-sync@v1.3
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           personal_token: ${{ secrets.KALEIDOBOT_TOKEN }}
           owner: hyperledger-labs
           base: main
