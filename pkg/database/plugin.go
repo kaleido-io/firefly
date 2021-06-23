@@ -350,6 +350,37 @@ type PeristenceInterface interface {
 	DeleteConfigRecord(ctx context.Context, key string) (err error)
 }
 
+type Collection string
+
+const (
+	CollectionBatches       Collection = "batches"
+	CollectionBlobs         Collection = "blobs"
+	CollectionConfigrecords Collection = "configrecords"
+	CollectionData          Collection = "data"
+	CollectionDataTypes     Collection = "datatypes"
+	CollectioneMessages     Collection = "message"
+	CollectionEvents        Collection = "events"
+	CollectionGroups        Collection = "groups"
+	CollectionNamespaces    Collection = "namespace"
+	CollectionNextpins      Collection = "nextpins"
+	CollectionNodes         Collection = "nodes"
+	CollectionNonces        Collection = "nonces"
+	CollectionOffsets       Collection = "offsets"
+	CollectionOperations    Collection = "operations"
+	CollectionOrganizations Collection = "organizations"
+	CollectionPins          Collection = "pins"
+	CollectionSubscriptions Collection = "subscriptions"
+	CollectionTransactions  Collection = "transactions"
+)
+
+type EventType string
+
+const (
+	EventTypeCreated EventType = "created"
+	EventTypeUpdated EventType = "updated"
+	EventTypeDeleted EventType = "deleted"
+)
+
 // Callbacks are the methods for passing data from plugin to core
 //
 // If Capabilities returns ClusterEvents=true then these should be broadcast to every instance within
@@ -367,9 +398,9 @@ type PeristenceInterface interface {
 // TODO: Clarify the relationship between Leader Election capabilities and Event capabilities
 //
 type Callbacks interface {
-	MessageCreated(sequence int64)
-	PinCreated(sequence int64)
-	EventCreated(sequence int64)
+	// ChangeEvent for collections. Depending on the collection the event might have a UUID, a Hash or both.
+	ChangeEvent(col Collection, et EventType, id *fftypes.UUID, hash *fftypes.Bytes32, sequence int64)
+
 	SubscriptionCreated(id *fftypes.UUID)
 	SubscriptionDeleted(id *fftypes.UUID)
 }

@@ -54,7 +54,7 @@ func (s *SQLCommon) UpsertEvent(ctx context.Context, event *fftypes.Event, allow
 	if allowExisting {
 		// Do a select within the event to detemine if the UUID already exists
 		eventRows, err := s.queryTx(ctx, tx,
-			sq.Select("id").
+			sq.Select("id", "sequence").
 				From("events").
 				Where(sq.Eq{"id": event.ID}),
 		)
@@ -62,10 +62,14 @@ func (s *SQLCommon) UpsertEvent(ctx context.Context, event *fftypes.Event, allow
 			return err
 		}
 		existing = eventRows.Next()
+		if existing {
+			_ = eventRows.Scan(&event.ID, &event.Sequence)
+		}
 		eventRows.Close()
 	}
 
 	if existing {
+
 		// Update the event
 		if err = s.updateTx(ctx, tx,
 			sq.Update("events").
@@ -78,6 +82,11 @@ func (s *SQLCommon) UpsertEvent(ctx context.Context, event *fftypes.Event, allow
 		); err != nil {
 			return err
 		}
+
+		s.postCommitEvent(tx, func() {
+			s.callbacks.ChangeEvent(database.CollectionEvents, database.EventTypeUpdated, event.ID, nil, event.Sequence)
+		})
+
 	} else {
 		sequence, err := s.insertTx(ctx, tx,
 			sq.Insert("events").
@@ -95,8 +104,9 @@ func (s *SQLCommon) UpsertEvent(ctx context.Context, event *fftypes.Event, allow
 			return err
 		}
 
+		event.Sequence = sequence
 		s.postCommitEvent(tx, func() {
-			s.callbacks.EventCreated(sequence)
+			s.callbacks.ChangeEvent(database.CollectionEvents, database.EventTypeCreated, event.ID, nil, event.Sequence)
 		})
 
 	}

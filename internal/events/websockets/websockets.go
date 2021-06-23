@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger-labs/firefly/internal/config"
 	"github.com/hyperledger-labs/firefly/internal/i18n"
 	"github.com/hyperledger-labs/firefly/internal/log"
+	"github.com/hyperledger-labs/firefly/pkg/database"
 	"github.com/hyperledger-labs/firefly/pkg/events"
 	"github.com/hyperledger-labs/firefly/pkg/fftypes"
 )
@@ -99,6 +100,12 @@ func (ws *WebSockets) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	ws.connMux.Unlock()
 
 	wc.processAutoStart(req)
+}
+
+func (ws *WebSockets) ChangeEvent(database.ChangeEvent) {
+	// ChangeEvent is special for websockets, and allows ephemeral subscriptions to listen to best-effort local database
+	// change events - rather than just fully persisted network events (like confirmed messages)
+
 }
 
 func (ws *WebSockets) ack(connID string, inflight *fftypes.EventDeliveryResponse) error {

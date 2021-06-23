@@ -49,11 +49,12 @@ func (s *SQLCommon) UpsertNamespace(ctx context.Context, namespace *fftypes.Name
 	}
 	defer s.rollbackTx(ctx, tx, autoCommit)
 
+	var sequence int64
 	existing := false
 	if allowExisting {
 		// Do a select within the transaction to detemine if the UUID already exists
 		namespaceRows, err := s.queryTx(ctx, tx,
-			sq.Select("id").
+			sq.Select("id", "sequence").
 				From("namespaces").
 				Where(sq.Eq{"name": namespace.Name}),
 		)
@@ -64,7 +65,7 @@ func (s *SQLCommon) UpsertNamespace(ctx context.Context, namespace *fftypes.Name
 
 		if existing {
 			var id fftypes.UUID
-			_ = namespaceRows.Scan(&id)
+			_ = namespaceRows.Scan(&id, &sequence)
 			if namespace.ID != nil {
 				if *namespace.ID != id {
 					namespaceRows.Close()
