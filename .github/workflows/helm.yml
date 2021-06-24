@@ -31,5 +31,9 @@ jobs:
 #            echo "::set-output name=changed::true"
 #          fi
 
+      - name: chart deps
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+
       - name: lint charts
         run: ct lint --charts deploy/charts/firefly,deploy/charts/firefly-dev
