@@ -13,4 +13,5 @@ coverage.txt
 .DS_Store
 frontend
 __debug*
-!charts/firefly/
+!deploy/charts/firefly*/
+**/chart/**/*.tgz

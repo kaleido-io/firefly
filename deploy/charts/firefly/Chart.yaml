@@ -1,0 +1,18 @@
+apiVersion: v2
+name: firefly
+description: A Helm chart for Kubernetes
+type: application
+appVersion: "0.0.18"
+version: "0.1.0"
+
+dependencies:
+  # TODO postgresql-ha ?
+  - name: postgresql
+    alias: postgres
+    version: ">=10.5.0"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgres.enabled
+
+maintainers:
+  - name: hfuss
+    email: hayden.fuss@kaleido.io

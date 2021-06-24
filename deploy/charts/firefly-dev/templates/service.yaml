@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "firefly.fullname" . }}
+  name: {{ include "firefly-dev.fullname" . }}
   labels:
-{{ include "firefly.labels" . | indent 4 }}
+    {{- include "firefly-dev.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -12,5 +12,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app.kubernetes.io/name: {{ include "firefly.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- include "firefly-dev.selectorLabels" . | nindent 4 }}

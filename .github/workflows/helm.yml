@@ -1,0 +1,35 @@
+name: Helm
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "deploy/charts/**/*"
+  push:
+    branches:
+      - helm-chart  # TODO change to master ?
+jobs:
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: setup helm
+        uses: azure/setup-helm@v1
+        with:
+          version: v3.6.1
+
+      - name: setup chart-testing
+        uses: helm/chart-testing-action@v2.0.1
+
+#      - name: Run chart-testing (list-changed)
+#        id: list-changed
+#        run: |
+#          changed=$(ct list-changed)
+#          if [[ -n "$changed" ]]; then
+#            echo "::set-output name=changed::true"
+#          fi
+
+      - name: lint charts
+        run: ct lint --charts deploy/charts/firefly,deploy/charts/firefly-dev
