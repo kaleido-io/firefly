@@ -1,41 +1,49 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "firefly.fullname" . }}
   labels:
     {{- include "firefly.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
-  {{- end }}
+  serviceName: {{ include "firefly.fullname" . }}
+  updateStrategy:
+    type: RollingUpdate
+  replicas: 1
   selector:
     matchLabels:
       {{- include "firefly.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
+      {{- with .Values.core.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
         {{- include "firefly.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.imagePullSecrets }}
+      {{- with .Values.core.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "firefly.serviceAccountName" . }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- toYaml .Values.core.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+            {{- toYaml .Values.core.securityContext | nindent 12 }}
+          image: "{{ .Values.core.image.repository }}:{{ .Values.core.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.core.image.pullPolicy }}
           ports:
+            {{- if .Values.core.debugEnabled }}
+            - name: debug
+              containerPort: 6060
+              protocol: TCP
+            {{- end }}
             - name: http
-              containerPort: 80
+              containerPort: 5000
+              protocol: TCP
+            - name: admin
+              containerPort: 5001
               protocol: TCP
           livenessProbe:
             httpGet:
@@ -45,17 +53,24 @@ spec:
             httpGet:
               path: /
               port: http
+          volumeMounts:
+            - mountPath: /firefly/config
+              name: firefly-config
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-      {{- with .Values.nodeSelector }}
+            {{- toYaml .Values.core.resources | nindent 12 }}
+      {{- with .Values.core.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with .Values.core.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- with .Values.core.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      volumes:
+        - name: firefly-config
+          secret:
+            secretName: {{ include "firefly.fullname" . }}-config

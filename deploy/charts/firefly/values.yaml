@@ -1,9 +1,22 @@
-# Default values for firefly.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+config:
+  organizationName: sample-org
+  organizationIdentity: 0xeb7284ce905e0665b7d42cabe31c76c45da1d331 # TODO how is this generated?
+  blockchain: {}
+   # type: ethereum
+   # ethereum:
+   #   ethconnect:
+   #     url: http://ethconnect_0:8080
+   #     instance: /contracts/firefly
+   #     topic: "0"
+
+  # only needed when these components are _not_ enabled, and assumed to be externally managed relative to the chart installation
+  postgresUrl: ""
+  dataexchangeUrl: ""
+  ipfsApiUrl: ""
+  ipfsGatewayUrl: ""
 
 core:
-  replicaCount: 1
+  debugEnabled: false
 
   image:
     repository: ghcr.io/hyperledger-labs/firefly
@@ -30,7 +43,9 @@ core:
 
   service:
     type: ClusterIP
-    port: 80
+    httpPort: 5000
+    adminPort: 5001
+    debugPort: 6060
 
   ingress:
     enabled: false
@@ -67,8 +82,15 @@ core:
   affinity: {}
 
 dataexchange:
+  certificate:
+    enabled: false
+    issuerRef: {}
+     # name: interal-ca
+     # kind: ClusterIssuer
+
   enabled: true
-  replicaCount: 1
+  peers: []
+   # - "https://another-org-dataexchange-0.another.org"
 
   image:
     repository: ghcr.io/hyperledger-labs/firefly-dataexchange-https
@@ -95,14 +117,15 @@ dataexchange:
 
   service:
     type: ClusterIP
-    port: 80
+    apiPort: 5000
+    p2pPort: 5001
 
   ingress:
     enabled: false
     className: ""
     annotations: {}
       # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
+      # kubernetes.io/tls-acme: "true"
     hosts:
       - host: chart-example.local
         paths:
@@ -133,10 +156,9 @@ dataexchange:
 
 ipfs:
   enabled: true
-  replicaCount: 1
 
   image:
-    repository: "" # TODO
+    repository: docker.io/ipfs/go-ipfs
     pullPolicy: Always
     # Overrides the image tag whose default is the chart appVersion.
     tag: latest
@@ -160,7 +182,8 @@ ipfs:
 
   service:
     type: ClusterIP
-    port: 80
+    apiPort: 5001
+    gatewayPort: 8080
 
   resources: {}
     # We usually recommend not to specify default resources and to leave this as a conscious
@@ -182,3 +205,8 @@ ipfs:
 
 postgres:
   enabled: true
+  fullnameOverride: firefly-psql
+  nameOverride: firefly-psql
+
+  postgresqlUsername: firefly
+  postgresqlPostgresPassword: s3r3n1ty2005

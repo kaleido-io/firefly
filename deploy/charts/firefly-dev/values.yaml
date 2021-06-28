@@ -2,10 +2,10 @@ ganache:
   replicaCount: 1
 
   image:
-    repository: "" # TODO
+    repository: "docker.io/trufflesuite/ganache-cli"
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: ""
+    tag: "latest"
 
   imagePullSecrets: [ ]
   nameOverride: ""

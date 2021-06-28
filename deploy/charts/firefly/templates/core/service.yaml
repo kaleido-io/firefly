@@ -5,11 +5,21 @@ metadata:
   labels:
     {{- include "firefly.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.core.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
+    {{- if .Values.core.debugEnabled }}
+    - port: {{ .Values.core.service.debugPort }}
+      targetPort: debug
+      protocol: TCP
+      name: debug
+    {{- end }}
+    - port: {{ .Values.core.service.httpPort }}
       targetPort: http
       protocol: TCP
       name: http
+    - port: {{ .Values.core.service.adminPort }}
+      targetPort: admin
+      protocol: TCP
+      name: admin
   selector:
     {{- include "firefly.selectorLabels" . | nindent 4 }}

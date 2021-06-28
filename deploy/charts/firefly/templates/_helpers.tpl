@@ -60,3 +60,11 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{- define "firefly.dataexchangeP2PHost" -}}
+{{- if.Values.dataexchange.ingress.enabled }}
+{{- index .Values.dataexchange.ingress.hosts 0 }}
+{{- else }}
+{{- printf "%s-dx:%s" (include "firefly.fullname" .) .Values.dataexchange.service.p2pPort }}
+{{- end }}
+{{- end }}
