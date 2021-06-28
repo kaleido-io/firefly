@@ -11,3 +11,8 @@ appVersion: "0.0.18"
 maintainers:
   - name: hfuss
     email: hayden.fuss@kaleido.io
+
+dependencies:
+  - name: firefly
+    version: "0.1.0"
+    repository: file://../firefly
