@@ -67,6 +67,7 @@ core:
   affinity: {}
 
 dataexchange:
+  enabled: true
   replicaCount: 1
 
   image:
@@ -131,10 +132,11 @@ dataexchange:
   affinity: {}
 
 ipfs:
+  enabled: true
   replicaCount: 1
 
   image:
-    repository: # TODO
+    repository: "" # TODO
     pullPolicy: Always
     # Overrides the image tag whose default is the chart appVersion.
     tag: latest
