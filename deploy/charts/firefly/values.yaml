@@ -88,6 +88,10 @@ dataexchange:
      # name: interal-ca
      # kind: ClusterIssuer
 
+  tlsSecret:
+    enabled: true
+    name: ""
+
   enabled: true
   peers: []
    # - "https://another-org-dataexchange-0.another.org"
@@ -203,7 +207,7 @@ ipfs:
 
   affinity: {}
 
-postgres:
+postgresql:
   enabled: true
   fullnameOverride: firefly-psql
   nameOverride: firefly-psql

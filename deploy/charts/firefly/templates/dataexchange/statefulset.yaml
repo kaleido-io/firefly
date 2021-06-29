@@ -48,6 +48,18 @@ spec:
               port: http
           resources:
             {{- toYaml .Values.dataexchange.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /data/peer-certs
+              name: {{ include "firefly.fullname" . }}-dx-peer-certs
+            - mountPath: /data/config.json
+              name: config
+              subPath: config.json
+            - mountPath: /data/key.pem
+              name: tls
+              subPath: tls.key
+            - mountPath: /data/cert.pem
+              name: tls
+              subPath: tls.crt
       {{- with .Values.dataexchange.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -60,4 +72,20 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      volumes:
+        - name: config
+          secret:
+            secretName: "{{ include "firefly.fullname" . }}-dx-config"
+        - name: tls
+          secret:
+            secretName: {{ if and .Values.dataexchange.certificate.enabled (not .Values.dataexchange.tlsSecret.enabled) }}"{{ include "firefly.fullname" . }}-dx-tls"{{ else }}{{ .Values.dataexchange.tlsSecret.name }}{{ end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ include "firefly.fullname" . }}-dx-peer-certs
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
 {{- end }}

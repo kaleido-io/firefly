@@ -6,12 +6,10 @@ appVersion: "0.0.18"
 version: "0.1.0"
 
 dependencies:
-  # TODO postgresql-ha ?
   - name: postgresql
-    alias: postgres
     version: ">=10.5.0"
     repository: https://charts.bitnami.com/bitnami
-    condition: postgres.enabled
+    condition: postgresql.enabled
 
 maintainers:
   - name: hfuss

@@ -34,7 +34,10 @@ spec:
           imagePullPolicy: {{ .Values.ipfs.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 5001
+              protocol: TCP
+            - name: gateway
+              containerPort: 8080
               protocol: TCP
           livenessProbe:
             httpGet:
@@ -44,8 +47,23 @@ spec:
             httpGet:
               path: /
               port: http
+          env:
+            - name: LIBP2P_FORCE_PNET
+              value: "1"
+
+            # TODO what is this?
+            - name: IPFS_SWARM_KEY
+              value: |
+                /key/swarm/psk/1.0.0/
+                /base16/
+                ebe17725f8082e32a622efdbfc60b75d3a7b9ea827f3d683afaac3d1649d40c0
           resources:
             {{- toYaml .Values.ipfs.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /data/ipfs
+              name: {{ include "firefly.fullname" . }}-ipfs-data
+            - mountPath: /export
+              name: {{ include "firefly.fullname" . }}-ipfs-staging
       {{- with .Values.ipfs.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -58,4 +76,21 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-{{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ include "firefly.fullname" . }}-ipfs-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+    - metadata:
+        name: {{ include "firefly.fullname" . }}-ipfs-staging
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+  {{- end }}

@@ -54,7 +54,7 @@ spec:
               path: /
               port: http
           volumeMounts:
-            - mountPath: /firefly/config
+            - mountPath: /etc/firefly/
               name: firefly-config
           resources:
             {{- toYaml .Values.core.resources | nindent 12 }}
