@@ -14,10 +14,11 @@ spec:
       {{- include "firefly.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.core.podAnnotations }}
       annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/core/secret.yaml") . | sha256sum }}
+        {{- with .Values.core.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       labels:
         {{- include "firefly.selectorLabels" . | nindent 8 }}
     spec:
@@ -45,14 +46,14 @@ spec:
             - name: admin
               containerPort: 5001
               protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /
-              port: http
+{{/*          livenessProbe:*/}}
+{{/*            httpGet:*/}}
+{{/*              path: /*/}}
+{{/*              port: http*/}}
+{{/*          readinessProbe:*/}}
+{{/*            httpGet:*/}}
+{{/*              path: /*/}}
+{{/*              port: http*/}}
           volumeMounts:
             - mountPath: /etc/firefly/
               name: firefly-config

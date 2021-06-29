@@ -7,15 +7,22 @@ metadata:
     {{- include "firefly.labels" . | nindent 4 }}
 spec:
   replicas: 1
+  serviceName: {{ include "firefly.fullname" . }}-dx
+  updateStrategy:
+    type: RollingUpdate
   selector:
     matchLabels:
       {{- include "firefly.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.dataexchange.podAnnotations }}
       annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/dataexchange/secret.yaml") . | sha256sum }}
+        {{- if .Values.dataexchange.certificate.enabled }}
+        checksum/certificate: {{ include (print $.Template.BasePath "/dataexchange/certificate.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.dataexchange.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       labels:
         {{- include "firefly.selectorLabels" . | nindent 8 }}
     spec:
@@ -38,14 +45,14 @@ spec:
             - name: p2p
               containerPort: 3001
               protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /
-              port: http
+{{/*          livenessProbe:*/}}
+{{/*            httpGet:*/}}
+{{/*              path: /*/}}
+{{/*              port: http*/}}
+{{/*          readinessProbe:*/}}
+{{/*            httpGet:*/}}
+{{/*              path: /*/}}
+{{/*              port: http*/}}
           resources:
             {{- toYaml .Values.dataexchange.resources | nindent 12 }}
           volumeMounts:
@@ -60,6 +67,9 @@ spec:
             - mountPath: /data/cert.pem
               name: tls
               subPath: tls.crt
+            - mountPath: /data/ca.pem
+              name: tls
+              subPath: ca.crt
       {{- with .Values.dataexchange.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

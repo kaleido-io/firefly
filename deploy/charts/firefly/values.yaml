@@ -82,6 +82,8 @@ core:
   affinity: {}
 
 dataexchange:
+  enabled: true
+
   certificate:
     enabled: false
     issuerRef: {}
@@ -92,7 +94,6 @@ dataexchange:
     enabled: true
     name: ""
 
-  enabled: true
   peers: []
    # - "https://another-org-dataexchange-0.another.org"
 

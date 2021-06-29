@@ -1,0 +1,14 @@
+
+core:
+  debugEnabled: true
+
+dataexchange:
+  certificate:
+    enabled: true
+    issuerRef:
+      name: selfsigned-ca
+      kind: ClusterIssuer
+
+  tlsSecret:
+    enabled: false
+

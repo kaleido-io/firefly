@@ -8,6 +8,8 @@ metadata:
 spec:
   replicas: 1
   serviceName: {{ include "firefly.fullname" . }}-ipfs
+  updateStrategy:
+    type: RollingUpdate
   selector:
     matchLabels:
       {{- include "firefly.selectorLabels" . | nindent 6 }}
@@ -39,14 +41,14 @@ spec:
             - name: gateway
               containerPort: 8080
               protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /
-              port: http
+{{/*          livenessProbe:*/}}
+{{/*            httpGet:*/}}
+{{/*              path: /*/}}
+{{/*              port: http*/}}
+{{/*          readinessProbe:*/}}
+{{/*            httpGet:*/}}
+{{/*              path: /*/}}
+{{/*              port: http*/}}
           env:
             - name: LIBP2P_FORCE_PNET
               value: "1"
