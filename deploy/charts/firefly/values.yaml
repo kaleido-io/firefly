@@ -11,6 +11,8 @@ config:
 
   # only needed when these components are _not_ enabled, and assumed to be externally managed relative to the chart installation
   postgresUrl: ""
+#  postgresHostname: ""
+#  postgresPort: ""
   dataexchangeUrl: ""
   ipfsApiUrl: ""
   ipfsGatewayUrl: ""
@@ -213,5 +215,7 @@ postgresql:
   fullnameOverride: firefly-psql
   nameOverride: firefly-psql
 
-  postgresqlUsername: firefly
-  postgresqlPostgresPassword: s3r3n1ty2005
+  postgresqlPassword: s3r3n1ty2005
+  extraEnv:
+    - name: POSTGRES_DATABASE
+      value: firefly
