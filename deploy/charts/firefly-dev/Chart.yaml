@@ -12,7 +12,7 @@ maintainers:
   - name: hfuss
     email: hayden.fuss@kaleido.io
 
-dependencies:
-  - name: firefly
-    version: "0.1.0"
-    repository: file://../firefly
+dependencies: []
+#  - name: firefly
+#    version: "0.1.0"
+#    repository: file://../firefly

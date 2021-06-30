@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "firefly-dev.fullname" . }}-ganache
+  labels:
+  {{- include "firefly-dev.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  serviceName: {{ include "firefly-dev.fullname" . }}-ganache
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "firefly-dev.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.ganache.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+    {{- include "firefly-dev.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.ganache.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.ganache.podSecurityContext | nindent 8 }}
+      containers:
+        - name: ganache
+          securityContext:
+            {{- toYaml .Values.ganache.securityContext | nindent 12 }}
+          image: "{{ .Values.ganache.image.repository }}:{{ .Values.ganache.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.ganache.image.pullPolicy }}
+          args:
+            - --account
+            - 0xf20b917a6be83f1be65a41a5733c8c81fb50b939896baf3de40d233d5603ace4,100000000000000000000
+            - --db
+            - /data/ganache
+          ports:
+            - name: geth
+              containerPort: 8545
+              protocol: TCP
+          {{/*          livenessProbe:*/}}
+          {{/*            httpGet:*/}}
+          {{/*              path: /*/}}
+          {{/*              port: http*/}}
+          {{/*          readinessProbe:*/}}
+          {{/*            httpGet:*/}}
+          {{/*              path: /*/}}
+          {{/*              port: http*/}}
+          resources:
+          {{- toYaml .Values.ganache.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /data
+              name: {{ include "firefly-dev.fullname" . }}-ganache-data
+      {{- with .Values.ganache.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ganache.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ganache.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ include "firefly-dev.fullname" . }}-ganache-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi

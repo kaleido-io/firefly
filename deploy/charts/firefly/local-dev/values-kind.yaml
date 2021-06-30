@@ -14,5 +14,4 @@ dataexchange:
 
 ethconnect:
   enabled: true
-  gethUrl: http://doesnotexist:8545
-
+  gethUrl: http://firefly-dev-ganache:8545
