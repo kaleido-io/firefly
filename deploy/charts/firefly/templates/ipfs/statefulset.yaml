@@ -29,7 +29,7 @@ spec:
       securityContext:
         {{- toYaml .Values.ipfs.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ .Chart.Name }}
+        - name: ipfs
           securityContext:
             {{- toYaml .Values.ipfs.securityContext | nindent 12 }}
           image: "{{ .Values.ipfs.image.repository }}:{{ .Values.ipfs.image.tag | default .Chart.AppVersion }}"
@@ -43,11 +43,11 @@ spec:
               protocol: TCP
 {{/*          livenessProbe:*/}}
 {{/*            httpGet:*/}}
-{{/*              path: /*/}}
+{{/*              path: /webui*/}}
 {{/*              port: http*/}}
 {{/*          readinessProbe:*/}}
 {{/*            httpGet:*/}}
-{{/*              path: /*/}}
+{{/*              path: /webui*/}}
 {{/*              port: http*/}}
           env:
             - name: LIBP2P_FORCE_PNET

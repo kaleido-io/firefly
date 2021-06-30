@@ -12,3 +12,7 @@ dataexchange:
   tlsSecret:
     enabled: false
 
+ethconnect:
+  enabled: true
+  gethUrl: http://doesnotexist:8545
+

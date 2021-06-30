@@ -33,7 +33,7 @@ spec:
       securityContext:
         {{- toYaml .Values.dataexchange.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ .Chart.Name }}
+        - name: dx
           securityContext:
             {{- toYaml .Values.dataexchange.securityContext | nindent 12 }}
           image: "{{ .Values.dataexchange.image.repository }}:{{ .Values.dataexchange.image.tag | default .Chart.AppVersion }}"

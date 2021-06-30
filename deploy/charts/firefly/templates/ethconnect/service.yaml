@@ -1,0 +1,17 @@
+{{- if and .Values.ethconnect.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "firefly.fullname" . }}-ethconnect
+  labels:
+    {{- include "firefly.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.ethconnect.service.type }}
+  ports:
+    - port: {{ .Values.ethconnect.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "firefly.selectorLabels" . | nindent 4 }}
+{{- end }}
