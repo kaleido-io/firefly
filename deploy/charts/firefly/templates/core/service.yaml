@@ -6,8 +6,9 @@ metadata:
     {{- include "firefly.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.core.service.type }}
+  clusterIP: None
   ports:
-    {{- if .Values.core.debugEnabled }}
+    {{- if .Values.config.debugEnabled }}
     - port: {{ .Values.core.service.debugPort }}
       targetPort: debug
       protocol: TCP

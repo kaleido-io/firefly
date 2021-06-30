@@ -11,7 +11,3 @@ dataexchange:
 
   tlsSecret:
     enabled: false
-
-ethconnect:
-  enabled: true
-  gethUrl: http://firefly-dev-ganache:8545

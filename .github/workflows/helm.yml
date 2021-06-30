@@ -36,4 +36,4 @@ jobs:
           helm repo add bitnami https://charts.bitnami.com/bitnami
 
       - name: lint charts
-        run: ct lint --charts deploy/charts/firefly,deploy/charts/firefly-dev
+        run: ct lint --charts deploy/charts/firefly,deploy/charts/firefly-dev,deploy/charts/firefly-testnet

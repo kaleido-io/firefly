@@ -1,17 +1,17 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "firefly-dev.fullname" . }}-ganache
+  name: {{ include "firefly-testnet.fullname" . }}-ganache
   labels:
-  {{- include "firefly-dev.labels" . | nindent 4 }}
+  {{- include "firefly-testnet.labels" . | nindent 4 }}
 spec:
   replicas: 1
-  serviceName: {{ include "firefly-dev.fullname" . }}-ganache
+  serviceName: {{ include "firefly-testnet.fullname" . }}-ganache
   updateStrategy:
     type: RollingUpdate
   selector:
     matchLabels:
-      {{- include "firefly-dev.selectorLabels" . | nindent 6 }}
+      {{- include "firefly-testnet.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.ganache.podAnnotations }}
@@ -19,7 +19,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-    {{- include "firefly-dev.selectorLabels" . | nindent 8 }}
+    {{- include "firefly-testnet.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.ganache.imagePullSecrets }}
       imagePullSecrets:
@@ -54,7 +54,7 @@ spec:
           {{- toYaml .Values.ganache.resources | nindent 12 }}
           volumeMounts:
             - mountPath: /data
-              name: {{ include "firefly-dev.fullname" . }}-ganache-data
+              name: {{ include "firefly-testnet.fullname" . }}-ganache-data
       {{- with .Values.ganache.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -69,7 +69,7 @@ spec:
       {{- end }}
   volumeClaimTemplates:
     - metadata:
-        name: {{ include "firefly-dev.fullname" . }}-ganache-data
+        name: {{ include "firefly-testnet.fullname" . }}-ganache-data
       spec:
         accessModes:
           - ReadWriteOnce

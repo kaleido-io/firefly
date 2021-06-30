@@ -28,6 +28,10 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.core.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: contract-manager
+
+        - name:
 {{/*      initContainers:*/}}
 {{/*        - name: psql-ready*/}}
 {{/*          image: "{{ .Values.postgresql.image.registry }}/{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"*/}}
@@ -47,7 +51,7 @@ spec:
           image: "{{ .Values.core.image.repository }}:{{ .Values.core.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.core.image.pullPolicy }}
           ports:
-            {{- if .Values.core.debugEnabled }}
+            {{- if .Values.config.debugEnabled }}
             - name: debug
               containerPort: 6060
               protocol: TCP

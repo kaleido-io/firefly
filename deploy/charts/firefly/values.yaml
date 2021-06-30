@@ -1,14 +1,15 @@
 config:
+  debugEnabled: false
   organizationName: sample-org
-  organizationIdentity: 0xeb7284ce905e0665b7d42cabe31c76c45da1d331 # TODO how is this generated?
+  organizationIdentity: "" # 0xeb7284ce905e0665b7d42cabe31c76c45da1d331
+  fireflyContractAddress: "" # 0x...
 
-  # only needed when these components are _not_ enabled, and assumed to be externally managed relative to the chart installation
-  postgresUrl: ""
-  # postgresHostname: ""
-  # postgresPort: ""
-  dataexchangeUrl: ""
-  ipfsApiUrl: ""
-  ipfsGatewayUrl: ""
+  # used for more open ended configuration of firefly core i.e. future plugins, production scenarios, etc.
+  dataexchange: {}
+
+  database: {}
+
+  publicstorage: {}
 
   blockchain: {}
    # type: ethereum
@@ -18,9 +19,19 @@ config:
    #     instance: /contracts/firefly
    #     topic: "0"
 
-core:
-  debugEnabled: false
+  # only needed when these components are _not_ enabled, and assumed to be externally managed relative to the chart installation
+  postgresUrl: ""
+  postgresAutomigrate: false
 
+  dataexchangeUrl: ""
+
+  #
+  ipfsApiUrl: ""
+  ipfsGatewayUrl: ""
+
+  ethconnectUrl: ""
+
+core:
   image:
     repository: ghcr.io/hyperledger-labs/firefly
     pullPolicy: Always
@@ -161,126 +172,3 @@ dataexchange:
   tolerations: []
 
   affinity: {}
-
-ipfs:
-  enabled: true
-
-  image:
-    repository: docker.io/ipfs/go-ipfs
-    pullPolicy: Always
-    # Overrides the image tag whose default is the chart appVersion.
-    tag: latest
-
-  imagePullSecrets: []
-  nameOverride: ""
-  fullnameOverride: ""
-
-  podAnnotations: {}
-
-  podSecurityContext: {}
-  # fsGroup: 2000
-
-  securityContext: {}
-    # capabilities:
-    #   drop:
-    #   - ALL
-    # readOnlyRootFilesystem: true
-    # runAsNonRoot: true
-  # runAsUser: 1000
-
-  service:
-    type: ClusterIP
-    apiPort: 5001
-    gatewayPort: 8080
-
-  resources: {}
-    # We usually recommend not to specify default resources and to leave this as a conscious
-    # choice for the user. This also increases chances charts run on environments with little
-    # resources, such as Minikube. If you do want to specify resources, uncomment the following
-    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-    # limits:
-    #   cpu: 100m
-    #   memory: 128Mi
-    # requests:
-    #   cpu: 100m
-  #   memory: 128Mi
-
-  nodeSelector: {}
-
-  tolerations: []
-
-  affinity: {}
-
-postgresql:
-  enabled: true
-
-  postgresqlPassword: s3r3n1ty2005
-  extraEnv:
-    - name: POSTGRES_DATABASE
-      value: firefly
-
-ethconnect:
-  enabled: false
-
-  gethUrl: ""
-
-  image:
-    repository: ghcr.io/hyperledger-labs/firefly-ethconnect
-    pullPolicy: Always
-    # Overrides the image tag whose default is the chart appVersion.
-    tag: latest
-
-  imagePullSecrets: [ ]
-  nameOverride: ""
-  fullnameOverride: ""
-
-  podAnnotations: { }
-
-  podSecurityContext: { }
-  # fsGroup: 2000
-
-  securityContext: { }
-    # capabilities:
-    #   drop:
-    #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
-
-  service:
-    type: ClusterIP
-    port: 80
-
-  ingress:
-    enabled: false
-    className: ""
-    annotations: { }
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-    hosts:
-      - host: chart-example.local
-        paths:
-          - path: /
-            pathType: ImplementationSpecific
-    tls: [ ]
-    #  - secretName: chart-example-tls
-    #    hosts:
-    #      - chart-example.local
-
-  resources: { }
-    # We usually recommend not to specify default resources and to leave this as a conscious
-    # choice for the user. This also increases chances charts run on environments with little
-    # resources, such as Minikube. If you do want to specify resources, uncomment the following
-    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-    # limits:
-    #   cpu: 100m
-    #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
-
-  nodeSelector: { }
-
-  tolerations: [ ]
-
-  affinity: { }
