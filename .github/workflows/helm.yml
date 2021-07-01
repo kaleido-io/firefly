@@ -38,7 +38,7 @@ jobs:
           kubectl create ns cert-manager || true
           kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.crds.yaml
           helm repo add jetstack https://charts.jetstack.io || true
-          helm install --skip-crds -n cert-manager --set cainjector.enabled=false cert-manager jetstack/cert-manager --wait
+          helm install --skip-crds -n cert-manager cert-manager jetstack/cert-manager --wait
           kubectl apply -n cert-manager -f deploy/manifests/tls-issuers.yaml
 
       - name: install postgres for testing
