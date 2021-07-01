@@ -1,0 +1,9 @@
+dependencies:
+- name: firefly-dev
+  repository: file://../firefly-dev
+  version: 0.1.0
+- name: cert-manager
+  repository: https://charts.jetstack.io
+  version: v1.4.0
+digest: sha256:53be1f0a2f881275dfcc6ccd3801ccf506945c2e58920d0d7bb252768b4ee8c4
+generated: "2021-07-01T00:08:53.691563-04:00"

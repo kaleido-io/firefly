@@ -14,11 +14,7 @@ maintainers:
 
 dependencies:
   - name: firefly-dev
-    alias: org1Firefly
-    version: "0.1.0"
-    repository: file://../firefly-dev
-  - name: firefly-dev
-    alias: org2Firefly
+    alias: org1
     version: "0.1.0"
     repository: file://../firefly-dev
   - name: cert-manager

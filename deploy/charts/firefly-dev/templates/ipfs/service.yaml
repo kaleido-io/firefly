@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "firefly.fullname" . }}-ipfs
+  name: {{ include "firefly-dev.fullname" . }}-ipfs
   labels:
-    {{- include "firefly.labels" . | nindent 4 }}
+    {{- include "firefly-dev.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.ipfs.service.type }}
   ports:
@@ -17,5 +17,5 @@ spec:
       protocol: TCP
       name: gateway
   selector:
-    {{- include "firefly.selectorLabels" . | nindent 4 }}
+    {{- include "firefly-dev.selectorLabels" . | nindent 4 }}
 {{- end }}

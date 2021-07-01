@@ -2,17 +2,17 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "firefly.fullname" . }}-ethconnect
+  name: {{ include "firefly-dev.fullname" . }}-ethconnect
   labels:
-    {{- include "firefly.labels" . | nindent 4 }}
+    {{- include "firefly-dev.labels" . | nindent 4 }}
 spec:
   replicas: 1
-  serviceName: {{ include "firefly.fullname" . }}-ethconnect
+  serviceName: {{ include "firefly-dev.fullname" . }}-ethconnect
   updateStrategy:
     type: RollingUpdate
   selector:
     matchLabels:
-      {{- include "firefly.selectorLabels" . | nindent 6 }}
+      {{- include "firefly-dev.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.ethconnect.podAnnotations }}
@@ -20,7 +20,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "firefly.selectorLabels" . | nindent 8 }}
+        {{- include "firefly-dev.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.ethconnect.imagePullSecrets }}
       imagePullSecrets:
@@ -41,7 +41,7 @@ spec:
             - -I
             - ./abis
             - -r
-            - {{ .Values.ethconnect.gethUrl }}
+            - {{ tpl .Values.ethconnect.gethUrl . }}
             - -E
             - ./events
             - -d
@@ -62,9 +62,9 @@ spec:
             {{- toYaml .Values.ethconnect.resources | nindent 12 }}
           volumeMounts:
             - mountPath: /ethconnect/abis
-              name: {{ include "firefly.fullname" . }}-ethconnect-abis
+              name: {{ include "firefly-dev.fullname" . }}-ethconnect-abis
             - mountPath: /ethconnect/events
-              name: {{ include "firefly.fullname" . }}-ethconnect-events
+              name: {{ include "firefly-dev.fullname" . }}-ethconnect-events
       {{- with .Values.ethconnect.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -79,7 +79,7 @@ spec:
       {{- end }}
   volumeClaimTemplates:
     - metadata:
-        name: {{ include "firefly.fullname" . }}-ethconnect-abis
+        name: {{ include "firefly-dev.fullname" . }}-ethconnect-abis
       spec:
         accessModes:
           - ReadWriteOnce
@@ -87,7 +87,7 @@ spec:
           requests:
             storage: 1Gi
     - metadata:
-        name: {{ include "firefly.fullname" . }}-ethconnect-events
+        name: {{ include "firefly-dev.fullname" . }}-ethconnect-events
       spec:
         accessModes:
           - ReadWriteOnce

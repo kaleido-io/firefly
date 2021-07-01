@@ -1,7 +1,13 @@
 
 firefly:
   config:
-    # ...
+    ipfsApiUrl: "http://{{ .Release.Name }}-firefly-dev-ipfs:5001"
+    ipfsGatewayUrl: "http://{{ .Release.Name }}-firefly-dev-ipfs:8080"
+
+    postgresUrl: "postgres://postgres:s3r3n1ty2005@{{ .Release.Name }}-postgresql:5432?sslmode=disable"
+    postgresAutomigrate: true
+
+    ethconnectUrl: "http://{{ .Release.Name }}-firefly-dev-ethconnect"
 
 ipfs:
   enabled: true

@@ -44,3 +44,41 @@ ganache:
 
   affinity: { }
 
+cert-manager:
+  installCRDs: false
+
+org1:
+  nameOverride: org-1-firefly
+  fullnameOverride: org-1-firefly
+
+  postgresql:
+    nameOverride: org-1-firefly-psql
+    fullnameOverride: org-1-firefly-psql
+
+  firefly:
+    nameOverride: org-1-firefly
+    fullnameOverride: org-1-firefly
+    config:
+      preInit: true
+      adminEnabled: true
+      debugEnabled: true
+      organizationName: org-1
+      organizationIdentity: 0xeb7284ce905e0665b7d42cabe31c76c45da1d331
+      fireflyContractAddress: /instances/contract
+
+      postgresUrl: postgres://postgres:s3r3n1ty2005@org-1-firefly-psql:5432?sslmode=disable
+      ethconnectUrl: http://org-1-firefly-ethconnect
+      ipfsApiUrl: http://org-1-firefly-ipfs:5001
+      ipfsGatewayUrl: http://org-1-firefly-ipfs:8080
+
+    dataexchange:
+      certificate:
+        enabled: true
+        issuerRef:
+          name: selfsigned-ca
+          kind: ClusterIssuer
+
+      tlsSecret:
+        enabled: false
+  ethconnect:
+    gethUrl: "http://{{ .Release.Name }}-firefly-testnet-ganache:8545"

@@ -2,17 +2,17 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "firefly.fullname" . }}-ipfs
+  name: {{ include "firefly-dev.fullname" . }}-ipfs
   labels:
-    {{- include "firefly.labels" . | nindent 4 }}
+    {{- include "firefly-dev.labels" . | nindent 4 }}
 spec:
   replicas: 1
-  serviceName: {{ include "firefly.fullname" . }}-ipfs
+  serviceName: {{ include "firefly-dev.fullname" . }}-ipfs
   updateStrategy:
     type: RollingUpdate
   selector:
     matchLabels:
-      {{- include "firefly.selectorLabels" . | nindent 6 }}
+      {{- include "firefly-dev.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.ipfs.podAnnotations }}
@@ -20,7 +20,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "firefly.selectorLabels" . | nindent 8 }}
+        {{- include "firefly-dev.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.ipfs.imagePullSecrets }}
       imagePullSecrets:
@@ -63,9 +63,9 @@ spec:
             {{- toYaml .Values.ipfs.resources | nindent 12 }}
           volumeMounts:
             - mountPath: /data/ipfs
-              name: {{ include "firefly.fullname" . }}-ipfs-data
+              name: {{ include "firefly-dev.fullname" . }}-ipfs-data
             - mountPath: /export
-              name: {{ include "firefly.fullname" . }}-ipfs-staging
+              name: {{ include "firefly-dev.fullname" . }}-ipfs-staging
       {{- with .Values.ipfs.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -80,7 +80,7 @@ spec:
       {{- end }}
   volumeClaimTemplates:
     - metadata:
-        name: {{ include "firefly.fullname" . }}-ipfs-data
+        name: {{ include "firefly-dev.fullname" . }}-ipfs-data
       spec:
         accessModes:
           - ReadWriteOnce
@@ -88,7 +88,7 @@ spec:
           requests:
             storage: 5Gi
     - metadata:
-        name: {{ include "firefly.fullname" . }}-ipfs-staging
+        name: {{ include "firefly-dev.fullname" . }}-ipfs-staging
       spec:
         accessModes:
           - ReadWriteOnce

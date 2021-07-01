@@ -18,9 +18,11 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    {{- if .Values.config.adminEnabled }}
     - port: {{ .Values.core.service.adminPort }}
       targetPort: admin
       protocol: TCP
       name: admin
+    {{- end }}
   selector:
     {{- include "firefly.selectorLabels" . | nindent 4 }}

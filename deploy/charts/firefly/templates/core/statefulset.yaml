@@ -28,10 +28,6 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.core.podSecurityContext | nindent 8 }}
-      initContainers:
-        - name: contract-manager
-
-        - name:
 {{/*      initContainers:*/}}
 {{/*        - name: psql-ready*/}}
 {{/*          image: "{{ .Values.postgresql.image.registry }}/{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"*/}}
@@ -59,9 +55,11 @@ spec:
             - name: http
               containerPort: 5000
               protocol: TCP
+            {{- if .Values.config.adminEnabled }}
             - name: admin
               containerPort: 5001
               protocol: TCP
+            {{- end }}
 {{/*          livenessProbe:*/}}
 {{/*            httpGet:*/}}
 {{/*              path: /*/}}
