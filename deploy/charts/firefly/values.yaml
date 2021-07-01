@@ -118,10 +118,6 @@ dataexchange:
     enabled: true
     name: ""
 
-  # TODO should config.json be persistable / writeable?
-  peers: []
-   # - "https://another-org-dataexchange-0.another.org"
-
   image:
     repository: ghcr.io/hyperledger-labs/firefly-dataexchange-https
     pullPolicy: Always

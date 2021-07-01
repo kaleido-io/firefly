@@ -58,6 +58,8 @@ spec:
           volumeMounts:
             - mountPath: /data/peer-certs
               name: {{ include "firefly.fullname" . }}-dx-peer-certs
+            - mountPath: /data/peers
+              name: {{ include "firefly.fullname" . }}-dx-peers
             - mountPath: /data/config.json
               name: config
               subPath: config.json
@@ -92,6 +94,14 @@ spec:
   volumeClaimTemplates:
     - metadata:
         name: {{ include "firefly.fullname" . }}-dx-peer-certs
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+    - metadata:
+        name: {{ include "firefly.fullname" . }}-dx-peers
       spec:
         accessModes:
           - ReadWriteOnce
