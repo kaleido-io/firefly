@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - .github/workflows/helm.yml
-      - deploy/charts/**/*
 jobs:
   docker:
     runs-on: ubuntu-latest
