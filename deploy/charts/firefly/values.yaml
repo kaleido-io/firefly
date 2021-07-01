@@ -1,7 +1,11 @@
 config:
   debugEnabled: false
-  preInit: false
+
   adminEnabled: false
+
+  preInit: false
+
+
   organizationName: ""
   organizationIdentity: "" # 0xeb7284ce905e0665b7d42cabe31c76c45da1d331
   fireflyContractAddress: "" # 0x...
@@ -110,6 +114,7 @@ dataexchange:
     enabled: true
     name: ""
 
+  # TODO should config.json be persistable / writeable?
   peers: []
    # - "https://another-org-dataexchange-0.another.org"
 

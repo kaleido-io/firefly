@@ -46,6 +46,8 @@ ganache:
 
 cert-manager:
   installCRDs: false
+  cainjector:
+    enabled: false
 
 org1:
   nameOverride: org-1-firefly
