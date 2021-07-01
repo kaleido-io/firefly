@@ -1,0 +1,25 @@
+config:
+  debugEnabled: true
+  adminEnabled: true
+  preInit: true
+
+  organizationName: "acme"
+  organizationIdentity: "0xeb7284ce905e0665b7d42cabe31c76c45da1d331"
+  fireflyContractAddress: "0xeb7284ce905e0665b7d42cabe31c76c45da1d254"
+
+  ethconnectUrl: "http://ethconnect.acme.org"
+
+  postgresUrl: "postgres://postgres:firef1y@psql.acme.org:5432"
+
+  ipfsApiUrl: "http://ipfs.acme.org:5001"
+  ipfsGatewayUrl: "http://ipfs.acme.org:8080"
+
+dataexchange:
+  certificate:
+    enabled: true
+    issuerRef:
+      kind: ClusterIssuer
+      name: selfsigned-ca
+
+  tlsSecret:
+    enabled: false
