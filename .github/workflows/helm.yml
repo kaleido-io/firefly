@@ -26,13 +26,6 @@ jobs:
 #            echo "::set-output name=changed::true"
 #          fi
 
-#      - name: chart deps
-#        run: |
-#          helm repo add bitnami https://charts.bitnami.com/bitnami
-
-      - name: lint charts
-        run: ct lint --charts deploy/charts/firefly
-
       - name: setup kind
         uses: engineerd/setup-kind@v0.5.0
 
@@ -43,6 +36,9 @@ jobs:
           helm repo add jetstack https://charts.jetstack.io || true
           helm install --skip-crds -n cert-manager jetstack/cert-manager
           kubectl apply -n cert-manager -f deploy/manifests/tls-issuers.yaml
+
+      - name: lint charts
+        run: ct lint --charts deploy/charts/firefly
 
       - name: test charts
         run: ct install --charts deploy/charts/firefly
