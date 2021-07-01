@@ -3,8 +3,14 @@ name: Go
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - .github/workflows/helm.yml
+      - deploy/charts/**/*
   pull_request:
     branches: [main]
+    paths-ignore:
+      - .github/workflows/helm.yml
+      - deploy/charts/**/*
   workflow_dispatch:
 
 jobs:

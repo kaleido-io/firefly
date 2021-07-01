@@ -15,7 +15,7 @@ $ helm install acme-firefly ./deploy/charts/firefly \
   --set config.fireflyContractAddress="0xeb7284ce905e0665b7d42cabe31c76c45da1d254"
 ```
 
-> **Note**: FireFly requires additional configuration for its blockchain, database, and public storage in order to be fully functional. See [example-values.yaml](./ci/example-values.yaml) for an example, and below for more details.
+> **Note**: FireFly requires additional configuration for its blockchain, database, and public storage in order to be fully functional. See [example-values.yaml](ci/it-values.yaml) for an example, and below for more details.
 
 ## Introduction
 
