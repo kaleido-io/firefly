@@ -68,3 +68,86 @@ Create the name of the service account to use
 {{- printf "%s-dx:%d" (include "firefly.fullname" .) (.Values.dataexchange.service.p2pPort | int64) }}
 {{- end }}
 {{- end }}
+
+{{- define "firefly.core.config" -}}
+{{- if .Values.config.debugEnabled }}
+log:
+  level: debug
+debug:
+  port: 6060
+{{- end }}
+http:
+  port: 5000
+  address: 0.0.0.0
+admin:
+  port: 5001
+  address: 0.0.0.0
+  enabled: {{ .Values.config.adminEnabled }}
+  preinit: {{ and .Values.config.adminEnabled .Values.config.preInit }}
+ui:
+  path: ./frontend
+node:
+  name: {{ .Values.config.organizationName }}-{{ include "firefly.fullname" . }}
+org:
+  name: {{ .Values.config.organizationName }}
+  identity: {{ .Values.config.organizationIdentity }}
+{{- if .Values.config.blockchain }}
+blockchain:
+  {{- toYaml (tpl .Values.config.blockchain .) | nindent 2 }}
+{{- else if .Values.config.ethconnectUrl }}
+blockchain:
+  type: ethereum
+  ethereum:
+    ethconnect:
+      url: {{ tpl .Values.config.ethconnectUrl . }}
+      instance: {{ .Values.config.fireflyContractAddress }}
+      topic: "0" # TODO should likely be configurable
+      {{- if and .Values.config.ethconnectUsername .Values.config.ethconnectPassword }}
+      auth:
+        username: {{ .Values.config.ethconnectUsername }}
+        password: {{ .Values.config.ethconnectPassword }}
+      {{- end }}
+      {{- if .Values.config.ethconnectPrefixShort }}
+      prefixShort: {{ .Values.config.ethconnectPrefixShort }}
+      {{- end }}
+      {{- if .Values.config.ethconnectPrefixLong }}
+      prefixLong: {{ .Values.config.ethconnectPrefixLong }}
+      {{- end }}
+{{- end }}
+{{- if .Values.config.database }}
+database:
+  {{- toYaml (tpl .Values.config.database .) | nindent 2 }}
+{{- else if .Values.config.postgresUrl }}
+database:
+  type: postgres
+  postgres:
+    url: {{ tpl .Values.config.postgresUrl . }}
+    migrations:
+      auto: {{ .Values.config.postgresAutomigrate }}
+{{- end }}
+{{- if .Values.config.publicstorage }}
+publicstorage:
+  {{- toYaml (tpl .Values.config.publicstorage .) | nindent 2 }}
+{{- else if and .Values.config.ipfsApiUrl .Values.config.ipfsGatewayUrl }}
+publicstorage:
+  type: ipfs
+  ipfs:
+    api:
+      url: {{ tpl .Values.config.ipfsApiUrl . }}
+    gateway:
+      url: {{ tpl .Values.config.ipfsGatewayUrl . }}
+{{- end }}
+{{- if and .Values.config.dataexchange (not .Values.dataexchange.enabled) }}
+dataexchange:
+  {{- toYaml (tpl .Values.config.dataexchange .) | nindent 2 }}
+{{- else }}
+dataexchange:
+  {{- if .Values.dataexchange.enabled }}
+  https:
+    url: http://{{ include "firefly.fullname" . }}-dx:{{ .Values.dataexchange.service.apiPort }}
+  {{- else }}
+  https:
+    url: {{ tpl .Values.config.dataexchangeUrl . }}
+  {{- end }}
+{{- end }}
+{{- end }}

@@ -1,5 +1,6 @@
 # Templates the firefly.core configuration file of FireFly, and in some cases configures which ports are exposed.
 config:
+  templateOverride: ""
 
   # Enables the FireFly debug port on 6060 and `DEBUG` level logs
   debugEnabled: false
@@ -17,11 +18,8 @@ config:
 
   # used for more open ended configuration of firefly core i.e. future plugins, production scenarios, etc.
   dataexchange: {}
-
   database: {}
-
   publicstorage: {}
-
   blockchain: {}
    # type: ethereum
    # ethereum:
@@ -40,6 +38,10 @@ config:
   ipfsGatewayUrl: ""
 
   ethconnectUrl: ""
+  ethconnectUsername: ""
+  ethconnectPassword: ""
+  ethconnectPrefixShort: ""
+  ethconnectPrefixLong: ""
 
 core:
   image:
@@ -117,6 +119,8 @@ dataexchange:
   tlsSecret:
     enabled: true
     name: ""
+
+  apiKey: ""
 
   image:
     repository: ghcr.io/hyperledger-labs/firefly-dataexchange-https
