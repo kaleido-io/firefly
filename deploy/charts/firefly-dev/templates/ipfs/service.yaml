@@ -1,0 +1,21 @@
+{{- if .Values.ipfs.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "firefly-dev.fullname" . }}-ipfs
+  labels:
+    {{- include "firefly-dev.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.ipfs.service.type }}
+  ports:
+    - port: {{ .Values.ipfs.service.apiPort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .Values.ipfs.service.gatewayPort }}
+      targetPort: gateway
+      protocol: TCP
+      name: gateway
+  selector:
+    {{- include "firefly-dev.selectorLabels" . | nindent 4 }}
+{{- end }}

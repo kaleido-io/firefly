@@ -1,0 +1,10 @@
+{{- if .Values.autoregister.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ include "firefly.fullname" .  }}-autoregister-{{ .Values.core.image.tag }}"
+  labels:
+    {{- include "firefly.autoregisterLabels" . | nindent 4 }}
+data:
+{{ (.Files.Glob "scripts/ff-register.sh").AsConfig | indent 2 }}
+{{- end }}

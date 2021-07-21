@@ -1,0 +1,37 @@
+{{- if .Values.autoregister.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ include "firefly.fullname" .  }}-autoregister-{{ .Values.core.image.tag }}"
+  labels:
+    {{- include "firefly.autoregisterLabels" . | nindent 4 }}
+spec:
+  template:
+    spec:
+      containers:
+        - name: ff-register
+          image: brix4dayz/swiss-army-knife@sha256:3cd91222504960b6c42dad3fb48551bfac160142bb975a1055d3adc149b8619d
+          command:
+            - sh
+            - -c
+            - /scripts/ff-register.sh
+          env:
+            - name: FF_URL
+              value: "http://{{ include "firefly.fullname" . }}.{{ .Release.Namespace }}.svc:5000/api/v1"
+            - name: ORG_NAME
+              value: {{ .Values.config.organizationName }}
+            - name: NODE_NAME
+              value: "{{ include "firefly.fullname" . }}-0"
+          volumeMounts:
+            - mountPath: /scripts
+              name: ff-register-scripts
+      volumes:
+        - name: ff-register-scripts
+          configMap:
+            name: "{{ include "firefly.fullname" .  }}-autoregister-{{ .Values.core.image.tag }}"
+            items:
+              - key: ff-register.sh
+                path: ff-register.sh
+                mode: 0555
+      restartPolicy: OnFailure
+{{- end }}

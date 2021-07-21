@@ -1,0 +1,9 @@
+dependencies:
+- name: firefly
+  repository: file://../firefly
+  version: 0.0.2
+- name: postgresql
+  repository: https://charts.bitnami.com/bitnami
+  version: 10.6.1
+digest: sha256:edd826ff1ef6e16e4c10c3540d548003337db11006457287d748c81d8c90ace7
+generated: "2021-07-21T00:43:08.072912-04:00"

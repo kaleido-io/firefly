@@ -1,3 +1,6 @@
+autoregister:
+  enabled: false
+
 # Templates the firefly.core configuration file of FireFly, and in some cases configures which ports are exposed.
 config:
   # Enables the FireFly debug port on 6060 and `DEBUG` level logs

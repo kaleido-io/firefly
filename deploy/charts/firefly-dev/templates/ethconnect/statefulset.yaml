@@ -1,0 +1,97 @@
+{{- if .Values.ethconnect.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "firefly-dev.fullname" . }}-ethconnect
+  labels:
+    {{- include "firefly-dev.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  serviceName: {{ include "firefly-dev.fullname" . }}-ethconnect
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "firefly-dev.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.ethconnect.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "firefly-dev.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.ethconnect.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.ethconnect.podSecurityContext | nindent 8 }}
+      containers:
+        - name: ethconnect
+          securityContext:
+            {{- toYaml .Values.ethconnect.securityContext | nindent 12 }}
+          image: "{{ .Values.ethconnect.image.repository }}:{{ .Values.ethconnect.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.ethconnect.image.pullPolicy }}
+          args:
+            - rest
+            - -U
+            - http://0.0.0.0:8080
+            - -I
+            - ./abis
+            - -r
+            - {{ tpl .Values.ethconnect.gethUrl . }}
+            - -E
+            - ./events
+            - -d
+            - "3"
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+{{/*          livenessProbe:*/}}
+{{/*            httpGet:*/}}
+{{/*              path: /*/}}
+{{/*              port: http*/}}
+{{/*          readinessProbe:*/}}
+{{/*            httpGet:*/}}
+{{/*              path: /*/}}
+{{/*              port: http*/}}
+          resources:
+            {{- toYaml .Values.ethconnect.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /ethconnect/abis
+              name: {{ include "firefly-dev.fullname" . }}-ethconnect-abis
+            - mountPath: /ethconnect/events
+              name: {{ include "firefly-dev.fullname" . }}-ethconnect-events
+      {{- with .Values.ethconnect.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ethconnect.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ethconnect.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ include "firefly-dev.fullname" . }}-ethconnect-abis
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+    - metadata:
+        name: {{ include "firefly-dev.fullname" . }}-ethconnect-events
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+{{- end }}
