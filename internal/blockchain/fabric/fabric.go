@@ -42,7 +42,6 @@ type Fabric struct {
 	topic          string
 	defaultChannel string
 	chaincode      string
-	signer         string
 	prefixShort    string
 	prefixLong     string
 	capabilities   *blockchain.Capabilities
@@ -159,10 +158,6 @@ func (f *Fabric) Init(ctx context.Context, prefix config.Prefix, callbacks block
 	if f.chaincode == "" {
 		return i18n.NewError(ctx, i18n.MsgMissingPluginConfig, "chaincode", "blockchain.fabconnect")
 	}
-	f.signer = fabconnectConf.GetString(FabconnectConfigSigner)
-	if f.signer == "" {
-		return i18n.NewError(ctx, i18n.MsgMissingPluginConfig, "signer", "blockchain.fabconnect")
-	}
 	f.topic = fabconnectConf.GetString(FabconnectConfigTopic)
 	if f.topic == "" {
 		return i18n.NewError(ctx, i18n.MsgMissingPluginConfig, "topic", "blockchain.fabconnect")
@@ -276,9 +271,8 @@ func (f *Fabric) ensureSusbscriptions(streamID string) error {
 				Name:        eventType,
 				Description: subDesc,
 				Channel:     f.defaultChannel,
-				Signer:      f.signer,
 				Stream:      streamID,
-				FromBlock:   "1",
+				FromBlock:   "oldest",
 			}
 			newSub.Filter.ChaincodeID = f.chaincode
 			newSub.Filter.EventFilter = "BatchPin"
