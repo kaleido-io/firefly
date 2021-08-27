@@ -194,4 +194,5 @@ var (
 	MsgTokensRESTErr               = ffm("FF10274", "Error from tokens service: %s")
 	MsgTokenPoolDuplicate          = ffm("FF10275", "Duplicate token pool")
 	MsgTokenPoolRejected           = ffm("FF10276", "Token pool with ID '%s' was rejected. Please check the FireFly logs for more information")
+	MsgFabconnectRESTErr           = ffm("FF10277", "Error from fabconnect: %s")
 )
