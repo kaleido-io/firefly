@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"strings"
 
 	"github.com/hyperledger-labs/firefly/internal/log"
 	"github.com/hyperledger-labs/firefly/pkg/blockchain"
@@ -66,7 +67,7 @@ func (em *eventManager) handlePrivatePinComplete(batchPin *blockchain.BatchPin, 
 
 func subjectMatch(a *fftypes.TransactionSubject, b *fftypes.TransactionSubject) bool {
 	return a.Type == b.Type &&
-		a.Signer == b.Signer &&
+		strings.Contains(a.Signer, b.Signer) &&
 		a.Reference != nil && b.Reference != nil &&
 		*a.Reference == *b.Reference &&
 		a.Namespace == b.Namespace
@@ -79,7 +80,7 @@ func (em *eventManager) persistTransaction(ctx context.Context, tx *fftypes.Tran
 	}
 	existing, err := em.database.GetTransactionByID(ctx, tx.ID)
 	if err != nil {
-		return false, err // a peristence failure here is considered retryable (so returned)
+		return false, err // a persistence failure here is considered retryable (so returned)
 	}
 
 	switch {
@@ -107,7 +108,7 @@ func (em *eventManager) persistTransaction(ctx context.Context, tx *fftypes.Tran
 			return false, nil // this is not retryable
 		}
 		log.L(ctx).Errorf("Failed to insert transaction ID='%s' Reference='%s': %a", tx.ID, tx.Subject.Reference, err)
-		return false, err // a peristence failure here is considered retryable (so returned)
+		return false, err // a persistence failure here is considered retryable (so returned)
 	}
 
 	return true, nil
