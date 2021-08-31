@@ -18,6 +18,7 @@ package events
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hyperledger-labs/firefly/internal/log"
 	"github.com/hyperledger-labs/firefly/pkg/database"
@@ -33,7 +34,7 @@ func (em *eventManager) persistBatchFromBroadcast(ctx context.Context /* db TX c
 		l.Errorf("Invalid batch '%s'. Author '%s' cound not be resolved: %s", batch.ID, batch.Author, err)
 		return false, nil // This is not retryable. skip this batch
 	}
-	if author != id.OnChain {
+	if strings.Contains(id.OnChain, author) {
 		l.Errorf("Invalid batch '%s'. Author '%s' does not match transaction submitter '%s'", batch.ID, id.OnChain, author)
 		return false, nil // This is not retryable. skip this batch
 	}
