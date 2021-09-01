@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"regexp"
 	"strings"
 
 	"github.com/go-resty/resty/v2"
@@ -42,6 +43,7 @@ type Fabric struct {
 	topic          string
 	defaultChannel string
 	chaincode      string
+	signer         string
 	prefixShort    string
 	prefixLong     string
 	capabilities   *blockchain.Capabilities
@@ -135,6 +137,8 @@ type fabWSCommandPayload struct {
 	Topic string `json:"topic,omitempty"`
 }
 
+var identityPattern = regexp.MustCompile(".+::x509::(.+)")
+
 var requiredSubscriptions = map[string]string{
 	"BatchPin": "Batch pin",
 }
@@ -157,6 +161,11 @@ func (f *Fabric) Init(ctx context.Context, prefix config.Prefix, callbacks block
 	f.chaincode = fabconnectConf.GetString(FabconnectConfigChaincode)
 	if f.chaincode == "" {
 		return i18n.NewError(ctx, i18n.MsgMissingPluginConfig, "chaincode", "blockchain.fabconnect")
+	}
+	// the signer is obtained from the common configuration for the org identity
+	f.signer = config.GetString(config.OrgIdentity)
+	if f.signer == "" {
+		return i18n.NewError(ctx, i18n.MsgMissingPluginConfig, "org.identity", "")
 	}
 	f.topic = fabconnectConf.GetString(FabconnectConfigTopic)
 	if f.topic == "" {
@@ -197,6 +206,40 @@ func (f *Fabric) Start() error {
 
 func (f *Fabric) Capabilities() *blockchain.Capabilities {
 	return f.capabilities
+}
+
+func (f *Fabric) VerifyIdentitySyntax(ctx context.Context, identity *fftypes.Identity) error {
+	// the identity strings for Fabric networks follow the pattern
+	//   {MSPID}-{UserName, aka CN of the client cert}
+	if !identityPattern.MatchString(identity.OnChain) {
+		identity.OnChain = ""
+		return i18n.NewError(ctx, i18n.MsgInvalidEthAddress)
+	}
+	return nil
+}
+
+func (f *Fabric) SubmitBatchPin(ctx context.Context, ledgerID *fftypes.UUID, identity *fftypes.Identity, batch *blockchain.BatchPin) error {
+	tx := &asyncTXSubmission{}
+	hashes := make([]string, len(batch.Contexts))
+	for i, v := range batch.Contexts {
+		hashes[i] = hexFormatB32(v)
+	}
+	var uuids fftypes.Bytes32
+	copy(uuids[0:16], (*batch.TransactionID)[:])
+	copy(uuids[16:32], (*batch.BatchID)[:])
+	pinInput := &fabBatchPinInput{
+		Namespace:  batch.Namespace,
+		UUIDs:      hexFormatB32(&uuids),
+		BatchHash:  hexFormatB32(batch.BatchHash),
+		PayloadRef: batch.BatchPaylodRef,
+		Contexts:   hashes,
+	}
+	input := newTxInput(pinInput)
+	res, err := f.invokeContractMethod(ctx, f.defaultChannel, f.chaincode, identity, batch.TransactionID.String(), input, tx)
+	if err != nil || !res.IsSuccess() {
+		return restclient.WrapRestErr(ctx, res, err, i18n.MsgFabconnectRESTErr)
+	}
+	return nil
 }
 
 func (f *Fabric) ensureEventStreams(fabconnectConf config.Prefix) error {
@@ -451,10 +494,6 @@ func (f *Fabric) eventLoop() {
 	}
 }
 
-func (f *Fabric) VerifyIdentitySyntax(ctx context.Context, identity *fftypes.Identity) error {
-	return nil
-}
-
 func (f *Fabric) invokeContractMethod(ctx context.Context, channel, chaincode string, identity *fftypes.Identity, requestID string, input interface{}, output interface{}) (*resty.Response, error) {
 	return f.client.R().
 		SetContext(ctx).
@@ -473,28 +512,4 @@ func hexFormatB32(b *fftypes.Bytes32) string {
 		return "0x0000000000000000000000000000000000000000000000000000000000000000"
 	}
 	return "0x" + hex.EncodeToString(b[0:32])
-}
-
-func (f *Fabric) SubmitBatchPin(ctx context.Context, ledgerID *fftypes.UUID, identity *fftypes.Identity, batch *blockchain.BatchPin) error {
-	tx := &asyncTXSubmission{}
-	hashes := make([]string, len(batch.Contexts))
-	for i, v := range batch.Contexts {
-		hashes[i] = hexFormatB32(v)
-	}
-	var uuids fftypes.Bytes32
-	copy(uuids[0:16], (*batch.TransactionID)[:])
-	copy(uuids[16:32], (*batch.BatchID)[:])
-	pinInput := &fabBatchPinInput{
-		Namespace:  batch.Namespace,
-		UUIDs:      hexFormatB32(&uuids),
-		BatchHash:  hexFormatB32(batch.BatchHash),
-		PayloadRef: batch.BatchPaylodRef,
-		Contexts:   hashes,
-	}
-	input := newTxInput(pinInput)
-	res, err := f.invokeContractMethod(ctx, f.defaultChannel, f.chaincode, identity, batch.TransactionID.String(), input, tx)
-	if err != nil || !res.IsSuccess() {
-		return restclient.WrapRestErr(ctx, res, err, i18n.MsgFabconnectRESTErr)
-	}
-	return nil
 }

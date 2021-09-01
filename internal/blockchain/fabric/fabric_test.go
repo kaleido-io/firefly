@@ -94,11 +94,22 @@ func TestInitMissingTopic(t *testing.T) {
 	e, cancel := newTestFabric()
 	defer cancel()
 	resetConf()
+	config.Set(config.OrgIdentity, "signer001")
 	utFabconnectConf.Set(restclient.HTTPConfigURL, "http://localhost:12345")
-	utFabconnectConf.Set(FabconnectConfigChaincode, "/instances/0x12345")
+	utFabconnectConf.Set(FabconnectConfigChaincode, "Firefly")
 
 	err := e.Init(e.ctx, utConfPrefix, &blockchainmocks.Callbacks{})
 	assert.Regexp(t, "FF10138.*topic", err)
+}
+func TestInitMissingSigner(t *testing.T) {
+	e, cancel := newTestFabric()
+	defer cancel()
+	resetConf()
+	utFabconnectConf.Set(restclient.HTTPConfigURL, "http://localhost:12345")
+	utFabconnectConf.Set(FabconnectConfigChaincode, "Firefly")
+
+	err := e.Init(e.ctx, utConfPrefix, &blockchainmocks.Callbacks{})
+	assert.Regexp(t, "FF10138: Missing configuration 'org.identity'", err)
 }
 
 func TestInitAllNewStreamsAndWSEvent(t *testing.T) {
@@ -133,6 +144,7 @@ func TestInitAllNewStreamsAndWSEvent(t *testing.T) {
 		})
 
 	resetConf()
+	config.Set(config.OrgIdentity, "signer001")
 	utFabconnectConf.Set(restclient.HTTPConfigURL, httpURL)
 	utFabconnectConf.Set(restclient.HTTPCustomClient, mockedClient)
 	utFabconnectConf.Set(FabconnectConfigChaincode, "firefly")
@@ -171,6 +183,7 @@ func TestWSInitFail(t *testing.T) {
 	defer cancel()
 
 	resetConf()
+	config.Set(config.OrgIdentity, "signer001")
 	utFabconnectConf.Set(restclient.HTTPConfigURL, "!!!://")
 	utFabconnectConf.Set(FabconnectConfigChaincode, "firefly")
 	utFabconnectConf.Set(FabconnectConfigTopic, "topic1")
@@ -211,6 +224,7 @@ func TestInitAllExistingStreams(t *testing.T) {
 		}))
 
 	resetConf()
+	config.Set(config.OrgIdentity, "signer001")
 	utFabconnectConf.Set(restclient.HTTPConfigURL, "http://localhost:12345")
 	utFabconnectConf.Set(restclient.HTTPCustomClient, mockedClient)
 	utFabconnectConf.Set(FabconnectConfigChaincode, "firefly")
@@ -239,6 +253,7 @@ func TestStreamQueryError(t *testing.T) {
 		httpmock.NewStringResponder(500, `pop`))
 
 	resetConf()
+	config.Set(config.OrgIdentity, "signer001")
 	utFabconnectConf.Set(restclient.HTTPConfigURL, "http://localhost:12345")
 	utFabconnectConf.Set(restclient.HTTPConfigRetryEnabled, false)
 	utFabconnectConf.Set(restclient.HTTPCustomClient, mockedClient)
@@ -267,6 +282,7 @@ func TestStreamCreateError(t *testing.T) {
 		httpmock.NewStringResponder(500, `pop`))
 
 	resetConf()
+	config.Set(config.OrgIdentity, "signer001")
 	utFabconnectConf.Set(restclient.HTTPConfigURL, "http://localhost:12345")
 	utFabconnectConf.Set(restclient.HTTPConfigRetryEnabled, false)
 	utFabconnectConf.Set(restclient.HTTPCustomClient, mockedClient)
@@ -297,6 +313,7 @@ func TestSubQueryError(t *testing.T) {
 		httpmock.NewStringResponder(500, `pop`))
 
 	resetConf()
+	config.Set(config.OrgIdentity, "signer001")
 	utFabconnectConf.Set(restclient.HTTPConfigURL, "http://localhost:12345")
 	utFabconnectConf.Set(restclient.HTTPConfigRetryEnabled, false)
 	utFabconnectConf.Set(restclient.HTTPCustomClient, mockedClient)
@@ -329,6 +346,7 @@ func TestSubQueryCreateError(t *testing.T) {
 		httpmock.NewStringResponder(500, `pop`))
 
 	resetConf()
+	config.Set(config.OrgIdentity, "signer001")
 	utFabconnectConf.Set(restclient.HTTPConfigURL, "http://localhost:12345")
 	utFabconnectConf.Set(restclient.HTTPConfigRetryEnabled, false)
 	utFabconnectConf.Set(restclient.HTTPCustomClient, mockedClient)

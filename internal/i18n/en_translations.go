@@ -195,4 +195,5 @@ var (
 	MsgTokenPoolDuplicate          = ffm("FF10275", "Duplicate token pool")
 	MsgTokenPoolRejected           = ffm("FF10276", "Token pool with ID '%s' was rejected. Please check the FireFly logs for more information")
 	MsgFabconnectRESTErr           = ffm("FF10277", "Error from fabconnect: %s")
+	MsgInvalidFabsigner            = ffm("FF10278", "Supplied Fabric signer identity is invalid", 400)
 )

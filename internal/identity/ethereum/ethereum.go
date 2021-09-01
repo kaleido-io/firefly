@@ -30,7 +30,7 @@ type OnChain struct {
 }
 
 func (oc *OnChain) Name() string {
-	return "onchain"
+	return "ethereum"
 }
 
 func (oc *OnChain) Init(ctx context.Context, prefix config.Prefix, callbacks identity.Callbacks) (err error) {
