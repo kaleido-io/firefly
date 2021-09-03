@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -53,8 +54,9 @@ type Fabric struct {
 		stream *eventStream
 		subs   []*subscription
 	}
-	wsconn wsclient.WSClient
-	closed chan struct{}
+	idCache map[string]*fabIdentity
+	wsconn  wsclient.WSClient
+	closed  chan struct{}
 }
 
 type eventStream struct {
@@ -137,11 +139,17 @@ type fabWSCommandPayload struct {
 	Topic string `json:"topic,omitempty"`
 }
 
-var identityPattern = regexp.MustCompile(".+::x509::(.+)")
+type fabIdentity struct {
+	MSPID  string `json:"mspId"`
+	ECert  string `json:"enrollmentCert"`
+	CACert string `json:"caCert"`
+}
 
 var requiredSubscriptions = map[string]string{
 	"BatchPin": "Batch pin",
 }
+
+var fullIdentityPattern = regexp.MustCompile(".+::x509::.+::.+")
 
 func (f *Fabric) Name() string {
 	return "fabric"
@@ -162,11 +170,8 @@ func (f *Fabric) Init(ctx context.Context, prefix config.Prefix, callbacks block
 	if f.chaincode == "" {
 		return i18n.NewError(ctx, i18n.MsgMissingPluginConfig, "chaincode", "blockchain.fabconnect")
 	}
-	// the signer is obtained from the common configuration for the org identity
+	// the org identity is guaranteed to be configured by the core
 	f.signer = config.GetString(config.OrgIdentity)
-	if f.signer == "" {
-		return i18n.NewError(ctx, i18n.MsgMissingPluginConfig, "org.identity", "")
-	}
 	f.topic = fabconnectConf.GetString(FabconnectConfigTopic)
 	if f.topic == "" {
 		return i18n.NewError(ctx, i18n.MsgMissingPluginConfig, "topic", "blockchain.fabconnect")
@@ -209,35 +214,30 @@ func (f *Fabric) Capabilities() *blockchain.Capabilities {
 }
 
 func (f *Fabric) VerifyIdentitySyntax(ctx context.Context, identity *fftypes.Identity) error {
-	// the identity strings for Fabric networks follow the pattern
-	//   {MSPID}-{UserName, aka CN of the client cert}
-	if !identityPattern.MatchString(identity.OnChain) {
-		identity.OnChain = ""
-		return i18n.NewError(ctx, i18n.MsgInvalidEthAddress)
-	}
-	return nil
-}
+	// we expand the short user name into the fully qualified onchain identity:
+	// mspid::x509::{ecert DN}::{CA DN}
+	if !fullIdentityPattern.MatchString(identity.OnChain) {
+		existingId := f.idCache[identity.Identifier]
+		if existingId == nil {
+			var idRes fabIdentity
+			res, err := f.client.R().SetContext(f.ctx).SetResult(&idRes).Get(fmt.Sprintf("/identities/%s", identity.Identifier))
+			if err != nil || !res.IsSuccess() {
+				return i18n.NewError(f.ctx, i18n.MsgFabconnectRESTErr, err)
+			}
+			f.idCache[identity.Identifier] = &idRes
+			existingId = &idRes
+		}
 
-func (f *Fabric) SubmitBatchPin(ctx context.Context, ledgerID *fftypes.UUID, identity *fftypes.Identity, batch *blockchain.BatchPin) error {
-	tx := &asyncTXSubmission{}
-	hashes := make([]string, len(batch.Contexts))
-	for i, v := range batch.Contexts {
-		hashes[i] = hexFormatB32(v)
-	}
-	var uuids fftypes.Bytes32
-	copy(uuids[0:16], (*batch.TransactionID)[:])
-	copy(uuids[16:32], (*batch.BatchID)[:])
-	pinInput := &fabBatchPinInput{
-		Namespace:  batch.Namespace,
-		UUIDs:      hexFormatB32(&uuids),
-		BatchHash:  hexFormatB32(batch.BatchHash),
-		PayloadRef: batch.BatchPaylodRef,
-		Contexts:   hashes,
-	}
-	input := newTxInput(pinInput)
-	res, err := f.invokeContractMethod(ctx, f.defaultChannel, f.chaincode, identity, batch.TransactionID.String(), input, tx)
-	if err != nil || !res.IsSuccess() {
-		return restclient.WrapRestErr(ctx, res, err, i18n.MsgFabconnectRESTErr)
+		ecertDN, err := getDNFromCertString(existingId.ECert)
+		if err != nil {
+			return i18n.NewError(f.ctx, i18n.MsgFailedToDecodeCertificate, err)
+		}
+		cacertDN, err := getDNFromCertString(existingId.CACert)
+		if err != nil {
+			return i18n.NewError(f.ctx, i18n.MsgFailedToDecodeCertificate, err)
+		}
+		identity.OnChain = fmt.Sprintf("%s::x509::%s::%s", existingId.MSPID, ecertDN, cacertDN)
+		log.L(f.ctx).Debugf("Resolved OnChain: %s", identity.OnChain)
 	}
 	return nil
 }
@@ -512,4 +512,28 @@ func hexFormatB32(b *fftypes.Bytes32) string {
 		return "0x0000000000000000000000000000000000000000000000000000000000000000"
 	}
 	return "0x" + hex.EncodeToString(b[0:32])
+}
+
+func (f *Fabric) SubmitBatchPin(ctx context.Context, ledgerID *fftypes.UUID, identity *fftypes.Identity, batch *blockchain.BatchPin) error {
+	tx := &asyncTXSubmission{}
+	hashes := make([]string, len(batch.Contexts))
+	for i, v := range batch.Contexts {
+		hashes[i] = hexFormatB32(v)
+	}
+	var uuids fftypes.Bytes32
+	copy(uuids[0:16], (*batch.TransactionID)[:])
+	copy(uuids[16:32], (*batch.BatchID)[:])
+	pinInput := &fabBatchPinInput{
+		Namespace:  batch.Namespace,
+		UUIDs:      hexFormatB32(&uuids),
+		BatchHash:  hexFormatB32(batch.BatchHash),
+		PayloadRef: batch.BatchPaylodRef,
+		Contexts:   hashes,
+	}
+	input := newTxInput(pinInput)
+	res, err := f.invokeContractMethod(ctx, f.defaultChannel, f.chaincode, identity, batch.TransactionID.String(), input, tx)
+	if err != nil || !res.IsSuccess() {
+		return restclient.WrapRestErr(ctx, res, err, i18n.MsgFabconnectRESTErr)
+	}
+	return nil
 }
