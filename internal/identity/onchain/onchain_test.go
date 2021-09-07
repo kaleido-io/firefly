@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger-labs/firefly/mocks/identitymocks"
 	"github.com/hyperledger-labs/firefly/pkg/identity"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 var utConfPrefix = config.NewPluginConfig("onchain_unit_tests")
@@ -41,8 +42,11 @@ func TestInit(t *testing.T) {
 }
 
 func TestResolve(t *testing.T) {
+	cb := identitymocks.Callbacks{}
+	cb.On("VerifyIdentitySyntax", mock.Anything, mock.Anything).Return(nil)
+
 	var oc identity.Plugin = &OnChain{}
-	err := oc.Init(context.Background(), utConfPrefix, &identitymocks.Callbacks{})
+	err := oc.Init(context.Background(), utConfPrefix, &cb)
 	assert.NoError(t, err)
 
 	id, err := oc.Resolve(context.Background(), "0x12345")

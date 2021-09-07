@@ -98,10 +98,13 @@ func getDN(name *pkix.Name) string {
 
 func getCertificateFromBytes(certString string) (*x509.Certificate, error) {
 	idbytes, err := base64.StdEncoding.DecodeString(certString)
+	if err != nil {
+		return nil, err
+	}
 	block, _ := pem.Decode(idbytes)
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse certificate: %s", err)
+		return nil, err
 	}
 	return cert, nil
 }

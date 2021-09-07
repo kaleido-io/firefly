@@ -279,16 +279,6 @@ func (or *orchestrator) initPlugins(ctx context.Context) (err error) {
 		return nil
 	}
 
-	if or.identity == nil {
-		iiType := config.GetString(config.IdentityType)
-		if or.identity, err = iifactory.GetPlugin(ctx, iiType); err != nil {
-			return err
-		}
-	}
-	if err = or.identity.Init(ctx, identityConfig.SubPrefix(or.identity.Name()), or); err != nil {
-		return err
-	}
-
 	if or.blockchain == nil {
 		biType := config.GetString(config.BlockchainType)
 		if or.blockchain, err = bifactory.GetPlugin(ctx, biType); err != nil {
@@ -296,6 +286,16 @@ func (or *orchestrator) initPlugins(ctx context.Context) (err error) {
 		}
 	}
 	if err = or.blockchain.Init(ctx, blockchainConfig.SubPrefix(or.blockchain.Name()), &or.bc); err != nil {
+		return err
+	}
+
+	if or.identity == nil {
+		iiType := config.GetString(config.IdentityType)
+		if or.identity, err = iifactory.GetPlugin(ctx, iiType); err != nil {
+			return err
+		}
+	}
+	if err = or.identity.Init(ctx, identityConfig.SubPrefix(or.identity.Name()), or.blockchain); err != nil {
 		return err
 	}
 

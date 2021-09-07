@@ -30,7 +30,7 @@ type OnChain struct {
 }
 
 func (oc *OnChain) Name() string {
-	return "ethereum"
+	return "onchain"
 }
 
 func (oc *OnChain) Init(ctx context.Context, prefix config.Prefix, callbacks identity.Callbacks) (err error) {
@@ -48,8 +48,10 @@ func (oc *OnChain) Capabilities() *identity.Capabilities {
 }
 
 func (oc *OnChain) Resolve(ctx context.Context, identifier string) (*fftypes.Identity, error) {
-	return &fftypes.Identity{
+	id := &fftypes.Identity{
 		Identifier: identifier,
 		OnChain:    identifier,
-	}, nil
+	}
+	err := oc.callbacks.VerifyIdentitySyntax(ctx, id)
+	return id, err
 }

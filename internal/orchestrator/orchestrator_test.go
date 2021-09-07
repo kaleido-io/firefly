@@ -144,34 +144,12 @@ func TestBadDatabasePreInitMode(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestBadIdentityPlugin(t *testing.T) {
-	or := newTestOrchestrator()
-	or.mdi.On("GetConfigRecords", mock.Anything, mock.Anything, mock.Anything).Return([]*fftypes.ConfigRecord{}, nil, nil)
-	config.Set(config.IdentityType, "wrong")
-	or.identity = nil
-	or.mdi.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	ctx, cancelCtx := context.WithCancel(context.Background())
-	err := or.Init(ctx, cancelCtx)
-	assert.Regexp(t, "FF10212.*wrong", err)
-}
-
-func TestBadIdentityInitFail(t *testing.T) {
-	or := newTestOrchestrator()
-	or.mdi.On("GetConfigRecords", mock.Anything, mock.Anything, mock.Anything).Return([]*fftypes.ConfigRecord{}, nil, nil)
-	or.mdi.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	or.mii.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("pop"))
-	ctx, cancelCtx := context.WithCancel(context.Background())
-	err := or.Init(ctx, cancelCtx)
-	assert.EqualError(t, err, "pop")
-}
-
 func TestBadBlockchainPlugin(t *testing.T) {
 	or := newTestOrchestrator()
 	config.Set(config.BlockchainType, "wrong")
 	or.blockchain = nil
 	or.mdi.On("GetConfigRecords", mock.Anything, mock.Anything, mock.Anything).Return([]*fftypes.ConfigRecord{}, nil, nil)
 	or.mdi.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	or.mii.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	err := or.Init(ctx, cancelCtx)
 	assert.Regexp(t, "FF10110.*wrong", err)
@@ -180,7 +158,6 @@ func TestBadBlockchainPlugin(t *testing.T) {
 func TestBlockchaiInitFail(t *testing.T) {
 	or := newTestOrchestrator()
 	or.mdi.On("GetConfigRecords", mock.Anything, mock.Anything, mock.Anything).Return([]*fftypes.ConfigRecord{}, nil, nil)
-	or.mii.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	or.mdi.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	or.mbi.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("pop"))
 	ctx, cancelCtx := context.WithCancel(context.Background())
@@ -191,7 +168,6 @@ func TestBlockchaiInitFail(t *testing.T) {
 func TestBlockchaiInitGetConfigRecordsFail(t *testing.T) {
 	or := newTestOrchestrator()
 	or.mdi.On("GetConfigRecords", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil, fmt.Errorf("pop"))
-	or.mii.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	or.mdi.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	or.mbi.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	ctx, cancelCtx := context.WithCancel(context.Background())
@@ -207,13 +183,37 @@ func TestBlockchaiInitMergeConfigRecordsFail(t *testing.T) {
 			Value: []byte("cheese, pepperoni, mushrooms"),
 		},
 	}, nil, nil)
-	or.mii.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	or.mdi.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	or.mbi.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	err := or.Init(ctx, cancelCtx)
 	assert.EqualError(t, err, "invalid character 'c' looking for beginning of value")
+}
+
+func TestBadIdentityPlugin(t *testing.T) {
+	or := newTestOrchestrator()
+	or.mdi.On("GetConfigRecords", mock.Anything, mock.Anything, mock.Anything).Return([]*fftypes.ConfigRecord{}, nil, nil)
+	or.mbi.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	or.mbi.On("VerifyIdentitySyntax", mock.Anything, mock.Anything, mock.Anything).Return("", nil)
+	config.Set(config.IdentityType, "wrong")
+	or.identity = nil
+	or.mdi.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	err := or.Init(ctx, cancelCtx)
+	assert.Regexp(t, "FF10212.*wrong", err)
+}
+
+func TestBadIdentityInitFail(t *testing.T) {
+	or := newTestOrchestrator()
+	or.mdi.On("GetConfigRecords", mock.Anything, mock.Anything, mock.Anything).Return([]*fftypes.ConfigRecord{}, nil, nil)
+	or.mdi.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	or.mbi.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	or.mbi.On("VerifyIdentitySyntax", mock.Anything, mock.Anything, mock.Anything).Return("", nil)
+	or.mii.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("pop"))
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	err := or.Init(ctx, cancelCtx)
+	assert.EqualError(t, err, "pop")
 }
 
 func TestBadPublicStoragePlugin(t *testing.T) {

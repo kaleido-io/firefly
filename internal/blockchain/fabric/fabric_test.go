@@ -38,8 +38,9 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-var utConfPrefix = config.NewPluginConfig("eth_unit_tests")
+var utConfPrefix = config.NewPluginConfig("fab_unit_tests")
 var utFabconnectConf = utConfPrefix.SubPrefix(FabconnectConfigKey)
+var signer = "orgMSP::x509::CN=signer001,OU=client::CN=fabric-ca"
 
 func resetConf() {
 	config.Reset()
@@ -101,17 +102,6 @@ func TestInitMissingTopic(t *testing.T) {
 	err := e.Init(e.ctx, utConfPrefix, &blockchainmocks.Callbacks{})
 	assert.Regexp(t, "FF10138.*topic", err)
 }
-func TestInitMissingSigner(t *testing.T) {
-	e, cancel := newTestFabric()
-	defer cancel()
-	resetConf()
-	utFabconnectConf.Set(restclient.HTTPConfigURL, "http://localhost:12345")
-	utFabconnectConf.Set(FabconnectConfigChaincode, "Firefly")
-
-	err := e.Init(e.ctx, utConfPrefix, &blockchainmocks.Callbacks{})
-	assert.Regexp(t, "FF10138: Missing configuration 'org.identity'", err)
-}
-
 func TestInitAllNewStreamsAndWSEvent(t *testing.T) {
 
 	log.SetLevel("trace")
@@ -367,7 +357,6 @@ func TestSubmitBatchPinOK(t *testing.T) {
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
 
-	signer := "signer001"
 	batch := &blockchain.BatchPin{
 		TransactionID:  fftypes.MustParseUUID("9ffc50ff-6bfe-4502-adc7-93aea54cc059"),
 		BatchID:        fftypes.MustParseUUID("c5df767c-fe44-4e03-8eb5-1c5523097db5"),
@@ -383,7 +372,7 @@ func TestSubmitBatchPinOK(t *testing.T) {
 		func(req *http.Request) (*http.Response, error) {
 			var body map[string]interface{}
 			json.NewDecoder(req.Body).Decode(&body)
-			assert.Equal(t, signer, req.FormValue(defaultPrefixShort+"-signer"))
+			assert.Equal(t, "signer001", req.FormValue(defaultPrefixShort+"-signer"))
 			assert.Equal(t, "false", req.FormValue(defaultPrefixShort+"-sync"))
 			assert.Equal(t, "0x9ffc50ff6bfe4502adc793aea54cc059c5df767cfe444e038eb51c5523097db5", (body["args"].([]interface{}))[1])
 			assert.Equal(t, hexFormatB32(batch.BatchHash), (body["args"].([]interface{}))[2])
@@ -404,7 +393,6 @@ func TestSubmitBatchEmptyPayloadRef(t *testing.T) {
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
 
-	signer := "signer001"
 	batch := &blockchain.BatchPin{
 		TransactionID: fftypes.MustParseUUID("9ffc50ff-6bfe-4502-adc7-93aea54cc059"),
 		BatchID:       fftypes.MustParseUUID("c5df767c-fe44-4e03-8eb5-1c5523097db5"),
@@ -419,7 +407,7 @@ func TestSubmitBatchEmptyPayloadRef(t *testing.T) {
 		func(req *http.Request) (*http.Response, error) {
 			var body map[string]interface{}
 			json.NewDecoder(req.Body).Decode(&body)
-			assert.Equal(t, signer, req.FormValue("fly-signer"))
+			assert.Equal(t, "signer001", req.FormValue("fly-signer"))
 			assert.Equal(t, "false", req.FormValue("fly-sync"))
 			assert.Equal(t, "0x9ffc50ff6bfe4502adc793aea54cc059c5df767cfe444e038eb51c5523097db5", (body["args"].([]interface{}))[1])
 			assert.Equal(t, hexFormatB32(batch.BatchHash), (body["args"].([]interface{}))[2])
@@ -440,7 +428,6 @@ func TestSubmitBatchPinFail(t *testing.T) {
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
 
-	signer := "signer001"
 	batch := &blockchain.BatchPin{
 		TransactionID:  fftypes.NewUUID(),
 		BatchID:        fftypes.NewUUID(),
@@ -462,15 +449,36 @@ func TestSubmitBatchPinFail(t *testing.T) {
 
 }
 
-func TestVerifySigner(t *testing.T) {
+func TestVerifyFullIDSigner(t *testing.T) {
 	e, cancel := newTestFabric()
 	defer cancel()
 
-	id := &fftypes.Identity{OnChain: "signer001"}
+	id := &fftypes.Identity{Identifier: signer, OnChain: signer}
 	err := e.VerifyIdentitySyntax(context.Background(), id)
 	assert.NoError(t, err)
-	assert.Equal(t, "signer001", id.OnChain)
+	assert.Equal(t, signer, id.OnChain)
+}
 
+func TestVerifyPartialIDSigner(t *testing.T) {
+	e, cancel := newTestFabric()
+	e.idCache = make(map[string]*fabIdentity)
+	defer cancel()
+	httpmock.ActivateNonDefault(e.client.GetClient())
+	defer httpmock.DeactivateAndReset()
+
+	res := make(map[string]string)
+	res["name"] = "signer001"
+	res["mspId"] = "org1MSP"
+	res["enrollmentCert"] = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ4ekNDQVcyZ0F3SUJBZ0lVTUpXdUJBcHl0eXdNVU13cC82b3o3Qk0wS3dJd0NnWUlLb1pJemowRUF3SXcKR3pFWk1CY0dBMVVFQXhNUVptRmljbWxqTFdOaExYTmxjblpsY2pBZUZ3MHlNVEEzTWpreE5UUXdNREJhRncweQpNakEzTWpreE5UUTFNREJhTUNFeER6QU5CZ05WQkFzVEJtTnNhV1Z1ZERFT01Bd0dBMVVFQXhNRllXUnRhVzR3CldUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFUTUxMR2VwR2oyWEo3aWFhU1hXWXBpSGtCc3RqbXUKcStzd3hIOTdxWi9vS0JWMHFoa21kcUlkTmNNaTdwNHNYQzM1NTN6Nm5DUHpqSWtjQzdqWi9IVDBvNEdJTUlHRgpNQTRHQTFVZER3RUIvd1FFQXdJQkJqQU1CZ05WSFJNQkFmOEVBakFBTUIwR0ExVWREZ1FXQkJRZUdkWDNVdUxMCnZWVHpDVkdwcVVJQjFFdEhMREFmQmdOVkhTTUVHREFXZ0JUcTdoVzQ5Yno0WjAyK2YyM3hVSGxCbzd5eGFqQWwKQmdOVkhSRUVIakFjZ2hwTFlXeGxhV1J2Y3kxTllXTkNiMjlyTFZCeWJ5NXNiMk5oYkRBS0JnZ3Foa2pPUFFRRApBZ05JQURCRkFpRUF1bzVtbGh6UXc4RnIrcUFhUzAxcCsxTlVaNEF5ZmdQb21kQ2RKTzJUYXJRQ0lIUG1pTUhuCk9jekc5cS9kT3NiQUQ1c3dZbWcyTEZpM05mQkswK0cvUC9TUAotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
+	res["caCert"] = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJmVENDQVNPZ0F3SUJBZ0lVYndac0FnK2Zac0FmSUF2VWFlWXBpOXF3NG9jd0NnWUlLb1pJemowRUF3SXcKR3pFWk1CY0dBMVVFQXhNUVptRmljbWxqTFdOaExYTmxjblpsY2pBZUZ3MHlNVEEzTWpNd01URTRNREJhRncwegpOakEzTVRrd01URTRNREJhTUJzeEdUQVhCZ05WQkFNVEVHWmhZbkpwWXkxallTMXpaWEoyWlhJd1dUQVRCZ2NxCmhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBUlZNajcyR1dTeXk1UjRQN084ckpidXkrNHd6NWJWSE94dHBxRlUKamNadVE0Q2VSUGJoNDF3KzR1dFJsTlRTbFhLdTBMblBlVEZLSjlRT00xd0xwTGJtbzBVd1F6QU9CZ05WSFE4QgpBZjhFQkFNQ0FRWXdFZ1lEVlIwVEFRSC9CQWd3QmdFQi93SUJBREFkQmdOVkhRNEVGZ1FVNnU0VnVQVzgrR2ROCnZuOXQ4VkI1UWFPOHNXb3dDZ1lJS29aSXpqMEVBd0lEU0FBd1JRSWhBTzRod085UjB2Z3htMUphaGdTOWJnajQKZm9JNmc1QnRrUzRKcmgvc0ZpbzlBaUFRVVhnTUhXYzZSMVZhTHpXTkx0U0tkbHMvWTFuM3Z5MnlPZE1PL1Y4cApCZz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+
+	responder, _ := httpmock.NewJsonResponder(200, res)
+	httpmock.RegisterResponder("GET", `http://localhost:12345/identities/signer001`, responder)
+
+	id := &fftypes.Identity{Identifier: "signer001", OnChain: "signer001"}
+	err := e.VerifyIdentitySyntax(context.Background(), id)
+	assert.NoError(t, err)
+	assert.Equal(t, "org1MSP::x509::CN=admin,OU=client::CN=fabric-ca-server", id.OnChain)
 }
 
 func TestHandleMessageBatchPinOK(t *testing.T) {

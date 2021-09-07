@@ -149,7 +149,8 @@ var requiredSubscriptions = map[string]string{
 	"BatchPin": "Batch pin",
 }
 
-var fullIdentityPattern = regexp.MustCompile(".+::x509::.+::.+")
+var fullIdentityPattern = regexp.MustCompile(".+::x509::(.+)::.+")
+var cnPatteren = regexp.MustCompile("CN=([^,]+)")
 
 func (f *Fabric) Name() string {
 	return "fabric"
@@ -161,6 +162,7 @@ func (f *Fabric) Init(ctx context.Context, prefix config.Prefix, callbacks block
 
 	f.ctx = log.WithLogField(ctx, "proto", "fabric")
 	f.callbacks = callbacks
+	f.idCache = make(map[string]*fabIdentity)
 
 	if fabconnectConf.GetString(restclient.HTTPConfigURL) == "" {
 		return i18n.NewError(ctx, i18n.MsgMissingPluginConfig, "url", "blockchain.fabconnect")
@@ -216,27 +218,31 @@ func (f *Fabric) Capabilities() *blockchain.Capabilities {
 func (f *Fabric) VerifyIdentitySyntax(ctx context.Context, identity *fftypes.Identity) error {
 	// we expand the short user name into the fully qualified onchain identity:
 	// mspid::x509::{ecert DN}::{CA DN}
+	if identity.Identifier == "" {
+		return i18n.NewError(f.ctx, i18n.MsgInvalidIdentity)
+	}
+
 	if !fullIdentityPattern.MatchString(identity.OnChain) {
-		existingId := f.idCache[identity.Identifier]
-		if existingId == nil {
+		existingID := f.idCache[identity.Identifier]
+		if existingID == nil {
 			var idRes fabIdentity
 			res, err := f.client.R().SetContext(f.ctx).SetResult(&idRes).Get(fmt.Sprintf("/identities/%s", identity.Identifier))
 			if err != nil || !res.IsSuccess() {
 				return i18n.NewError(f.ctx, i18n.MsgFabconnectRESTErr, err)
 			}
 			f.idCache[identity.Identifier] = &idRes
-			existingId = &idRes
+			existingID = &idRes
 		}
 
-		ecertDN, err := getDNFromCertString(existingId.ECert)
+		ecertDN, err := getDNFromCertString(existingID.ECert)
 		if err != nil {
 			return i18n.NewError(f.ctx, i18n.MsgFailedToDecodeCertificate, err)
 		}
-		cacertDN, err := getDNFromCertString(existingId.CACert)
+		cacertDN, err := getDNFromCertString(existingID.CACert)
 		if err != nil {
 			return i18n.NewError(f.ctx, i18n.MsgFailedToDecodeCertificate, err)
 		}
-		identity.OnChain = fmt.Sprintf("%s::x509::%s::%s", existingId.MSPID, ecertDN, cacertDN)
+		identity.OnChain = fmt.Sprintf("%s::x509::%s::%s", existingID.MSPID, ecertDN, cacertDN)
 		log.L(f.ctx).Debugf("Resolved OnChain: %s", identity.OnChain)
 	}
 	return nil
@@ -497,7 +503,7 @@ func (f *Fabric) eventLoop() {
 func (f *Fabric) invokeContractMethod(ctx context.Context, channel, chaincode string, identity *fftypes.Identity, requestID string, input interface{}, output interface{}) (*resty.Response, error) {
 	return f.client.R().
 		SetContext(ctx).
-		SetQueryParam(f.prefixShort+"-signer", identity.OnChain).
+		SetQueryParam(f.prefixShort+"-signer", getUserName(identity.OnChain)).
 		SetQueryParam(f.prefixShort+"-channel", channel).
 		SetQueryParam(f.prefixShort+"-chaincode", chaincode).
 		SetQueryParam(f.prefixShort+"-sync", "false").
@@ -505,6 +511,18 @@ func (f *Fabric) invokeContractMethod(ctx context.Context, channel, chaincode st
 		SetBody(input).
 		SetResult(output).
 		Post("/transactions")
+}
+
+func getUserName(fullIDString string) string {
+	matches := fullIdentityPattern.FindStringSubmatch(fullIDString)
+	if len(matches) == 0 {
+		return fullIDString
+	}
+	matches = cnPatteren.FindStringSubmatch(matches[1])
+	if len(matches) > 1 {
+		return matches[1]
+	}
+	return ""
 }
 
 func hexFormatB32(b *fftypes.Bytes32) string {

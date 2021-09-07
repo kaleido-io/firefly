@@ -46,6 +46,7 @@ type Plugin interface {
 
 // Callbacks is the interface provided to the identity plugin, to allow it to request information from firefly, or pass events.
 type Callbacks interface {
+	VerifyIdentitySyntax(ctx context.Context, identity *fftypes.Identity) error
 }
 
 // Capabilities the supported featureset of the identity
