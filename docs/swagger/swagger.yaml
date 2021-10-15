@@ -5500,6 +5500,39 @@ paths:
           description: Success
         default:
           description: ""
+  /namespaces/{ns}/tokens/connectors:
+    get:
+      description: 'TODO: Description'
+      operationId: getTokenConnectors
+      parameters:
+      - description: 'TODO: Description'
+        in: path
+        name: ns
+        required: true
+        schema:
+          example: default
+          type: string
+      - description: Server-side request timeout (millseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 120s
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    name:
+                      type: string
+                  type: object
+                type: array
+          description: Success
+        default:
+          description: ""
   /namespaces/{ns}/transactions:
     get:
       description: 'TODO: Description'

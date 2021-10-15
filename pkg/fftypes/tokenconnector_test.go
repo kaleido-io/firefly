@@ -25,15 +25,9 @@ import (
 
 func TestTokenConnectorValidation(t *testing.T) {
 	connector := &TokenConnector{
-		Name: "ok",
-	}
-	err := connector.Validate(context.Background(), false)
-	assert.Regexp(t, "FF10131.*'namespace'", err)
-
-	connector = &TokenConnector{
 		Name: "!wrong",
 	}
-	err = connector.Validate(context.Background(), false)
+	err := connector.Validate(context.Background(), false)
 	assert.Regexp(t, "FF10131.*'name'", err)
 
 	connector = &TokenConnector{
