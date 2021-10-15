@@ -389,6 +389,11 @@ type iTokenTransferCollection interface {
 	GetTokenTransfers(ctx context.Context, filter Filter) ([]*fftypes.TokenTransfer, *FilterResult, error)
 }
 
+type iTokenConnectorsCollection interface {
+	// GetTokenConnectors - Get token connectors
+	GetTokenConnectors(ctx context.Context, filter Filter) ([]*fftypes.TokenConnector, error)
+}
+
 // PeristenceInterface are the operations that must be implemented by a database interfavce plugin.
 // The database mechanism of Firefly is designed to provide the balance between being able
 // to query the data a member of the network has transferred/received via Firefly efficiently,
