@@ -324,7 +324,8 @@ func (or *orchestrator) initPlugins(ctx context.Context) (err error) {
 
 	if or.tokens == nil {
 		or.tokens = make(map[string]tokens.Plugin)
-		for i := 0; i < tokensConfig.ArraySize(); i++ {
+		tokensConfigArraySize := tokensConfig.ArraySize()
+		for i := 0; i < tokensConfigArraySize; i++ {
 			prefix := tokensConfig.ArrayEntry(i)
 			name := prefix.GetString(tokens.TokensConfigName)
 			pluginName := prefix.GetString(tokens.TokensConfigPlugin)
