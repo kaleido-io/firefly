@@ -332,6 +332,9 @@ func (or *orchestrator) initPlugins(ctx context.Context) (err error) {
 			if name == "" {
 				return i18n.NewError(ctx, i18n.MsgMissingTokensPluginConfig)
 			}
+			if err = fftypes.ValidateFFNameField(ctx, name, "name"); err != nil {
+				return err
+			}
 			if pluginName == "" {
 				// Migration path for old config key
 				// TODO: eventually make this fatal

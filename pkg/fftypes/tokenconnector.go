@@ -16,15 +16,6 @@
 
 package fftypes
 
-import "context"
-
 type TokenConnector struct {
 	Name string `json:"name,omitempty"`
-}
-
-func (t *TokenConnector) Validate(ctx context.Context, existing bool) (err error) {
-	if err = ValidateFFNameField(ctx, t.Name, "name"); err != nil {
-		return err
-	}
-	return nil
 }
