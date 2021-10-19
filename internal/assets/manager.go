@@ -45,6 +45,7 @@ type Manager interface {
 	MintTokens(ctx context.Context, ns, typeName, poolName string, transfer *fftypes.TokenTransferInput, waitConfirm bool) (*fftypes.TokenTransfer, error)
 	BurnTokens(ctx context.Context, ns, typeName, poolName string, transfer *fftypes.TokenTransferInput, waitConfirm bool) (*fftypes.TokenTransfer, error)
 	TransferTokens(ctx context.Context, ns, typeName, poolName string, transfer *fftypes.TokenTransferInput, waitConfirm bool) (*fftypes.TokenTransfer, error)
+	GetTokenConnectors(ctx context.Context, ns string) ([]*fftypes.TokenConnector, error)
 
 	// Bound token callbacks
 	TokenPoolCreated(tk tokens.Plugin, pool *fftypes.TokenPool, protocolTxID string, additionalInfo fftypes.JSONObject) error
@@ -108,6 +109,24 @@ func (am *assetManager) GetTokenAccounts(ctx context.Context, ns, typeName, pool
 		return nil, nil, err
 	}
 	return am.database.GetTokenAccounts(ctx, filter.Condition(filter.Builder().Eq("poolprotocolid", pool.ProtocolID)))
+}
+
+func (am *assetManager) GetTokenConnectors(ctx context.Context, ns string) ([]*fftypes.TokenConnector, error) {
+	if err := fftypes.ValidateFFNameField(ctx, ns, "namespace"); err != nil {
+		return nil, err
+	}
+
+	connectors := []*fftypes.TokenConnector{}
+	for token := range am.tokens {
+		connectors = append(
+			connectors,
+			&fftypes.TokenConnector{
+				Name: token,
+			},
+		)
+	}
+
+	return connectors, nil
 }
 
 func (am *assetManager) Start() error {
