@@ -4600,7 +4600,7 @@ paths:
   /namespaces/{ns}/tokens/{type}/pools/{name}/accounts:
     get:
       description: 'TODO: Description'
-      operationId: getTokenAccounts
+      operationId: getTokenAccountsByPool
       parameters:
       - description: 'TODO: Description'
         in: path
@@ -5503,7 +5503,7 @@ paths:
   /namespaces/{ns}/tokens/accounts:
     get:
       description: 'TODO: Description'
-      operationId: getTokenAccountsByPool
+      operationId: getTokenAccounts
       parameters:
       - description: 'TODO: Description'
         in: path
