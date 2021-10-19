@@ -94,3 +94,31 @@ func TestGetTokenAccountsBadPool(t *testing.T) {
 	_, _, err := am.GetTokenAccounts(context.Background(), "ns1", "magic-tokens", "test", f)
 	assert.EqualError(t, err, "pop")
 }
+
+func TestGetTokenAccountsByPool(t *testing.T) {
+	am, cancel := newTestAssets(t)
+	defer cancel()
+
+	mdi := am.database.(*databasemocks.Plugin)
+	fb := database.TokenAccountQueryFactory.NewFilter(context.Background())
+	f := fb.And()
+	mdi.On("GetTokenAccounts", context.Background(), f).Return([]*fftypes.TokenAccount{}, nil, nil)
+	_, _, err := am.GetTokenAccountsByPool(context.Background(), "ns1", f)
+	assert.NoError(t, err)
+}
+
+func TestGetTokenConnectors(t *testing.T) {
+	am, cancel := newTestAssets(t)
+	defer cancel()
+
+	_, err := am.GetTokenConnectors(context.Background(), "ns1")
+	assert.NoError(t, err)
+}
+
+func TestGetTokenConnectorsBadNamespace(t *testing.T) {
+	am, cancel := newTestAssets(t)
+	defer cancel()
+
+	_, err := am.GetTokenConnectors(context.Background(), "")
+	assert.Regexp(t, "FF10131", err)
+}
