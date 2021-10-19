@@ -118,10 +118,7 @@ func (am *assetManager) createTokenPoolWithID(ctx context.Context, id *fftypes.U
 	return pool, plugin.CreateTokenPool(ctx, op.ID, pool)
 }
 
-func (am *assetManager) GetTokenPools(ctx context.Context, ns string, typeName string, filter database.AndFilter) ([]*fftypes.TokenPool, *database.FilterResult, error) {
-	if _, err := am.selectTokenPlugin(ctx, typeName); err != nil {
-		return nil, nil, err
-	}
+func (am *assetManager) GetTokenPools(ctx context.Context, ns string, filter database.AndFilter) ([]*fftypes.TokenPool, *database.FilterResult, error) {
 	if err := fftypes.ValidateFFNameField(ctx, ns, "namespace"); err != nil {
 		return nil, nil, err
 	}
