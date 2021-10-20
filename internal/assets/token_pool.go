@@ -125,6 +125,16 @@ func (am *assetManager) GetTokenPools(ctx context.Context, ns string, filter dat
 	return am.database.GetTokenPools(ctx, am.scopeNS(ns, filter))
 }
 
+func (am *assetManager) GetTokenPoolsByType(ctx context.Context, ns string, typeName string, filter database.AndFilter) ([]*fftypes.TokenPool, *database.FilterResult, error) {
+	if _, err := am.selectTokenPlugin(ctx, typeName); err != nil {
+		return nil, nil, err
+	}
+	if err := fftypes.ValidateFFNameField(ctx, ns, "namespace"); err != nil {
+		return nil, nil, err
+	}
+	return am.database.GetTokenPools(ctx, am.scopeNS(ns, filter))
+}
+
 func (am *assetManager) GetTokenPool(ctx context.Context, ns, typeName, poolName string) (*fftypes.TokenPool, error) {
 	if _, err := am.selectTokenPlugin(ctx, typeName); err != nil {
 		return nil, err

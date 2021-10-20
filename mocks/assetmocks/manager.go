@@ -208,6 +208,38 @@ func (_m *Manager) GetTokenPools(ctx context.Context, ns string, filter database
 	return r0, r1, r2
 }
 
+// GetTokenPoolsByType provides a mock function with given fields: ctx, ns, typeName, filter
+func (_m *Manager) GetTokenPoolsByType(ctx context.Context, ns string, typeName string, filter database.AndFilter) ([]*fftypes.TokenPool, *database.FilterResult, error) {
+	ret := _m.Called(ctx, ns, typeName, filter)
+
+	var r0 []*fftypes.TokenPool
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, database.AndFilter) []*fftypes.TokenPool); ok {
+		r0 = rf(ctx, ns, typeName, filter)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*fftypes.TokenPool)
+		}
+	}
+
+	var r1 *database.FilterResult
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, database.AndFilter) *database.FilterResult); ok {
+		r1 = rf(ctx, ns, typeName, filter)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*database.FilterResult)
+		}
+	}
+
+	var r2 error
+	if rf, ok := ret.Get(2).(func(context.Context, string, string, database.AndFilter) error); ok {
+		r2 = rf(ctx, ns, typeName, filter)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
 // GetTokenTransfers provides a mock function with given fields: ctx, ns, filter
 func (_m *Manager) GetTokenTransfers(ctx context.Context, ns string, filter database.AndFilter) ([]*fftypes.TokenTransfer, *database.FilterResult, error) {
 	ret := _m.Called(ctx, ns, filter)
