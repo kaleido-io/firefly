@@ -19,6 +19,11 @@ config:
   # The Ethereum address of the pre-deployed FireFly smart contract
   fireflyContractAddress: "/instances/contractAddress"
 
+  # The Ethconnect Gateway API endpoint for deploying the FireFly smart contract, requires `deployEthContractJob` to be set to true
+  fireflyContractEthconnectGatewayEndpoint: ""
+
+  deployEthContractJob: false
+
   # The Postgres URL (including credentials and DB) for FireFly to for the database plugin
   postgresUrl: ""
 

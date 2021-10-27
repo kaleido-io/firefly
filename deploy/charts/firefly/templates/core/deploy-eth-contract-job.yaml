@@ -1,0 +1,37 @@
+{{- if .Values.config.deployEthContractJob -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ template "firefly.fullname" . }}-{{ .Values.config.organizationName | lower }}-deploy-eth-ccontract"
+  labels:
+    {{- include "firefly.coreLabels" . | nindent 4 }}
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 12000
+  template:
+    spec:
+      containers:
+        - name: deploy-eth-contract
+          image: "{{ .Values.core.image.repository }}:{{ .Values.core.image.tag | default .Chart.AppVersion }}"
+          command:
+            - sh
+            - -ce
+            - |
+          {{ .Files.Get  "scripts/ff-deploy-eth-contract.sh" | indent 10 }}
+          env:
+            - name: ETHCONNECT_URL
+              value: {{ .Values.config.ethconnectUrl | quote }}
+            - name: ETHCONNECT_PREFFIX
+              value: {{ .Values.config.ethconnectPrefixShort | quote }}
+            - name: FF_CONTRACT_GATEWAY_ENDPOINT
+              value: {{ .Values.config.fireflyContractEthconnectGatewayEndpoint | quote }}
+            - name: FF_ORG_ADDRESS
+              value: {{ .Values.config.organizationIdentity | quote }}
+            {{- if and .Values.config.ethconnectUsername .Values.config.ethconnectPassword }}
+            - name: ETHCONNECT_USERNAME
+              value: {{ .Values.config.ethconnectUsername | quote }}
+            - name: ETHCONNECT_PASSWORD
+              value: {{ .Values.config.ethconnectPassword | quote }}
+            {{- end }}
+      restartPolicy: Never
+{{- end }}
