@@ -3,6 +3,10 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: "{{ template "firefly.fullname" . }}-{{ .Values.config.organizationName | lower }}-deploy-eth-ccontract"
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded
   labels:
     {{- include "firefly.coreLabels" . | nindent 4 }}
 spec:
