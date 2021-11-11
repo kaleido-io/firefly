@@ -19,14 +19,23 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime/pprof"
 
 	"github.com/hyperledger/firefly/cmd"
 )
 
 func main() {
+	f, err := os.Create("cpu.pprof")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+	}
+	err = pprof.StartCPUProfile(f)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+	}
+	defer pprof.StopCPUProfile()
+
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
-		os.Exit(1)
 	}
-	os.Exit(0)
 }
