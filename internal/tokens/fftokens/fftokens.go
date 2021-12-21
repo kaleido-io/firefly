@@ -139,6 +139,7 @@ func (ft *FFTokens) Init(ctx context.Context, name string, prefix config.Prefix,
 }
 
 func (ft *FFTokens) Start() error {
+	log.L(ft.ctx).Infof("calling ff tokens start")
 	return ft.wsconn.Connect()
 }
 

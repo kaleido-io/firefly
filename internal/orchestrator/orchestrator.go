@@ -163,6 +163,7 @@ func NewOrchestrator() Orchestrator {
 }
 
 func (or *orchestrator) Init(ctx context.Context, cancelCtx context.CancelFunc) (err error) {
+	log.L(ctx).Infof("calling orchestrator init")
 	or.ctx = ctx
 	or.cancelCtx = cancelCtx
 	err = or.initPlugins(ctx)
@@ -183,6 +184,8 @@ func (or *orchestrator) Init(ctx context.Context, cancelCtx context.CancelFunc) 
 }
 
 func (or *orchestrator) Start() error {
+	log.L(or.ctx).Infof("calling orchestrator start")
+
 	if or.preInitMode {
 		log.L(or.ctx).Infof("Orchestrator in pre-init mode, waiting for initialization")
 		return nil
@@ -201,7 +204,9 @@ func (or *orchestrator) Start() error {
 		err = or.messaging.Start()
 	}
 	if err == nil {
+		log.L(or.ctx).Infof("calling range or.tokens")
 		for _, el := range or.tokens {
+			log.L(or.ctx).Infof("found tokens")
 			if err = el.Start(); err != nil {
 				break
 			}
@@ -280,6 +285,7 @@ func (or *orchestrator) initDatabaseCheckPreinit(ctx context.Context) (err error
 }
 
 func (or *orchestrator) initPlugins(ctx context.Context) (err error) {
+	log.L(ctx).Info("calling initPlugins")
 
 	if err = or.initDatabaseCheckPreinit(ctx); err != nil {
 		return err
@@ -327,13 +333,18 @@ func (or *orchestrator) initPlugins(ctx context.Context) (err error) {
 		return err
 	}
 
+	log.L(ctx).Info("Checking if or.tokens == nil")
 	if or.tokens == nil {
+		log.L(ctx).Info("or.tokens == nil")
 		or.tokens = make(map[string]tokens.Plugin)
 		tokensConfigArraySize := tokensConfig.ArraySize()
 		for i := 0; i < tokensConfigArraySize; i++ {
 			prefix := tokensConfig.ArrayEntry(i)
 			name := prefix.GetString(tokens.TokensConfigName)
 			pluginName := prefix.GetString(tokens.TokensConfigPlugin)
+
+			log.L(ctx).Infof("Checking tokens plugin name=%s plugin=%s", name, pluginName)
+
 			if name == "" {
 				return i18n.NewError(ctx, i18n.MsgMissingTokensPluginConfig)
 			}
