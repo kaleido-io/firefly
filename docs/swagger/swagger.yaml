@@ -4492,7 +4492,7 @@ paths:
                     - contract_interface_rejected
                     - contract_api_confirmed
                     - contract_api_rejected
-                    - contract_event
+                    - blockchain_event
                     type: string
                 type: object
           description: Success
@@ -4552,7 +4552,7 @@ paths:
                     - contract_interface_rejected
                     - contract_api_confirmed
                     - contract_api_rejected
-                    - contract_event
+                    - blockchain_event
                     type: string
                 type: object
           description: Success
@@ -5224,7 +5224,7 @@ paths:
                     - contract_interface_rejected
                     - contract_api_confirmed
                     - contract_api_rejected
-                    - contract_event
+                    - blockchain_event
                     type: string
                 type: object
           description: Success

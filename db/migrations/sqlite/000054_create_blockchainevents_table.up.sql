@@ -1,5 +1,4 @@
-BEGIN;
-CREATE TABLE contractevents (
+CREATE TABLE blockchainevents (
   seq              INTEGER         PRIMARY KEY AUTOINCREMENT,
   id               UUID            NOT NULL,
   namespace        VARCHAR(64)     NOT NULL,
@@ -7,6 +6,5 @@ CREATE TABLE contractevents (
   subscription_id  UUID            NOT NULL,
   outputs          BYTEA,
   info             BYTEA,
-  created          BIGINT          NOT NULL
+  timestamp        BIGINT          NOT NULL
 );
-COMMIT;
