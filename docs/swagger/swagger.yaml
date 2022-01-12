@@ -1749,6 +1749,16 @@ paths:
         name: timestamp
         schema:
           type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: tx.id
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: tx.type
+        schema:
+          type: string
       - description: Sort field. For multi-field sort use comma separated values (or
           multiple query values) with '-' prefix for descending
         in: query
@@ -1809,6 +1819,12 @@ paths:
                     type: string
                   subscription: {}
                   timestamp: {}
+                  tx:
+                    properties:
+                      id: {}
+                      type:
+                        type: string
+                    type: object
                 type: object
           description: Success
         default:
@@ -1864,6 +1880,12 @@ paths:
                     type: string
                   subscription: {}
                   timestamp: {}
+                  tx:
+                    properties:
+                      id: {}
+                      type:
+                        type: string
+                    type: object
                 type: object
           description: Success
         default:
@@ -7995,6 +8017,16 @@ paths:
           type: string
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
         in: query
+        name: tx.id
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: tx.type
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
         name: uri
         schema:
           type: string
@@ -9352,6 +9384,16 @@ paths:
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
         in: query
         name: tokenindex
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: tx.id
+        schema:
+          type: string
+      - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
+        in: query
+        name: tx.type
         schema:
           type: string
       - description: 'Data filter field. Prefixes supported: > >= < <= @ ^ ! !@ !^'
