@@ -162,7 +162,7 @@ func (s *broadcastSender) sendInternal(ctx context.Context, method sendMethod) (
 	}
 
 	// Store the message - this asynchronously triggers the next step in process
-	return s.mgr.database.UpsertMessage(ctx, &s.msg.Message, database.UpsertOptimizationNew)
+	return s.mgr.database.UpsertMessage(ctx, &s.msg.Message, database.UpsertOptimizationNew, true)
 }
 
 func (s *broadcastSender) isRootOrgBroadcast(ctx context.Context) bool {

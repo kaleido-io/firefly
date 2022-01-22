@@ -73,7 +73,7 @@ func (s *SQLCommon) InsertBlockchainEvent(ctx context.Context, event *fftypes.Bl
 				event.TX.ID,
 			),
 		func() {
-			s.callbacks.OrderedUUIDCollectionNSEvent(database.CollectionBlockchainEvents, fftypes.ChangeEventTypeCreated, event.Namespace, event.ID, event.Sequence)
+			s.callbacks.OrderedUUIDCollectionNSEvent(database.CollectionBlockchainEvents, fftypes.ChangeEventTypeCreated, event.Namespace, event.ID, event.Sequence, false)
 		},
 	); err != nil {
 		return err

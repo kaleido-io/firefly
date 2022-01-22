@@ -55,7 +55,7 @@ func TestBroadcastMessageOk(t *testing.T) {
 	mdm.On("ResolveInlineDataBroadcast", ctx, "ns1", mock.Anything).Return(fftypes.DataRefs{
 		{ID: fftypes.NewUUID(), Hash: fftypes.NewRandB32()},
 	}, []*fftypes.DataAndBlob{}, nil)
-	mdi.On("UpsertMessage", ctx, mock.Anything, database.UpsertOptimizationNew).Return(nil)
+	mdi.On("UpsertMessage", ctx, mock.Anything, database.UpsertOptimizationNew, true).Return(nil)
 	mim.On("ResolveInputIdentity", ctx, mock.Anything).Return(nil)
 
 	msg, err := bm.BroadcastMessage(ctx, "ns1", &fftypes.MessageInOut{
@@ -112,7 +112,7 @@ func TestBroadcastRootOrg(t *testing.T) {
 	mdm.On("ResolveInlineDataBroadcast", ctx, "ns1", mock.Anything).Return(fftypes.DataRefs{
 		{ID: fftypes.NewUUID(), Hash: fftypes.NewRandB32()},
 	}, []*fftypes.DataAndBlob{}, nil)
-	mdi.On("UpsertMessage", ctx, mock.Anything, database.UpsertOptimizationNew).Return(nil)
+	mdi.On("UpsertMessage", ctx, mock.Anything, database.UpsertOptimizationNew, true).Return(nil)
 	mim.On("ResolveInputIdentity", ctx, mock.Anything).Return(nil)
 
 	msg, err := bm.BroadcastMessage(ctx, "ns1", &fftypes.MessageInOut{
@@ -214,7 +214,7 @@ func TestBroadcastMessageWaitConfirmOk(t *testing.T) {
 			send(ctx)
 		}).
 		Return(replyMsg, nil)
-	mdi.On("UpsertMessage", ctx, mock.Anything, database.UpsertOptimizationNew).Return(nil)
+	mdi.On("UpsertMessage", ctx, mock.Anything, database.UpsertOptimizationNew, true).Return(nil)
 
 	msg, err := bm.BroadcastMessage(ctx, "ns1", &fftypes.MessageInOut{
 		Message: fftypes.Message{
@@ -279,7 +279,7 @@ func TestBroadcastMessageWithBlobsOk(t *testing.T) {
 		return true
 	})).Return("payload-ref", nil)
 	mdi.On("UpdateData", ctx, mock.Anything, mock.Anything).Return(nil)
-	mdi.On("UpsertMessage", ctx, mock.Anything, database.UpsertOptimizationNew).Return(nil)
+	mdi.On("UpsertMessage", ctx, mock.Anything, database.UpsertOptimizationNew, true).Return(nil)
 	mim.On("ResolveInputIdentity", ctx, mock.Anything).Return(nil)
 
 	msg, err := bm.BroadcastMessage(ctx, "ns1", &fftypes.MessageInOut{

@@ -81,7 +81,8 @@ type batchManager struct {
 	sequencerClosed            chan struct{}
 	retry                      *retry.Retry
 	offsetID                   int64
-	offset                     int64
+	readOffset                 int64
+	storedOffset               int64
 	closed                     bool
 	readPageSize               uint64
 	messagePollTimeout         time.Duration

@@ -181,7 +181,7 @@ func (s *messageSender) sendInternal(ctx context.Context, method sendMethod) err
 	}
 
 	// Store the message - this asynchronously triggers the next step in process
-	if err := s.mgr.database.UpsertMessage(ctx, &s.msg.Message, database.UpsertOptimizationNew); err != nil {
+	if err := s.mgr.database.UpsertMessage(ctx, &s.msg.Message, database.UpsertOptimizationNew, true); err != nil {
 		return err
 	}
 

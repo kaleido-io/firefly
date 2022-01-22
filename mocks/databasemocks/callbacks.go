@@ -24,9 +24,9 @@ func (_m *Callbacks) OrderedCollectionEvent(resType database.OrderedCollection, 
 	_m.Called(resType, eventType, sequence)
 }
 
-// OrderedUUIDCollectionNSEvent provides a mock function with given fields: resType, eventType, ns, id, sequence
-func (_m *Callbacks) OrderedUUIDCollectionNSEvent(resType database.OrderedUUIDCollectionNS, eventType fftypes.ChangeEventType, ns string, id *fftypes.UUID, sequence int64) {
-	_m.Called(resType, eventType, ns, id, sequence)
+// OrderedUUIDCollectionNSEvent provides a mock function with given fields: resType, eventType, ns, id, sequence, requireRewind
+func (_m *Callbacks) OrderedUUIDCollectionNSEvent(resType database.OrderedUUIDCollectionNS, eventType fftypes.ChangeEventType, ns string, id *fftypes.UUID, sequence int64, requireRewind bool) {
+	_m.Called(resType, eventType, ns, id, sequence, requireRewind)
 }
 
 // UUIDCollectionEvent provides a mock function with given fields: resType, eventType, id

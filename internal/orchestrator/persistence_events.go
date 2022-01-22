@@ -1,4 +1,4 @@
-// Copyright © 2021 Kaleido, Inc.
+// Copyright © 2022 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -32,9 +32,11 @@ func (or *orchestrator) attemptChangeEventDispatch(ev *fftypes.ChangeEvent) {
 	}
 }
 
-func (or *orchestrator) OrderedUUIDCollectionNSEvent(resType database.OrderedUUIDCollectionNS, eventType fftypes.ChangeEventType, ns string, id *fftypes.UUID, sequence int64) {
+func (or *orchestrator) OrderedUUIDCollectionNSEvent(resType database.OrderedUUIDCollectionNS, eventType fftypes.ChangeEventType, ns string, id *fftypes.UUID, sequence int64, requireRewind bool) {
 	switch {
-	case eventType == fftypes.ChangeEventTypeCreated && resType == database.CollectionMessages:
+	case eventType == fftypes.ChangeEventTypeCreated && resType == database.CollectionMessages,
+		eventType == fftypes.ChangeEventTypeUpdated && resType == database.CollectionMessages && requireRewind:
+		// A new message, or a message where the status means it is now ready to be processed
 		or.batch.NewMessages() <- sequence
 	case eventType == fftypes.ChangeEventTypeCreated && resType == database.CollectionEvents:
 		or.events.NewEvents() <- sequence

@@ -75,7 +75,7 @@ type iMessageCollection interface {
 	// UpsertMessage - Upsert a message, with all the embedded data references.
 	//                 The database layer must ensure that if a record already exists, the hash of that existing record
 	//                 must match the hash of the record that is being inserted.
-	UpsertMessage(ctx context.Context, message *fftypes.Message, optimization UpsertOptimization) (err error)
+	UpsertMessage(ctx context.Context, message *fftypes.Message, optimization UpsertOptimization, requireRewind bool) (err error)
 
 	// UpdateMessage - Update message
 	UpdateMessage(ctx context.Context, id *fftypes.UUID, update Update) (err error)
@@ -624,8 +624,11 @@ const (
 // providing a building block for a cluster of FireFly servers to directly propgate events to each other.
 //
 type Callbacks interface {
-	// OrderedUUIDCollectionNSEvent emits the sequence on insert, but it will be -1 on update
-	OrderedUUIDCollectionNSEvent(resType OrderedUUIDCollectionNS, eventType fftypes.ChangeEventType, ns string, id *fftypes.UUID, sequence int64)
+	// OrderedUUIDCollectionNSEvent emits the sequence on insert, but it will be -1 on update unless requireRewind is true.
+	// requireRewind is a special flag some DB operations can set when the update make the object "ready" for processing, similar to
+	// when the resource is first created. For example a not-ready to ready state change on a message for batch dispatch.
+	// Check requireRewind it is implemented for your chosen resource before relying on the value.
+	OrderedUUIDCollectionNSEvent(resType OrderedUUIDCollectionNS, eventType fftypes.ChangeEventType, ns string, id *fftypes.UUID, sequence int64, requireRewind bool)
 	OrderedCollectionEvent(resType OrderedCollection, eventType fftypes.ChangeEventType, sequence int64)
 	UUIDCollectionNSEvent(resType UUIDCollectionNS, eventType fftypes.ChangeEventType, ns string, id *fftypes.UUID)
 	UUIDCollectionEvent(resType UUIDCollection, eventType fftypes.ChangeEventType, id *fftypes.UUID)

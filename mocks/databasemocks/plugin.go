@@ -2577,13 +2577,13 @@ func (_m *Plugin) UpsertGroup(ctx context.Context, data *fftypes.Group, allowExi
 	return r0
 }
 
-// UpsertMessage provides a mock function with given fields: ctx, message, optimization
-func (_m *Plugin) UpsertMessage(ctx context.Context, message *fftypes.Message, optimization database.UpsertOptimization) error {
-	ret := _m.Called(ctx, message, optimization)
+// UpsertMessage provides a mock function with given fields: ctx, message, optimization, requireRewind
+func (_m *Plugin) UpsertMessage(ctx context.Context, message *fftypes.Message, optimization database.UpsertOptimization, requireRewind bool) error {
+	ret := _m.Called(ctx, message, optimization, requireRewind)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *fftypes.Message, database.UpsertOptimization) error); ok {
-		r0 = rf(ctx, message, optimization)
+	if rf, ok := ret.Get(0).(func(context.Context, *fftypes.Message, database.UpsertOptimization, bool) error); ok {
+		r0 = rf(ctx, message, optimization, requireRewind)
 	} else {
 		r0 = ret.Error(0)
 	}

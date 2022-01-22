@@ -35,7 +35,7 @@ func TestMessageCreated(t *testing.T) {
 	}
 	mb.On("NewMessages").Return((chan<- int64)(make(chan int64, 1)))
 	mem.On("ChangeEvents").Return((chan<- *fftypes.ChangeEvent)(make(chan *fftypes.ChangeEvent, 1)))
-	o.OrderedUUIDCollectionNSEvent(database.CollectionMessages, fftypes.ChangeEventTypeCreated, "ns1", fftypes.NewUUID(), 12345)
+	o.OrderedUUIDCollectionNSEvent(database.CollectionMessages, fftypes.ChangeEventTypeCreated, "ns1", fftypes.NewUUID(), 12345, false)
 	mb.AssertExpectations(t)
 }
 
@@ -57,7 +57,7 @@ func TestEventCreated(t *testing.T) {
 	}
 	mem.On("NewEvents").Return((chan<- int64)(make(chan int64, 1)))
 	mem.On("ChangeEvents").Return((chan<- *fftypes.ChangeEvent)(make(chan *fftypes.ChangeEvent, 1)))
-	o.OrderedUUIDCollectionNSEvent(database.CollectionEvents, fftypes.ChangeEventTypeCreated, "ns1", fftypes.NewUUID(), 12345)
+	o.OrderedUUIDCollectionNSEvent(database.CollectionEvents, fftypes.ChangeEventTypeCreated, "ns1", fftypes.NewUUID(), 12345, false)
 	mem.AssertExpectations(t)
 }
 

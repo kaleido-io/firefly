@@ -82,7 +82,7 @@ func TestBroadcastMessageGood(t *testing.T) {
 	defer cancel()
 
 	msg := &fftypes.MessageInOut{}
-	bm.database.(*databasemocks.Plugin).On("UpsertMessage", mock.Anything, &msg.Message, database.UpsertOptimizationNew).Return(nil)
+	bm.database.(*databasemocks.Plugin).On("UpsertMessage", mock.Anything, &msg.Message, database.UpsertOptimizationNew, true).Return(nil)
 
 	broadcast := broadcastSender{
 		mgr: bm,

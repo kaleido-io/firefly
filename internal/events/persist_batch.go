@@ -218,7 +218,7 @@ func (em *eventManager) persistReceivedMessage(ctx context.Context /* db TX cont
 	// Insert the message, ensuring the hash doesn't change.
 	// We do not mark it as confirmed at this point, that's the job of the aggregator.
 	msg.State = fftypes.MessageStatePending
-	if err = em.database.UpsertMessage(ctx, msg, optimization); err != nil {
+	if err = em.database.UpsertMessage(ctx, msg, optimization, false); err != nil {
 		if err == database.HashMismatch {
 			l.Errorf("Invalid message entry %d in %s '%s'. Hash mismatch with existing record with same UUID '%s' Hash=%s", i, mType, mID, msg.Header.ID, msg.Hash)
 			return false, nil // This is not retryable. skip this data entry

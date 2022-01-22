@@ -56,7 +56,21 @@ var (
 	}
 )
 
-func (s *SQLCommon) attemptMessageUpdate(ctx context.Context, tx *txWrapper, message *fftypes.Message) (int64, error) {
+func (s *SQLCommon) attemptMessageUpdate(ctx context.Context, tx *txWrapper, message *fftypes.Message, requireRewind bool, sequence int64) (int64, error) {
+	if requireRewind && sequence < 0 {
+		// For rewinds, we should include the sequence in the event - so we have to query it
+		msgRows, _, err := s.queryTx(ctx, tx,
+			sq.Select(sequenceColumn).
+				From("messages").
+				Where(sq.Eq{"id": message.Header.ID}),
+		)
+		if err != nil {
+			return -1, err
+		}
+		if msgRows.Next() {
+			_ = msgRows.Scan(&sequence)
+		}
+	}
 	return s.updateTx(ctx, tx,
 		sq.Update("messages").
 			Set("cid", message.Header.CID).
@@ -80,7 +94,7 @@ func (s *SQLCommon) attemptMessageUpdate(ctx context.Context, tx *txWrapper, mes
 				"hash": message.Hash,
 			}),
 		func() {
-			s.callbacks.OrderedUUIDCollectionNSEvent(database.CollectionMessages, fftypes.ChangeEventTypeUpdated, message.Header.Namespace, message.Header.ID, -1 /* not applicable on update */)
+			s.callbacks.OrderedUUIDCollectionNSEvent(database.CollectionMessages, fftypes.ChangeEventTypeUpdated, message.Header.Namespace, message.Header.ID, sequence, requireRewind)
 		})
 }
 
@@ -108,12 +122,12 @@ func (s *SQLCommon) attemptMessageInsert(ctx context.Context, tx *txWrapper, mes
 				message.BatchID,
 			),
 		func() {
-			s.callbacks.OrderedUUIDCollectionNSEvent(database.CollectionMessages, fftypes.ChangeEventTypeCreated, message.Header.Namespace, message.Header.ID, message.Sequence)
+			s.callbacks.OrderedUUIDCollectionNSEvent(database.CollectionMessages, fftypes.ChangeEventTypeCreated, message.Header.Namespace, message.Header.ID, message.Sequence, false /* does not apply on create */)
 		})
 	return err
 }
 
-func (s *SQLCommon) UpsertMessage(ctx context.Context, message *fftypes.Message, optimization database.UpsertOptimization) (err error) {
+func (s *SQLCommon) UpsertMessage(ctx context.Context, message *fftypes.Message, optimization database.UpsertOptimization, requireRewind bool) (err error) {
 	ctx, tx, autoCommit, err := s.beginOrUseTx(ctx)
 	if err != nil {
 		return err
@@ -131,7 +145,7 @@ func (s *SQLCommon) UpsertMessage(ctx context.Context, message *fftypes.Message,
 		opErr := s.attemptMessageInsert(ctx, tx, message)
 		optimized = opErr == nil
 	} else if optimization == database.UpsertOptimizationExisting {
-		rowsAffected, opErr := s.attemptMessageUpdate(ctx, tx, message)
+		rowsAffected, opErr := s.attemptMessageUpdate(ctx, tx, message, requireRewind, -1)
 		optimized = opErr == nil && rowsAffected == 1
 	}
 
@@ -161,7 +175,7 @@ func (s *SQLCommon) UpsertMessage(ctx context.Context, message *fftypes.Message,
 
 		if existing {
 			// Update the message
-			if _, err = s.attemptMessageUpdate(ctx, tx, message); err != nil {
+			if _, err = s.attemptMessageUpdate(ctx, tx, message, requireRewind, message.Sequence); err != nil {
 				return err
 			}
 		} else {

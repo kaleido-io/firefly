@@ -45,7 +45,7 @@ func TestEventE2EWithDB(t *testing.T) {
 		Created:   fftypes.Now(),
 	}
 
-	s.callbacks.On("OrderedUUIDCollectionNSEvent", database.CollectionEvents, fftypes.ChangeEventTypeCreated, "ns1", eventID, mock.Anything).Return()
+	s.callbacks.On("OrderedUUIDCollectionNSEvent", database.CollectionEvents, fftypes.ChangeEventTypeCreated, "ns1", eventID, mock.Anything, false).Return()
 
 	err := s.InsertEvent(ctx, event)
 	assert.NoError(t, err)

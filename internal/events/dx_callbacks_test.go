@@ -746,7 +746,7 @@ func TestMessageReceiveMessagePersistMessageFail(t *testing.T) {
 	mdi.On("GetOrganizationByIdentity", em.ctx, "0x12345").Return(&fftypes.Organization{
 		Identity: "0x12345",
 	}, nil)
-	mdi.On("UpsertMessage", em.ctx, mock.Anything, database.UpsertOptimizationSkip).Return(fmt.Errorf("pop"))
+	mdi.On("UpsertMessage", em.ctx, mock.Anything, database.UpsertOptimizationSkip, false).Return(fmt.Errorf("pop"))
 
 	m, err := em.MessageReceived(mdx, "peer1", b)
 	assert.Regexp(t, "FF10158", err)
@@ -849,7 +849,7 @@ func TestMessageReceiveMessagePersistEventFail(t *testing.T) {
 		Identity: "0x12345",
 	}, nil)
 	mdi.On("UpsertData", em.ctx, mock.Anything, database.UpsertOptimizationSkip).Return(nil)
-	mdi.On("UpsertMessage", em.ctx, mock.Anything, database.UpsertOptimizationSkip).Return(nil)
+	mdi.On("UpsertMessage", em.ctx, mock.Anything, database.UpsertOptimizationSkip, false).Return(nil)
 	mdi.On("InsertEvent", em.ctx, mock.Anything).Return(fmt.Errorf("pop"))
 
 	m, err := em.MessageReceived(mdx, "peer1", b)

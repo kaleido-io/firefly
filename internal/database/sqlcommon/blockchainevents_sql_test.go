@@ -45,7 +45,7 @@ func TestBlockchainEventsE2EWithDB(t *testing.T) {
 		Timestamp:    fftypes.Now(),
 	}
 
-	s.callbacks.On("OrderedUUIDCollectionNSEvent", database.CollectionBlockchainEvents, fftypes.ChangeEventTypeCreated, "ns", event.ID, int64(1)).Return()
+	s.callbacks.On("OrderedUUIDCollectionNSEvent", database.CollectionBlockchainEvents, fftypes.ChangeEventTypeCreated, "ns", event.ID, int64(1), false).Return()
 
 	err := s.InsertBlockchainEvent(ctx, event)
 	assert.NotNil(t, event.Timestamp)

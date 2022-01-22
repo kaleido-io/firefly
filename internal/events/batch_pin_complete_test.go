@@ -518,7 +518,7 @@ func TestPersistBatchGoodDataMessageFail(t *testing.T) {
 
 	mdi := em.database.(*databasemocks.Plugin)
 	mdi.On("UpsertBatch", mock.Anything, mock.Anything, false).Return(nil)
-	mdi.On("UpsertMessage", mock.Anything, mock.Anything, database.UpsertOptimizationSkip).Return(fmt.Errorf("pop"))
+	mdi.On("UpsertMessage", mock.Anything, mock.Anything, database.UpsertOptimizationSkip, false).Return(fmt.Errorf("pop"))
 
 	valid, err := em.persistBatch(context.Background(), batch)
 	assert.False(t, valid)
@@ -676,7 +676,7 @@ func TestPersistBatchMessageUpsertHashMismatch(t *testing.T) {
 	assert.NoError(t, msg.Verify(context.Background()))
 
 	mdi := em.database.(*databasemocks.Plugin)
-	mdi.On("UpsertMessage", mock.Anything, mock.Anything, database.UpsertOptimizationSkip).Return(database.HashMismatch)
+	mdi.On("UpsertMessage", mock.Anything, mock.Anything, database.UpsertOptimizationSkip, false).Return(database.HashMismatch)
 
 	valid, err := em.persistBatchMessage(context.Background(), batch, 0, msg, database.UpsertOptimizationSkip)
 	assert.False(t, valid)
@@ -700,7 +700,7 @@ func TestPersistBatchMessageUpsertMessageFail(t *testing.T) {
 	assert.NoError(t, msg.Verify(context.Background()))
 
 	mdi := em.database.(*databasemocks.Plugin)
-	mdi.On("UpsertMessage", mock.Anything, mock.Anything, database.UpsertOptimizationSkip).Return(fmt.Errorf("pop"))
+	mdi.On("UpsertMessage", mock.Anything, mock.Anything, database.UpsertOptimizationSkip, false).Return(fmt.Errorf("pop"))
 
 	valid, err := em.persistBatchMessage(context.Background(), batch, 0, msg, database.UpsertOptimizationSkip)
 	assert.False(t, valid)
@@ -723,7 +723,7 @@ func TestPersistBatchMessageOK(t *testing.T) {
 	assert.NoError(t, msg.Verify(context.Background()))
 
 	mdi := em.database.(*databasemocks.Plugin)
-	mdi.On("UpsertMessage", mock.Anything, mock.Anything, database.UpsertOptimizationSkip).Return(nil)
+	mdi.On("UpsertMessage", mock.Anything, mock.Anything, database.UpsertOptimizationSkip, false).Return(nil)
 
 	valid, err := em.persistBatchMessage(context.Background(), batch, 0, msg, database.UpsertOptimizationSkip)
 	assert.True(t, valid)
