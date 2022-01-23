@@ -354,7 +354,7 @@ func (e *Ethereum) eventLoop() {
 	}
 }
 
-func varlidateEthADdress(ctx context.Context, key string) (string, error) {
+func varlidateEthAddress(ctx context.Context, key string) (string, error) {
 	keyLower := strings.ToLower(key)
 	keyNoHexPrefix := strings.TrimPrefix(keyLower, "0x")
 	if addressVerify.MatchString(keyNoHexPrefix) {
@@ -364,13 +364,9 @@ func varlidateEthADdress(ctx context.Context, key string) (string, error) {
 }
 
 func (e *Ethereum) ResolveSigningKey(ctx context.Context, key string) (string, error) {
-	resolved, err := varlidateEthADdress(ctx, key)
+	resolved, err := varlidateEthAddress(ctx, key)
 	if err != nil && e.addressResolver != nil {
-		resolved, err := e.addressResolver.ResolveSigningKey(ctx, key)
-		if err != nil {
-			return "", err
-		}
-		return resolved.Address(), nil
+		return e.addressResolver.ResolveSigningKey(ctx, key)
 	}
 	return resolved, err
 }
