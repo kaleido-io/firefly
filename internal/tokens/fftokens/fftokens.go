@@ -1,4 +1,4 @@
-// Copyright © 2021 Kaleido, Inc.
+// Copyright © 2022 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -68,6 +68,8 @@ type createPool struct {
 	Operator  string             `json:"operator"`
 	Data      string             `json:"data,omitempty"`
 	Config    fftypes.JSONObject `json:"config"`
+	Name      string             `json:"name"`
+	Symbol    string             `json:"symbol"`
 }
 
 type activatePool struct {
@@ -343,6 +345,8 @@ func (ft *FFTokens) CreateTokenPool(ctx context.Context, operationID *fftypes.UU
 			Operator:  pool.Key,
 			Data:      string(data),
 			Config:    pool.Config,
+			Name:      pool.Name,
+			Symbol:    pool.Symbol,
 		}).
 		Post("/api/v1/createpool")
 	if err != nil || !res.IsSuccess() {
