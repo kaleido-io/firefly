@@ -298,7 +298,7 @@ func (s *transferSender) sendInternal(ctx context.Context, method sendMethod) er
 		panic(fmt.Sprintf("unknown transfer type: %v", s.transfer.Type))
 	}
 
-	// if transaction fails,  mark tx and op as failed in DB
+	// if transaction fails,  mark op as failed in DB
 	if err != nil {
 		_ = s.mgr.database.RunAsGroup(ctx, func(ctx context.Context) (err error) {
 			l := log.L(ctx)
