@@ -193,12 +193,16 @@ func (ep *eventPoller) readPage() ([]fftypes.LocallySequenced, error) {
 func (ep *eventPoller) waitForGapFill(events []fftypes.LocallySequenced) bool {
 
 	// gapFillTimeout and maybeRewind are mutually exclusive
-	if ep.conf.gapFillTimeout == nil || ep.conf.maybeRewind != nil || ep.totalEventsPolled == 0 {
+	if ep.conf.gapFillTimeout == nil || ep.conf.maybeRewind != nil || len(events) == 0 {
 		return false
 	}
 
-	gapDetected := false
 	expectedNext := ep.pollingOffset + 1
+	if ep.totalEventsPolled == 0 {
+		expectedNext = events[0].LocalSequence()
+	}
+
+	gapDetected := false
 	for _, event := range events {
 		foundSequence := event.LocalSequence()
 		if foundSequence != expectedNext {

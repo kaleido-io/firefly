@@ -323,6 +323,7 @@ func TestGapFill(t *testing.T) {
 
 	tenSecs := 10 * time.Second
 	ep.conf.gapFillTimeout = &tenSecs
+	ep.totalEventsPolled = 1
 
 	ep.pollingOffset = 1000
 	waitForGap := ep.waitForGapFill([]fftypes.LocallySequenced{
@@ -353,7 +354,7 @@ func TestGapFill(t *testing.T) {
 	assert.NotZero(t, ep.gaps[1007])
 	assert.NotZero(t, ep.gaps[1051])
 
-	ep.pollingOffset = 1050
+	ep.totalEventsPolled = 0
 	waitForGap = ep.waitForGapFill([]fftypes.LocallySequenced{
 		&fftypes.Event{Sequence: 1051},
 		&fftypes.Event{Sequence: 1052},
@@ -364,6 +365,7 @@ func TestGapFill(t *testing.T) {
 	assert.False(t, waitForGap)
 	assert.Len(t, ep.gaps, 0)
 
+	ep.totalEventsPolled = 1
 	ep.pollingOffset = 1050
 	ep.gaps[1051] = time.Now().Add(-11 * time.Second)
 	waitForGap = ep.waitForGapFill([]fftypes.LocallySequenced{
