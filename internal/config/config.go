@@ -136,6 +136,8 @@ var (
 	EventAggregatorRetryMaxDelay = rootKey("event.aggregator.retry.maxDelay")
 	// EventDispatcherPollTimeout the time to wait without a notification of new events, before trying a select on the table
 	EventDispatcherPollTimeout = rootKey("event.dispatcher.pollTimeout")
+	// EventDispatcherGapFillTimeout the time to wait for gaps in the stream to fill, before moving on to new events
+	EventDispatcherGapFillTimeout = rootKey("event.dispatcher.gapFillTimeout")
 	// EventDispatcherBufferLength the number of events + attachments an individual dispatcher should hold in memory ready for delivery to the subscription
 	EventDispatcherBufferLength = rootKey("event.dispatcher.bufferLength")
 	// EventDispatcherBatchTimeout a short time to wait for new events to arrive before re-polling for new events
@@ -322,6 +324,7 @@ func Reset() {
 	viper.SetDefault(string(EventDispatcherBufferLength), 5)
 	viper.SetDefault(string(EventDispatcherBatchTimeout), "0")
 	viper.SetDefault(string(EventDispatcherPollTimeout), "30s")
+	viper.SetDefault(string(EventDispatcherGapFillTimeout), "30s")
 	viper.SetDefault(string(EventTransportsEnabled), []string{"websockets", "webhooks"})
 	viper.SetDefault(string(EventTransportsDefault), "websockets")
 	viper.SetDefault(string(GroupCacheSize), "1Mb")

@@ -1,4 +1,4 @@
-// Copyright © 2021 Kaleido, Inc.
+// Copyright © 2022 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -95,10 +95,12 @@ func newEventDispatcher(ctx context.Context, ei events.Plugin, di database.Plugi
 		cel:           cel,
 	}
 
+	gapFillTimeout := config.GetDuration(config.EventDispatcherGapFillTimeout)
 	pollerConf := &eventPollerConf{
 		eventBatchSize:             config.GetInt(config.EventDispatcherBufferLength),
 		eventBatchTimeout:          config.GetDuration(config.EventDispatcherBatchTimeout),
 		eventPollTimeout:           config.GetDuration(config.EventDispatcherPollTimeout),
+		gapFillTimeout:             &gapFillTimeout,
 		startupOffsetRetryAttempts: 0, // We need to keep trying to start indefinitely
 		retry: retry.Retry{
 			InitialDelay: config.GetDuration(config.EventDispatcherRetryInitDelay),

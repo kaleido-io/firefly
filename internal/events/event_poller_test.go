@@ -268,6 +268,18 @@ func TestProcessEventsFail(t *testing.T) {
 	mdi.AssertExpectations(t)
 }
 
+func TestWaitForShoulderTapGapTime(t *testing.T) {
+	mdi := &databasemocks.Plugin{}
+	ep, cancel := newTestEventPoller(t, mdi, nil, nil)
+	defer cancel()
+	ep.conf.eventBatchTimeout = 1 * time.Minute
+	ep.conf.eventBatchSize = 50
+	tenSecs := 10 * time.Second
+	ep.conf.gapFillTimeout = &tenSecs
+	ep.gaps[1001] = time.Now().Add(-11 * time.Second)
+	ep.waitForShoulderTapOrPollTimeout(0)
+}
+
 func TestWaitForShoulderTapOrExitCloseBatch(t *testing.T) {
 	mdi := &databasemocks.Plugin{}
 	ep, cancel := newTestEventPoller(t, mdi, nil, nil)
@@ -302,6 +314,63 @@ func TestWaitForShoulderTapOrPollTimeoutTap(t *testing.T) {
 	defer cancel()
 	ep.shoulderTap()
 	assert.True(t, ep.waitForShoulderTapOrPollTimeout(ep.conf.eventBatchSize))
+}
+
+func TestGapFill(t *testing.T) {
+	mdi := &databasemocks.Plugin{}
+	ep, cancel := newTestEventPoller(t, mdi, nil, nil)
+	defer cancel()
+
+	tenSecs := 10 * time.Second
+	ep.conf.gapFillTimeout = &tenSecs
+
+	ep.pollingOffset = 1000
+	waitForGap := ep.waitForGapFill([]fftypes.LocallySequenced{
+		&fftypes.Event{Sequence: 1002},
+		&fftypes.Event{Sequence: 1003},
+		&fftypes.Event{Sequence: 1005},
+		&fftypes.Event{Sequence: 1006},
+		&fftypes.Event{Sequence: 1055},
+	})
+	assert.True(t, waitForGap)
+	assert.Len(t, ep.gaps, 3)
+	assert.NotZero(t, ep.gaps[1001])
+	assert.NotZero(t, ep.gaps[1004])
+	assert.NotZero(t, ep.gaps[1007])
+
+	waitForGap = ep.waitForGapFill([]fftypes.LocallySequenced{
+		&fftypes.Event{Sequence: 1001},
+		&fftypes.Event{Sequence: 1002},
+		&fftypes.Event{Sequence: 1003},
+		&fftypes.Event{Sequence: 1004},
+		&fftypes.Event{Sequence: 1005},
+		&fftypes.Event{Sequence: 1006},
+		&fftypes.Event{Sequence: 1050},
+		&fftypes.Event{Sequence: 1055},
+	})
+	assert.True(t, waitForGap)
+	assert.Len(t, ep.gaps, 2)
+	assert.NotZero(t, ep.gaps[1007])
+	assert.NotZero(t, ep.gaps[1051])
+
+	ep.pollingOffset = 1050
+	waitForGap = ep.waitForGapFill([]fftypes.LocallySequenced{
+		&fftypes.Event{Sequence: 1051},
+		&fftypes.Event{Sequence: 1052},
+		&fftypes.Event{Sequence: 1053},
+		&fftypes.Event{Sequence: 1054},
+		&fftypes.Event{Sequence: 1055},
+	})
+	assert.False(t, waitForGap)
+	assert.Len(t, ep.gaps, 0)
+
+	ep.pollingOffset = 1050
+	ep.gaps[1051] = time.Now().Add(-11 * time.Second)
+	waitForGap = ep.waitForGapFill([]fftypes.LocallySequenced{
+		&fftypes.Event{Sequence: 1052},
+	})
+	assert.False(t, waitForGap)
+	assert.Len(t, ep.gaps, 0)
 }
 
 func TestDoubleTap(t *testing.T) {

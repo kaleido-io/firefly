@@ -1,4 +1,4 @@
-// Copyright © 2021 Kaleido, Inc.
+// Copyright © 2022 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -29,15 +29,17 @@ import (
 )
 
 type eventPoller struct {
-	ctx           context.Context
-	database      database.Plugin
-	shoulderTaps  chan bool
-	eventNotifier *eventNotifier
-	closed        chan struct{}
-	offsetID      int64
-	pollingOffset int64
-	mux           sync.Mutex
-	conf          *eventPollerConf
+	ctx               context.Context
+	database          database.Plugin
+	shoulderTaps      chan bool
+	eventNotifier     *eventNotifier
+	closed            chan struct{}
+	offsetID          int64
+	pollingOffset     int64
+	gaps              map[int64]time.Time
+	totalEventsPolled int64
+	mux               sync.Mutex
+	conf              *eventPollerConf
 }
 
 type newEventsHandler func(events []fftypes.LocallySequenced) (bool, error)
@@ -52,6 +54,7 @@ type eventPollerConf struct {
 	addCriteria                func(database.AndFilter) database.AndFilter
 	getItems                   func(context.Context, database.Filter) ([]fftypes.LocallySequenced, error)
 	maybeRewind                func() (bool, int64)
+	gapFillTimeout             *time.Duration
 	newEventsHandler           newEventsHandler
 	namespace                  string
 	offsetName                 string
@@ -65,12 +68,10 @@ func newEventPoller(ctx context.Context, di database.Plugin, en *eventNotifier, 
 		ctx:           log.WithLogField(ctx, "role", fmt.Sprintf("ep[%s:%s]", conf.namespace, conf.offsetName)),
 		database:      di,
 		shoulderTaps:  make(chan bool, 1),
+		gaps:          make(map[int64]time.Time),
 		eventNotifier: en,
 		closed:        make(chan struct{}),
 		conf:          conf,
-	}
-	if ep.conf.maybeRewind == nil {
-		ep.conf.maybeRewind = func() (bool, int64) { return false, -1 }
 	}
 	return ep
 }
@@ -161,10 +162,15 @@ func (ep *eventPoller) readPage() ([]fftypes.LocallySequenced, error) {
 
 	// We have a hook here to allow a safe to do operations that check pin state, and perform
 	// a rewind based on it.
-	rewind, pollingOffset := ep.conf.maybeRewind()
-	if rewind {
-		ep.rewindPollingOffset(pollingOffset)
-	} else {
+	rewind := false
+	var pollingOffset int64
+	if ep.conf.maybeRewind != nil {
+		rewind, pollingOffset = ep.conf.maybeRewind()
+		if rewind {
+			ep.rewindPollingOffset(pollingOffset)
+		}
+	}
+	if !rewind {
 		// Ensure we go through the mutex to pickup rewinds that happened elsewhere
 		pollingOffset = ep.getPollingOffset()
 	}
@@ -184,6 +190,47 @@ func (ep *eventPoller) readPage() ([]fftypes.LocallySequenced, error) {
 	return items, err
 }
 
+func (ep *eventPoller) waitForGapFill(events []fftypes.LocallySequenced) bool {
+
+	// gapFillTimeout and maybeRewind are mutually exclusive
+	if ep.conf.gapFillTimeout == nil || ep.conf.maybeRewind != nil || ep.totalEventsPolled == 0 {
+		return false
+	}
+
+	gapDetected := false
+	expectedNext := ep.pollingOffset + 1
+	for _, event := range events {
+		foundSequence := event.LocalSequence()
+		if foundSequence != expectedNext {
+			if existingGap, ok := ep.gaps[expectedNext]; ok {
+				waitTime := time.Since(existingGap)
+				if waitTime > *ep.conf.gapFillTimeout {
+					log.L(ep.ctx).Debugf("Giving up waiting for gap %d to fill after %dms", expectedNext, waitTime.Milliseconds())
+					delete(ep.gaps, expectedNext)
+				} else {
+					gapDetected = true
+				}
+			} else {
+				log.L(ep.ctx).Debugf("Waiting for gap at sequence %d to fill (next=%d)", expectedNext, event.LocalSequence())
+				gapDetected = true
+				ep.gaps[expectedNext] = time.Now()
+			}
+		} else if existingGap, ok := ep.gaps[expectedNext]; ok {
+			log.L(ep.ctx).Debugf("Filled gap %d to after %dms", expectedNext, time.Since(existingGap))
+			delete(ep.gaps, expectedNext)
+		}
+		expectedNext = foundSequence + 1
+	}
+
+	if !gapDetected && len(ep.gaps) > 0 {
+		// Ensure any historical gap state is cleared out
+		ep.gaps = make(map[int64]time.Time)
+	}
+
+	return gapDetected
+
+}
+
 func (ep *eventPoller) eventLoop() {
 	l := log.L(ep.ctx)
 	l.Debugf("Started event detector")
@@ -199,7 +246,9 @@ func (ep *eventPoller) eventLoop() {
 
 		eventCount := len(events)
 		repoll := false
-		if eventCount > 0 {
+		if eventCount > 0 && !ep.waitForGapFill(events) {
+			ep.totalEventsPolled += int64(eventCount)
+
 			// We process all the events in the page in a single database run group, and
 			// keep retrying on all retryable errors, indefinitely ().
 			var err error
@@ -259,6 +308,14 @@ func (ep *eventPoller) shoulderTap() {
 func (ep *eventPoller) waitForShoulderTapOrPollTimeout(lastEventCount int) bool {
 	l := log.L(ep.ctx)
 	longTimeoutDuration := ep.conf.eventPollTimeout
+
+	for _, gapTime := range ep.gaps {
+		gapTimeout := *ep.conf.gapFillTimeout - time.Since(gapTime)
+		if gapTimeout < longTimeoutDuration {
+			longTimeoutDuration = gapTimeout
+		}
+	}
+
 	// For throughput optimized environments, we can set an eventBatchingTimeout to allow messages to arrive
 	// between polling cycles (at the cost of some dispatch latency)
 	if ep.conf.eventBatchTimeout > 0 && lastEventCount > 0 && lastEventCount < ep.conf.eventBatchSize {
