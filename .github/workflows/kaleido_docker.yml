@@ -1,0 +1,50 @@
+name: Kaleido Internal Docker Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        required: true
+        type: string
+        default: main
+        description: Git ref within the kaleido-io/firefly repo to build and push to ECR
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+
+      - name: Set build tag
+        id: build_tag_generator
+        run: |
+          RELEASE_TAG=$(curl https://api.github.com/repos/hyperledger/firefly/releases/latest -s | jq .tag_name -r)
+          BUILD_TAG=$RELEASE_TAG-$(date +"%Y%m%d")-$GITHUB_RUN_NUMBER
+          echo ::set-output name=BUILD_TAG::$BUILD_TAG
+
+      - name: aws creds
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: registry login
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build
+        run: |
+          make DOCKER_ARGS="\
+            --label commit=$GITHUB_SHA \
+            --label build_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+            --label tag=${{ steps.build_tag_generator.outputs.BUILD_TAG }} \
+            --tag ${{ steps.login-ecr.outputs.registry }}/hyperledger-firefly:${{ steps.build_tag_generator.outputs.BUILD_TAG }}" \
+            docker
+
+      - name: Push docker image
+        run: |
+         docker push ${{ steps.login-ecr.outputs.registry }}/hyperledger-firefly:${{ steps.build_tag_generator.outputs.BUILD_TAG }}
