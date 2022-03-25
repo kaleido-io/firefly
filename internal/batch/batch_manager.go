@@ -221,6 +221,7 @@ func (bm *batchManager) readPage() ([]*fftypes.IDAndSequence, error) {
 	bm.rewindOffset = -1
 	bm.rewindOffsetMux.Unlock()
 
+	log.L(bm.ctx).Debugf("Reading page from offset %d", bm.readOffset)
 	var ids []*fftypes.IDAndSequence
 	err := bm.retry.Do(bm.ctx, "retrieve messages", func(attempt int) (retry bool, err error) {
 		fb := database.MessageQueryFactory.NewFilterLimit(bm.ctx, bm.readPageSize)
@@ -286,11 +287,12 @@ func (bm *batchManager) messageSequencer() {
 }
 
 func (bm *batchManager) newMessageNotification(seq int64) {
-	// Determine if we need to queue q rewind
+	// Determine if we need to queue a rewind
 	bm.rewindOffsetMux.Lock()
 	lastSequenceBeforeMsg := seq - 1
 	if bm.rewindOffset == -1 || lastSequenceBeforeMsg < bm.rewindOffset {
 		bm.rewindOffset = lastSequenceBeforeMsg
+		log.L(bm.ctx).Debugf("Rewinding to %d", bm.readOffset) // TODO remove loggin in mux
 	}
 	bm.rewindOffsetMux.Unlock()
 	// Shoulder tap that there is a new message, regardless of whether we rewound
