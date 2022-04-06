@@ -31,7 +31,7 @@ type messageAndData struct {
 
 // persistBatch performs very simple validation on each message/data element (hashes) and either persists
 // or discards them. Errors are returned only in the case of database failures, which should be retried.
-func (em *eventManager) persistBatch(ctx context.Context, batch *fftypes.Batch) (persistedBatch *fftypes.BatchPersisted, valid bool, err error) {
+func (em *eventManager) persistBatch(ctx context.Context, batch *fftypes.Batch, payloadRef string) (persistedBatch *fftypes.BatchPersisted, valid bool, err error) {
 	l := log.L(ctx)
 
 	if batch.ID == nil || batch.Payload.TX.ID == nil || batch.Hash == nil {
@@ -69,6 +69,7 @@ func (em *eventManager) persistBatch(ctx context.Context, batch *fftypes.Batch) 
 	}
 
 	// Upsert the batch
+	persistedBatch.PayloadRef = payloadRef
 	err = em.database.UpsertBatch(ctx, persistedBatch)
 	if err != nil {
 		if err == database.HashMismatch {

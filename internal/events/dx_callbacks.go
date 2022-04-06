@@ -103,7 +103,7 @@ func (em *eventManager) privateBatchReceived(peerID string, batch *fftypes.Batch
 				return nil
 			}
 
-			persistedBatch, valid, err := em.persistBatch(ctx, batch)
+			persistedBatch, valid, err := em.persistBatch(ctx, batch, "" /* no payload ref currently for private batches */)
 			if err != nil || !valid {
 				l.Errorf("Batch received from org=%s node=%s processing failed valid=%t: %s", node.Parent, node.Name, valid, err)
 				return err // retry - persistBatch only returns retryable errors

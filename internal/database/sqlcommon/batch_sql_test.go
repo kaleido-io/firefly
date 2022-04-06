@@ -148,7 +148,7 @@ func TestBatch2EWithDB(t *testing.T) {
 
 	// Update
 	author2 := "0x222222"
-	up := database.BatchQueryFactory.NewUpdate(ctx).Set("author", author2)
+	up := database.BatchQueryFactory.NewUpdate(ctx).Set("author", author2).Set("payloadref", "test12345")
 	err = s.UpdateBatch(ctx, batchID, up)
 	assert.NoError(t, err)
 
@@ -156,6 +156,7 @@ func TestBatch2EWithDB(t *testing.T) {
 	filter = fb.And(
 		fb.Eq("id", batchUpdated.ID.String()),
 		fb.Eq("author", author2),
+		fb.Eq("payloadref", "test12345"),
 	)
 	batches, res, err := s.GetBatches(ctx, filter.Count(true))
 	assert.NoError(t, err)

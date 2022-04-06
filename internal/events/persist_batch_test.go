@@ -85,7 +85,7 @@ func TestPersistBatch(t *testing.T) {
 	bp, _ := batch.Confirmed()
 	batch.Hash = fftypes.HashString(bp.Manifest.String())
 
-	_, _, err = em.persistBatch(em.ctx, batch)
+	_, _, err = em.persistBatch(em.ctx, batch, "payload1")
 	assert.EqualError(t, err, "pop") // Confirms we got to upserting the batch
 
 }
@@ -106,7 +106,7 @@ func TestPersistBatchNoCacheDataNotInBatch(t *testing.T) {
 	bp, _ := batch.Confirmed()
 	batch.Hash = fftypes.HashString(bp.Manifest.String())
 
-	_, valid, err := em.persistBatch(em.ctx, batch)
+	_, valid, err := em.persistBatch(em.ctx, batch, "payload1")
 	assert.False(t, valid)
 	assert.NoError(t, err)
 
@@ -129,7 +129,7 @@ func TestPersistBatchExtraDataInBatch(t *testing.T) {
 	bp, _ := batch.Confirmed()
 	batch.Hash = fftypes.HashString(bp.Manifest.String())
 
-	_, valid, err := em.persistBatch(em.ctx, batch)
+	_, valid, err := em.persistBatch(em.ctx, batch, "payload1")
 	assert.False(t, valid)
 	assert.NoError(t, err)
 

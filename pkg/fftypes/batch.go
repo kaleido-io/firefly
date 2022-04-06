@@ -43,7 +43,7 @@ type BatchHeader struct {
 	Namespace string    `json:"namespace"`
 	Node      *UUID     `json:"node,omitempty"`
 	SignerRef
-	Group   *Bytes32 `jdon:"group,omitempty"`
+	Group   *Bytes32 `json:"group,omitempty"`
 	Created *FFTime  `json:"created"`
 }
 

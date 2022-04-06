@@ -4,7 +4,11 @@
   ],
   "go.lintTool": "golangci-lint",
   "cSpell.words": [
-    "fftypes"
+    "dataexchange",
+    "ethconnect",
+    "fabconnect",
+    "fftypes",
+    "hyperledger"
   ],
   "go.testTimeout": "10s"
 }
