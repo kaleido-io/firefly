@@ -1,8 +1,8 @@
 ---
 layout: default
 title: Configuration Reference
-parent: Reference
-nav_order: 3
+parent: pages.reference
+nav_order: 2
 ---
 
 # Configuration Reference
