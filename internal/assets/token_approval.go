@@ -29,7 +29,12 @@ import (
 )
 
 func (am *assetManager) GetTokenApprovals(ctx context.Context, ns string, filter database.AndFilter) ([]*core.TokenApproval, *database.FilterResult, error) {
-	return am.database.GetTokenApprovals(ctx, am.scopeNS(ns, filter))
+	db, err := am.namespace.GetDatabasePlugin(ctx, ns)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return db.GetTokenApprovals(ctx, am.scopeNS(ns, filter))
 }
 
 type approveSender struct {
@@ -82,16 +87,20 @@ func (s *approveSender) sendInternal(ctx context.Context, method sendMethod) (er
 		}
 		return err
 	}
+	db, err := s.mgr.namespace.GetDatabasePlugin(ctx, s.namespace)
+	if err != nil {
+		return err
+	}
 
 	var op *core.Operation
 	var pool *core.TokenPool
-	err = s.mgr.database.RunAsGroup(ctx, func(ctx context.Context) (err error) {
+	err = db.RunAsGroup(ctx, func(ctx context.Context) (err error) {
 		pool, err = s.mgr.validateApproval(ctx, s.namespace, s.approval)
 		if err != nil {
 			return err
 		}
 
-		plugin, err := s.mgr.selectTokenPlugin(ctx, s.approval.Connector)
+		plugin, err := s.mgr.selectTokenPlugin(ctx, s.approval.Connector, s.namespace)
 		if err != nil {
 			return err
 		}
@@ -113,7 +122,7 @@ func (s *approveSender) sendInternal(ctx context.Context, method sendMethod) (er
 			txid,
 			core.TransactionTypeTokenApproval)
 		if err = txcommon.AddTokenApprovalInputs(op, &s.approval.TokenApproval); err == nil {
-			err = s.mgr.database.InsertOperation(ctx, op)
+			err = db.InsertOperation(ctx, op)
 		}
 		return err
 	})

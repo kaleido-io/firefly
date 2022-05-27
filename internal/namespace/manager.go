@@ -36,30 +36,68 @@ import (
 
 type Manager interface {
 	// Init initializes the manager
-	Init(ctx context.Context, di database.Plugin) error
+	Init(ctx context.Context, di database.Plugin, bc map[string]blockchain.Plugin, db map[string]database.Plugin, dx map[string]dataexchange.Plugin, ss map[string]sharedstorage.Plugin, tokens map[string]tokens.Plugin) error
+	GetDatabasePlugin(ctx context.Context, namespace string) (database.Plugin, error)
+	GetTokensPlugins(ctx context.Context, namespace string) (map[string]tokens.Plugin, error)
+}
+
+type namespace struct {
+	database      database.Plugin
+	blockchain    blockchain.Plugin
+	dataexchange  dataexchange.Plugin
+	sharedstorage sharedstorage.Plugin
+	tokens        map[string]tokens.Plugin
+}
+
+type plugins struct {
+	blockchains    map[string]blockchain.Plugin
+	databases      map[string]database.Plugin
+	dataexchanges  map[string]dataexchange.Plugin
+	sharedstorages map[string]sharedstorage.Plugin
+	tokens         map[string]tokens.Plugin
 }
 
 type namespaceManager struct {
-	ctx           context.Context
-	nsConfig      map[string]config.Section
-	bcPlugins     map[string]blockchain.Plugin
-	dbPlugins     map[string]database.Plugin
-	dxPlugins     map[string]dataexchange.Plugin
-	ssPlugins     map[string]sharedstorage.Plugin
-	tokensPlugins map[string]tokens.Plugin
+	ctx        context.Context
+	nsConfig   map[string]config.Section
+	namespaces map[string]namespace
 }
 
-func NewNamespaceManager(ctx context.Context, bc map[string]blockchain.Plugin, db map[string]database.Plugin, dx map[string]dataexchange.Plugin, ss map[string]sharedstorage.Plugin, tokens map[string]tokens.Plugin) Manager {
+func NewNamespaceManager(ctx context.Context) Manager {
 	nm := &namespaceManager{
-		ctx:           ctx,
-		nsConfig:      buildNamespaceMap(ctx),
-		bcPlugins:     bc,
-		dbPlugins:     db,
-		dxPlugins:     dx,
-		ssPlugins:     ss,
-		tokensPlugins: tokens,
+		ctx:        ctx,
+		nsConfig:   buildNamespaceMap(ctx),
+		namespaces: map[string]namespace{},
 	}
 	return nm
+}
+
+func (nm *namespaceManager) GetDatabasePlugin(ctx context.Context, namespace string) (database.Plugin, error) {
+	ns, ok := nm.namespaces[namespace]
+	if !ok {
+		// return nil, i18n.NewError(nm.ctx)
+	}
+
+	fmt.Printf("%+v\n", ns)
+
+	if ns.database != nil {
+		return ns.database, nil
+	}
+
+	return nil, fmt.Errorf("bad db")
+}
+
+func (nm *namespaceManager) GetTokensPlugins(ctx context.Context, namespace string) (map[string]tokens.Plugin, error) {
+	ns, ok := nm.namespaces[namespace]
+	if !ok {
+		return nil, fmt.Errorf("cant find ns")
+	}
+
+	if ns.tokens != nil {
+		return ns.tokens, nil
+	}
+
+	return nil, fmt.Errorf("bad tokens")
 }
 
 func buildNamespaceMap(ctx context.Context) map[string]config.Section {
@@ -78,11 +116,18 @@ func buildNamespaceMap(ctx context.Context) map[string]config.Section {
 	return namespaces
 }
 
-func (nm *namespaceManager) Init(ctx context.Context, di database.Plugin) error {
-	return nm.initNamespaces(ctx, di)
+func (nm *namespaceManager) Init(ctx context.Context, di database.Plugin, bc map[string]blockchain.Plugin, db map[string]database.Plugin, dx map[string]dataexchange.Plugin, ss map[string]sharedstorage.Plugin, tokens map[string]tokens.Plugin) error {
+	plugins := &plugins{
+		blockchains:    bc,
+		databases:      db,
+		dataexchanges:  dx,
+		sharedstorages: ss,
+		tokens:         tokens,
+	}
+	return nm.initNamespaces(ctx, di, plugins)
 }
 
-func (nm *namespaceManager) getPredefinedNamespaces(ctx context.Context) ([]*core.Namespace, error) {
+func (nm *namespaceManager) getPredefinedNamespaces(ctx context.Context, plugins *plugins) ([]*core.Namespace, error) {
 	defaultNS := config.GetString(coreconfig.NamespacesDefault)
 	namespaces := []*core.Namespace{
 		{
@@ -94,7 +139,7 @@ func (nm *namespaceManager) getPredefinedNamespaces(ctx context.Context) ([]*cor
 	i := 0
 	foundDefault := false
 	for name, nsObject := range nm.nsConfig {
-		if err := nm.validateNamespaceConfig(ctx, name, i, nsObject); err != nil {
+		if err := nm.validateNamespaceConfig(ctx, name, i, nsObject, plugins); err != nil {
 			return nil, err
 		}
 		i++
@@ -111,8 +156,8 @@ func (nm *namespaceManager) getPredefinedNamespaces(ctx context.Context) ([]*cor
 	return namespaces, nil
 }
 
-func (nm *namespaceManager) initNamespaces(ctx context.Context, di database.Plugin) error {
-	predefined, err := nm.getPredefinedNamespaces(ctx)
+func (nm *namespaceManager) initNamespaces(ctx context.Context, di database.Plugin, plugins *plugins) error {
+	predefined, err := nm.getPredefinedNamespaces(ctx, plugins)
 	if err != nil {
 		return err
 	}
@@ -139,7 +184,7 @@ func (nm *namespaceManager) initNamespaces(ctx context.Context, di database.Plug
 	return nil
 }
 
-func (nm *namespaceManager) validateNamespaceConfig(ctx context.Context, name string, index int, conf config.Section) error {
+func (nm *namespaceManager) validateNamespaceConfig(ctx context.Context, name string, index int, conf config.Section, plugins *plugins) error {
 	if err := core.ValidateFFNameField(ctx, name, fmt.Sprintf("namespaces.predefined[%d].name", index)); err != nil {
 		return err
 	}
@@ -149,35 +194,39 @@ func (nm *namespaceManager) validateNamespaceConfig(ctx context.Context, name st
 	}
 
 	mode := conf.GetString(coreconfig.NamespaceMode)
-	plugins := conf.GetStringSlice(coreconfig.NamespacePlugins)
+	pluginNames := conf.GetStringSlice(coreconfig.NamespacePlugins)
 
 	// If no plugins are found when querying the config, assume older config file
-	if len(plugins) == 0 {
-		for plugin := range nm.bcPlugins {
-			plugins = append(plugins, plugin)
+	if len(pluginNames) == 0 {
+		for name := range plugins.blockchains {
+			pluginNames = append(pluginNames, name)
 		}
 
-		for plugin := range nm.dxPlugins {
-			plugins = append(plugins, plugin)
+		for name := range plugins.dataexchanges {
+			pluginNames = append(pluginNames, name)
 		}
 
-		for plugin := range nm.ssPlugins {
-			plugins = append(plugins, plugin)
+		for name := range plugins.sharedstorages {
+			pluginNames = append(pluginNames, name)
 		}
 
-		for plugin := range nm.dbPlugins {
-			plugins = append(plugins, plugin)
+		for name := range plugins.databases {
+			pluginNames = append(pluginNames, name)
+		}
+
+		for name := range plugins.tokens {
+			pluginNames = append(pluginNames, name)
 		}
 	}
 
 	switch mode {
 	// Multiparty is the default mode when none is provided
 	case "multiparty":
-		if err := nm.validateMultiPartyConfig(ctx, name, plugins); err != nil {
+		if err := nm.validateMultiPartyConfig(ctx, name, pluginNames, plugins); err != nil {
 			return err
 		}
 	case "gateway":
-		if err := nm.validateGatewayConfig(ctx, name, plugins); err != nil {
+		if err := nm.validateGatewayConfig(ctx, name, pluginNames, plugins); err != nil {
 			return err
 		}
 	default:
@@ -186,42 +235,51 @@ func (nm *namespaceManager) validateNamespaceConfig(ctx context.Context, name st
 	return nil
 }
 
-func (nm *namespaceManager) validateMultiPartyConfig(ctx context.Context, name string, plugins []string) error {
+func (nm *namespaceManager) validateMultiPartyConfig(ctx context.Context, name string, pluginNames []string, pluginInstances *plugins) error {
 	var dbPlugin bool
 	var ssPlugin bool
 	var dxPlugin bool
 	var bcPlugin bool
 
-	for _, pluginName := range plugins {
-		if _, ok := nm.bcPlugins[pluginName]; ok {
+	ns := namespace{
+		tokens: make(map[string]tokens.Plugin),
+	}
+
+	for _, pluginName := range pluginNames {
+		if instance, ok := pluginInstances.blockchains[pluginName]; ok {
 			if bcPlugin {
 				return i18n.NewError(ctx, coremsgs.MsgNamespaceGatewayMultiplePluginType, name, "blockchain")
 			}
 			bcPlugin = true
+			ns.blockchain = instance
 			continue
 		}
-		if _, ok := nm.dxPlugins[pluginName]; ok {
+		if instance, ok := pluginInstances.dataexchanges[pluginName]; ok {
 			if dxPlugin {
 				return i18n.NewError(ctx, coremsgs.MsgNamespaceGatewayMultiplePluginType, name, "dataexchange")
 			}
 			dxPlugin = true
+			ns.dataexchange = instance
 			continue
 		}
-		if _, ok := nm.ssPlugins[pluginName]; ok {
+		if instance, ok := pluginInstances.sharedstorages[pluginName]; ok {
 			if ssPlugin {
 				return i18n.NewError(ctx, coremsgs.MsgNamespaceGatewayMultiplePluginType, name, "sharedstorage")
 			}
 			ssPlugin = true
+			ns.sharedstorage = instance
 			continue
 		}
-		if _, ok := nm.dbPlugins[pluginName]; ok {
+		if instance, ok := pluginInstances.databases[pluginName]; ok {
 			if dbPlugin {
 				return i18n.NewError(ctx, coremsgs.MsgNamespaceGatewayMultiplePluginType, name, "database")
 			}
 			dbPlugin = true
+			ns.database = instance
 			continue
 		}
-		if _, ok := nm.tokensPlugins[pluginName]; ok {
+		if instance, ok := pluginInstances.tokens[pluginName]; ok {
+			ns.tokens[pluginName] = instance
 			continue
 		}
 
@@ -231,36 +289,44 @@ func (nm *namespaceManager) validateMultiPartyConfig(ctx context.Context, name s
 	if !dbPlugin || !ssPlugin || !dxPlugin || !bcPlugin {
 		return i18n.NewError(ctx, coremsgs.MsgNamespaceMultipartyConfiguration, name)
 	}
+	nm.namespaces[name] = ns
 
 	return nil
 }
 
-func (nm *namespaceManager) validateGatewayConfig(ctx context.Context, name string, plugins []string) error {
+func (nm *namespaceManager) validateGatewayConfig(ctx context.Context, name string, pluginNames []string, pluginInstances *plugins) error {
 	var dbPlugin bool
 	var bcPlugin bool
 
-	for _, pluginName := range plugins {
-		if _, ok := nm.bcPlugins[pluginName]; ok {
+	ns := namespace{
+		tokens: make(map[string]tokens.Plugin),
+	}
+
+	for _, pluginName := range pluginNames {
+		if instance, ok := pluginInstances.blockchains[pluginName]; ok {
 			if bcPlugin {
 				return i18n.NewError(ctx, coremsgs.MsgNamespaceGatewayMultiplePluginType, name, "blockchain")
 			}
 			bcPlugin = true
+			ns.blockchain = instance
 			continue
 		}
-		if _, ok := nm.dxPlugins[pluginName]; ok {
+		if _, ok := pluginInstances.dataexchanges[pluginName]; ok {
 			return i18n.NewError(ctx, coremsgs.MsgNamespaceGatewayInvalidPlugins, name)
 		}
-		if _, ok := nm.ssPlugins[pluginName]; ok {
+		if _, ok := pluginInstances.sharedstorages[pluginName]; ok {
 			return i18n.NewError(ctx, coremsgs.MsgNamespaceGatewayInvalidPlugins, name)
 		}
-		if _, ok := nm.dbPlugins[pluginName]; ok {
+		if instance, ok := pluginInstances.databases[pluginName]; ok {
 			if dbPlugin {
 				return i18n.NewError(ctx, coremsgs.MsgNamespaceGatewayMultiplePluginType, name, "database")
 			}
 			dbPlugin = true
+			ns.database = instance
 			continue
 		}
-		if _, ok := nm.tokensPlugins[pluginName]; ok {
+		if instance, ok := pluginInstances.tokens[pluginName]; ok {
+			ns.tokens[pluginName] = instance
 			continue
 		}
 
@@ -270,6 +336,7 @@ func (nm *namespaceManager) validateGatewayConfig(ctx context.Context, name stri
 	if !dbPlugin {
 		return i18n.NewError(ctx, coremsgs.MsgNamespaceGatewayNoDB, name)
 	}
+	nm.namespaces[name] = ns
 
 	return nil
 }

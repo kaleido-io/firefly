@@ -835,7 +835,7 @@ func (or *orchestrator) initComponents(ctx context.Context) (err error) {
 	}
 
 	if or.assets == nil {
-		or.assets, err = assets.NewAssetManager(ctx, or.database, or.identity, or.data, or.syncasync, or.broadcast, or.messaging, or.tokens, or.metrics, or.operations, or.txHelper)
+		or.assets, err = assets.NewAssetManager(ctx, or.identity, or.data, or.syncasync, or.broadcast, or.messaging, or.metrics, or.operations, or.txHelper, or.namespace)
 		if err != nil {
 			return err
 		}
@@ -883,9 +883,9 @@ func (or *orchestrator) initComponents(ctx context.Context) (err error) {
 
 func (or *orchestrator) initNamespaces(ctx context.Context) (err error) {
 	if or.namespace == nil {
-		or.namespace = namespace.NewNamespaceManager(ctx, or.blockchains, or.databases, or.dataexchangePlugins, or.sharedstoragePlugins, or.tokens)
+		or.namespace = namespace.NewNamespaceManager(ctx)
 	}
-	return or.namespace.Init(ctx, or.database)
+	return or.namespace.Init(ctx, or.database, or.blockchains, or.databases, or.dataexchangePlugins, or.sharedstoragePlugins, or.tokens)
 }
 
 func (or *orchestrator) SubmitNetworkAction(ctx context.Context, action *core.NetworkAction) error {

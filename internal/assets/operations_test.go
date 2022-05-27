@@ -24,8 +24,10 @@ import (
 	"github.com/hyperledger/firefly/internal/operations"
 	"github.com/hyperledger/firefly/internal/txcommon"
 	"github.com/hyperledger/firefly/mocks/databasemocks"
+	"github.com/hyperledger/firefly/mocks/namespacemocks"
 	"github.com/hyperledger/firefly/mocks/tokenmocks"
 	"github.com/hyperledger/firefly/pkg/core"
+	"github.com/hyperledger/firefly/pkg/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -44,8 +46,13 @@ func TestPrepareAndRunCreatePool(t *testing.T) {
 	err := txcommon.AddTokenPoolCreateInputs(op, pool)
 	assert.NoError(t, err)
 
-	mti := am.tokens["magic-tokens"].(*tokenmocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mti := &tokenmocks.Plugin{}
 	mti.On("CreateTokenPool", context.Background(), op.ID, pool).Return(false, nil)
+	mti.On("Name").Return("ut").Maybe()
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	po, err := am.PrepareOperation(context.Background(), op)
 	assert.NoError(t, err)
@@ -57,6 +64,28 @@ func TestPrepareAndRunCreatePool(t *testing.T) {
 	assert.NoError(t, err)
 
 	mti.AssertExpectations(t)
+}
+
+func TestPrepareBadDB(t *testing.T) {
+	am, cancel := newTestAssets(t)
+	defer cancel()
+
+	op := &core.Operation{
+		Type: core.OpTypeTokenCreatePool,
+	}
+	pool := &core.TokenPool{
+		Connector: "magic-tokens",
+		Locator:   "F1",
+	}
+	err := txcommon.AddTokenPoolCreateInputs(op, pool)
+	assert.NoError(t, err)
+
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("pop"))
+
+	po, err := am.PrepareOperation(context.Background(), op)
+	assert.Regexp(t, "pop", err)
+	assert.Nil(t, po)
 }
 
 func TestPrepareAndRunActivatePool(t *testing.T) {
@@ -73,10 +102,14 @@ func TestPrepareAndRunActivatePool(t *testing.T) {
 	}
 	txcommon.AddTokenPoolActivateInputs(op, pool.ID)
 
-	mti := am.tokens["magic-tokens"].(*tokenmocks.Plugin)
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mti := &tokenmocks.Plugin{}
 	mti.On("ActivateTokenPool", context.Background(), op.ID, pool).Return(true, nil)
 	mdi.On("GetTokenPoolByID", context.Background(), pool.ID).Return(pool, nil)
+	mti.On("Name").Return("ut").Maybe()
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	po, err := am.PrepareOperation(context.Background(), op)
 	assert.NoError(t, err)
@@ -109,10 +142,14 @@ func TestPrepareAndRunTransfer(t *testing.T) {
 	}
 	txcommon.AddTokenTransferInputs(op, transfer)
 
-	mti := am.tokens["magic-tokens"].(*tokenmocks.Plugin)
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mti := &tokenmocks.Plugin{}
 	mti.On("TransferTokens", context.Background(), op.ID, "F1", transfer).Return(nil)
 	mdi.On("GetTokenPoolByID", context.Background(), pool.ID).Return(pool, nil)
+	mti.On("Name").Return("ut").Maybe()
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	po, err := am.PrepareOperation(context.Background(), op)
 	assert.NoError(t, err)
@@ -146,10 +183,14 @@ func TestPrepareAndRunApproval(t *testing.T) {
 	}
 	txcommon.AddTokenApprovalInputs(op, approval)
 
-	mti := am.tokens["magic-tokens"].(*tokenmocks.Plugin)
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mti := &tokenmocks.Plugin{}
 	mti.On("TokensApproval", context.Background(), op.ID, "F1", approval).Return(nil)
 	mdi.On("GetTokenPoolByID", context.Background(), pool.ID).Return(pool, nil)
+	mti.On("Name").Return("ut").Maybe()
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	po, err := am.PrepareOperation(context.Background(), op)
 	assert.NoError(t, err)
@@ -169,6 +210,10 @@ func TestPrepareOperationNotSupported(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
 
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+
 	po, err := am.PrepareOperation(context.Background(), &core.Operation{})
 
 	assert.Nil(t, po)
@@ -178,6 +223,10 @@ func TestPrepareOperationNotSupported(t *testing.T) {
 func TestPrepareOperationCreatePoolBadInput(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
+
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	op := &core.Operation{
 		Type:  core.OpTypeTokenCreatePool,
@@ -191,6 +240,10 @@ func TestPrepareOperationCreatePoolBadInput(t *testing.T) {
 func TestPrepareOperationActivatePoolBadInput(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
+
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	op := &core.Operation{
 		Type:  core.OpTypeTokenActivatePool,
@@ -211,8 +264,13 @@ func TestPrepareOperationActivatePoolError(t *testing.T) {
 		Input: fftypes.JSONObject{"id": poolID.String()},
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mti := &tokenmocks.Plugin{}
 	mdi.On("GetTokenPoolByID", context.Background(), poolID).Return(nil, fmt.Errorf("pop"))
+	mti.On("Name").Return("ut").Maybe()
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	_, err := am.PrepareOperation(context.Background(), op)
 	assert.EqualError(t, err, "pop")
@@ -230,8 +288,13 @@ func TestPrepareOperationActivatePoolNotFound(t *testing.T) {
 		Input: fftypes.JSONObject{"id": poolID.String()},
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mti := &tokenmocks.Plugin{}
 	mdi.On("GetTokenPoolByID", context.Background(), poolID).Return(nil, nil)
+	mti.On("Name").Return("ut").Maybe()
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	_, err := am.PrepareOperation(context.Background(), op)
 	assert.Regexp(t, "FF10109", err)
@@ -242,6 +305,10 @@ func TestPrepareOperationActivatePoolNotFound(t *testing.T) {
 func TestPrepareOperationTransferBadInput(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
+
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	op := &core.Operation{
 		Type:  core.OpTypeTokenTransfer,
@@ -262,8 +329,13 @@ func TestPrepareOperationTransferError(t *testing.T) {
 		Input: fftypes.JSONObject{"pool": poolID.String()},
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mti := &tokenmocks.Plugin{}
 	mdi.On("GetTokenPoolByID", context.Background(), poolID).Return(nil, fmt.Errorf("pop"))
+	mti.On("Name").Return("ut").Maybe()
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	_, err := am.PrepareOperation(context.Background(), op)
 	assert.EqualError(t, err, "pop")
@@ -281,8 +353,13 @@ func TestPrepareOperationTransferNotFound(t *testing.T) {
 		Input: fftypes.JSONObject{"pool": poolID.String()},
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mti := &tokenmocks.Plugin{}
 	mdi.On("GetTokenPoolByID", context.Background(), poolID).Return(nil, nil)
+	mti.On("Name").Return("ut").Maybe()
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	_, err := am.PrepareOperation(context.Background(), op)
 	assert.Regexp(t, "FF10109", err)
@@ -293,6 +370,10 @@ func TestPrepareOperationTransferNotFound(t *testing.T) {
 func TestPrepareOperationApprovalBadInput(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
+
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	op := &core.Operation{
 		Type:  core.OpTypeTokenApproval,
@@ -313,8 +394,13 @@ func TestPrepareOperationApprovalError(t *testing.T) {
 		Input: fftypes.JSONObject{"pool": poolID.String()},
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mti := &tokenmocks.Plugin{}
 	mdi.On("GetTokenPoolByID", context.Background(), poolID).Return(nil, fmt.Errorf("pop"))
+	mti.On("Name").Return("ut").Maybe()
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	_, err := am.PrepareOperation(context.Background(), op)
 	assert.EqualError(t, err, "pop")
@@ -332,8 +418,13 @@ func TestPrepareOperationApprovalNotFound(t *testing.T) {
 		Input: fftypes.JSONObject{"pool": poolID.String()},
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mti := &tokenmocks.Plugin{}
 	mdi.On("GetTokenPoolByID", context.Background(), poolID).Return(nil, nil)
+	mti.On("Name").Return("ut").Maybe()
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	_, err := am.PrepareOperation(context.Background(), op)
 	assert.Regexp(t, "FF10109", err)
@@ -358,6 +449,10 @@ func TestRunOperationCreatePoolBadPlugin(t *testing.T) {
 	op := &core.Operation{}
 	pool := &core.TokenPool{}
 
+	mti := &tokenmocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+
 	_, complete, err := am.RunOperation(context.Background(), opCreatePool(op, pool))
 
 	assert.False(t, complete)
@@ -375,8 +470,11 @@ func TestRunOperationCreatePool(t *testing.T) {
 		Connector: "magic-tokens",
 	}
 
-	mti := am.tokens["magic-tokens"].(*tokenmocks.Plugin)
+	mti := &tokenmocks.Plugin{}
 	mti.On("CreateTokenPool", context.Background(), op.ID, pool).Return(false, nil)
+	mti.On("Name").Return("ut").Maybe()
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
 
 	_, complete, err := am.RunOperation(context.Background(), opCreatePool(op, pool))
 
@@ -393,6 +491,10 @@ func TestRunOperationActivatePoolBadPlugin(t *testing.T) {
 	op := &core.Operation{}
 	pool := &core.TokenPool{}
 
+	mti := &tokenmocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+
 	_, complete, err := am.RunOperation(context.Background(), opActivatePool(op, pool))
 
 	assert.False(t, complete)
@@ -407,6 +509,10 @@ func TestRunOperationTransferBadPlugin(t *testing.T) {
 	pool := &core.TokenPool{}
 	transfer := &core.TokenTransfer{}
 
+	mti := &tokenmocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+
 	_, complete, err := am.RunOperation(context.Background(), opTransfer(op, pool, transfer))
 
 	assert.False(t, complete)
@@ -420,6 +526,10 @@ func TestRunOperationApprovalBadPlugin(t *testing.T) {
 	op := &core.Operation{}
 	pool := &core.TokenPool{}
 	approval := &core.TokenApproval{}
+
+	mti := &tokenmocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
 
 	_, complete, err := am.RunOperation(context.Background(), opApproval(op, pool, approval))
 
@@ -441,6 +551,10 @@ func TestRunOperationTransferUnknownType(t *testing.T) {
 		Type: "bad",
 	}
 
+	mti := &tokenmocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+
 	assert.PanicsWithValue(t, "unknown transfer type: bad", func() {
 		am.RunOperation(context.Background(), opTransfer(op, pool, transfer))
 	})
@@ -461,7 +575,9 @@ func TestRunOperationTransferMint(t *testing.T) {
 		Type: core.TokenTransferTypeMint,
 	}
 
-	mti := am.tokens["magic-tokens"].(*tokenmocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
 	mti.On("MintTokens", context.Background(), op.ID, "F1", transfer).Return(nil)
 
 	_, complete, err := am.RunOperation(context.Background(), opTransfer(op, pool, transfer))
@@ -487,7 +603,9 @@ func TestRunOperationTransferBurn(t *testing.T) {
 		Type: core.TokenTransferTypeBurn,
 	}
 
-	mti := am.tokens["magic-tokens"].(*tokenmocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
 	mti.On("BurnTokens", context.Background(), op.ID, "F1", transfer).Return(nil)
 
 	_, complete, err := am.RunOperation(context.Background(), opTransfer(op, pool, transfer))
@@ -513,7 +631,9 @@ func TestRunOperationTransfer(t *testing.T) {
 		Type: core.TokenTransferTypeTransfer,
 	}
 
-	mti := am.tokens["magic-tokens"].(*tokenmocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
 	mti.On("TransferTokens", context.Background(), op.ID, "F1", transfer).Return(nil)
 
 	_, complete, err := am.RunOperation(context.Background(), opTransfer(op, pool, transfer))
@@ -542,7 +662,9 @@ func TestOperationUpdatePool(t *testing.T) {
 		Status: core.OpStatusFailed,
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("InsertEvent", context.Background(), mock.MatchedBy(func(event *core.Event) bool {
 		return event.Type == core.EventTypePoolOpFailed && *event.Reference == *op.ID && *event.Correlator == *pool.ID
 	})).Return(nil)
@@ -552,6 +674,32 @@ func TestOperationUpdatePool(t *testing.T) {
 	assert.NoError(t, err)
 
 	mdi.AssertExpectations(t)
+
+}
+
+func TestOperationUpdatePoolBadDB(t *testing.T) {
+	am, cancel := newTestAssets(t)
+	defer cancel()
+
+	pool := &core.TokenPool{
+		ID: fftypes.NewUUID(),
+	}
+	op := &core.Operation{
+		ID:   fftypes.NewUUID(),
+		Type: core.OpTypeTokenCreatePool,
+	}
+	err := txcommon.AddTokenPoolCreateInputs(op, pool)
+	assert.NoError(t, err)
+
+	update := &operations.OperationUpdate{
+		Status: core.OpStatusFailed,
+	}
+
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("pop"))
+
+	err = am.OnOperationUpdate(context.Background(), op, update)
+	assert.Regexp(t, "pop", err)
 }
 
 func TestOperationUpdatePoolBadInput(t *testing.T) {
@@ -566,7 +714,9 @@ func TestOperationUpdatePoolBadInput(t *testing.T) {
 		Status: core.OpStatusFailed,
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("InsertEvent", context.Background(), mock.MatchedBy(func(event *core.Event) bool {
 		return event.Type == core.EventTypePoolOpFailed && *event.Reference == *op.ID && event.Correlator == nil
 	})).Return(nil)
@@ -590,7 +740,9 @@ func TestOperationUpdatePoolEventFail(t *testing.T) {
 		Status: core.OpStatusFailed,
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("InsertEvent", context.Background(), mock.Anything).Return(fmt.Errorf("pop"))
 
 	err := am.OnOperationUpdate(context.Background(), op, update)
@@ -620,7 +772,9 @@ func TestOperationUpdateTransfer(t *testing.T) {
 		Status: core.OpStatusFailed,
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("InsertEvent", context.Background(), mock.MatchedBy(func(event *core.Event) bool {
 		return event.Type == core.EventTypeTransferOpFailed && *event.Reference == *op.ID && *event.Correlator == *transfer.LocalID
 	})).Return(nil)
@@ -644,7 +798,9 @@ func TestOperationUpdateTransferBadInput(t *testing.T) {
 		Status: core.OpStatusFailed,
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("InsertEvent", context.Background(), mock.MatchedBy(func(event *core.Event) bool {
 		return event.Type == core.EventTypeTransferOpFailed && *event.Reference == *op.ID && event.Correlator == nil
 	})).Return(nil)
@@ -668,7 +824,9 @@ func TestOperationUpdateTransferEventFail(t *testing.T) {
 		Status: core.OpStatusFailed,
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("InsertEvent", context.Background(), mock.Anything).Return(fmt.Errorf("pop"))
 
 	err := am.OnOperationUpdate(context.Background(), op, update)
@@ -697,7 +855,9 @@ func TestOperationUpdateApproval(t *testing.T) {
 		Status: core.OpStatusFailed,
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("InsertEvent", context.Background(), mock.MatchedBy(func(event *core.Event) bool {
 		return event.Type == core.EventTypeApprovalOpFailed && *event.Reference == *op.ID && *event.Correlator == *approval.LocalID
 	})).Return(nil)
@@ -721,7 +881,9 @@ func TestOperationUpdateApprovalBadInput(t *testing.T) {
 		Status: core.OpStatusFailed,
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("InsertEvent", context.Background(), mock.MatchedBy(func(event *core.Event) bool {
 		return event.Type == core.EventTypeApprovalOpFailed && *event.Reference == *op.ID && event.Correlator == nil
 	})).Return(nil)
@@ -745,7 +907,9 @@ func TestOperationUpdateApprovalEventFail(t *testing.T) {
 		Status: core.OpStatusFailed,
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("InsertEvent", context.Background(), mock.Anything).Return(fmt.Errorf("pop"))
 
 	err := am.OnOperationUpdate(context.Background(), op, update)

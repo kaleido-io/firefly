@@ -59,28 +59,50 @@ func newTestNamespaceManager(resetConfig bool) *testNamespaceManager {
 		coreconfig.Reset()
 		InitConfig(true)
 	}
+
 	nm := &testNamespaceManager{
 		mdi: &databasemocks.Plugin{},
 		namespaceManager: namespaceManager{
-			nsConfig:      buildNamespaceMap(context.Background()),
-			bcPlugins:     map[string]blockchain.Plugin{"ethereum": &blockchainmocks.Plugin{}, "fabric": &blockchainmocks.Plugin{}},
-			dbPlugins:     map[string]database.Plugin{"postgres": &databasemocks.Plugin{}, "sqlite3": &databasemocks.Plugin{}},
-			dxPlugins:     map[string]dataexchange.Plugin{"ffdx": &dataexchangemocks.Plugin{}, "ffdx2": &dataexchangemocks.Plugin{}},
-			ssPlugins:     map[string]sharedstorage.Plugin{"ipfs": &sharedstoragemocks.Plugin{}, "ipfs2": &sharedstoragemocks.Plugin{}},
-			tokensPlugins: map[string]tokens.Plugin{"erc721": &tokenmocks.Plugin{}},
+			nsConfig: buildNamespaceMap(context.Background()),
+			namespaces: map[string]namespace{
+				"ns1": {
+					database:      &databasemocks.Plugin{},
+					blockchain:    &blockchainmocks.Plugin{},
+					dataexchange:  &dataexchangemocks.Plugin{},
+					sharedstorage: &sharedstoragemocks.Plugin{},
+					tokens:        map[string]tokens.Plugin{"erc721": &tokenmocks.Plugin{}},
+				},
+				"ns2": {
+					database:      &databasemocks.Plugin{},
+					blockchain:    &blockchainmocks.Plugin{},
+					dataexchange:  &dataexchangemocks.Plugin{},
+					sharedstorage: &sharedstoragemocks.Plugin{},
+					tokens:        map[string]tokens.Plugin{"erc721": &tokenmocks.Plugin{}},
+				},
+			},
 		},
 	}
 	return nm
 }
 
-func TestNewNamespaceManager(t *testing.T) {
-	bc := map[string]blockchain.Plugin{"ethereum": &blockchainmocks.Plugin{}}
-	db := map[string]database.Plugin{"postgres": &databasemocks.Plugin{}}
-	dx := map[string]dataexchange.Plugin{"ffdx": &dataexchangemocks.Plugin{}}
-	ss := map[string]sharedstorage.Plugin{"ipfs": &sharedstoragemocks.Plugin{}}
+func getTestPlugins() *plugins {
+	bc := map[string]blockchain.Plugin{"ethereum": &blockchainmocks.Plugin{}, "fabric": &blockchainmocks.Plugin{}}
+	db := map[string]database.Plugin{"postgres": &databasemocks.Plugin{}, "sqlite3": &databasemocks.Plugin{}}
+	dx := map[string]dataexchange.Plugin{"ffdx": &dataexchangemocks.Plugin{}, "ffdx2": &dataexchangemocks.Plugin{}}
+	ss := map[string]sharedstorage.Plugin{"ipfs": &sharedstoragemocks.Plugin{}, "ipfs2": &sharedstoragemocks.Plugin{}}
 	tokens := map[string]tokens.Plugin{"erc721": &tokenmocks.Plugin{}}
 
-	nm := NewNamespaceManager(context.Background(), bc, db, dx, ss, tokens)
+	return &plugins{
+		blockchains:    bc,
+		databases:      db,
+		dataexchanges:  dx,
+		sharedstorages: ss,
+		tokens:         tokens,
+	}
+}
+
+func TestNewNamespaceManager(t *testing.T) {
+	nm := NewNamespaceManager(context.Background())
 	assert.NotNil(t, nm)
 }
 
@@ -89,7 +111,8 @@ func TestInit(t *testing.T) {
 	nm := newTestNamespaceManager(false)
 	defer nm.cleanup(t)
 
-	nm.Init(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	nm.Init(context.Background(), nm.mdi, plugins.blockchains, plugins.databases, plugins.dataexchanges, plugins.sharedstorages, plugins.tokens)
 }
 
 func TestInitNamespacesBadName(t *testing.T) {
@@ -107,7 +130,9 @@ func TestInitNamespacesBadName(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{"ethereum", "postgres", "ffdx", "ipfs", "erc721"})
 	nm.nsConfig = map[string]config.Section{"!Badness": utTestConfig}
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF00140", err)
 }
 
@@ -125,7 +150,9 @@ func TestInitNamespacesReservedName(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{"ethereum", "postgres", "ffdx", "ipfs", "erc721"})
 	nm.nsConfig = map[string]config.Section{"ff_system": utTestConfig}
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10388", err)
 }
 
@@ -142,7 +169,8 @@ func TestInitNamespacesGetFail(t *testing.T) {
 	nm.nsConfig = map[string]config.Section{"default": utTestConfig}
 
 	nm.mdi.On("GetNamespace", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("pop"))
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "pop", err)
 }
 
@@ -159,7 +187,8 @@ func TestInitNamespacesUpsertFail(t *testing.T) {
 
 	nm.mdi.On("GetNamespace", mock.Anything, mock.Anything).Return(nil, nil)
 	nm.mdi.On("UpsertNamespace", mock.Anything, mock.Anything, true).Return(fmt.Errorf("pop"))
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "pop", err)
 }
 
@@ -174,7 +203,8 @@ func TestInitNamespacesMultipartyUnknownPlugin(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{"ethereum", "postgres", "ffdx", "ipfs", "erc721", "bad_unknown_plugin"})
 	nm.nsConfig = map[string]config.Section{"default": utTestConfig}
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10390.*unknown", err)
 }
 
@@ -189,7 +219,8 @@ func TestInitNamespacesMultipartyMultipleBlockchains(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{"ethereum", "postgres", "ffdx", "ipfs", "erc721", "fabric"})
 	nm.nsConfig = map[string]config.Section{"default": utTestConfig}
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10394", err)
 }
 
@@ -204,7 +235,8 @@ func TestInitNamespacesMultipartyMultipleDX(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{"ethereum", "postgres", "ffdx", "ipfs", "erc721", "ffdx2"})
 	nm.nsConfig = map[string]config.Section{"default": utTestConfig}
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10394", err)
 }
 
@@ -219,7 +251,8 @@ func TestInitNamespacesMultipartyMultipleSS(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{"ethereum", "postgres", "ffdx", "ipfs", "erc721", "ipfs2"})
 	nm.nsConfig = map[string]config.Section{"default": utTestConfig}
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10394", err)
 }
 
@@ -234,7 +267,8 @@ func TestInitNamespacesMultipartyMultipleDB(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{"ethereum", "postgres", "ffdx", "ipfs", "erc721", "sqlite3"})
 	nm.nsConfig = map[string]config.Section{"default": utTestConfig}
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10394", err)
 }
 
@@ -250,10 +284,8 @@ func TestInitNamespacesDeprecatedConfigMultipleBlockchains(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{})
 	nm.nsConfig = map[string]config.Section{"default": utTestConfig}
 
-	// nm.mdi.On("GetNamespace", mock.Anything, mock.Anything).Return(nil, nil)
-	// nm.mdi.On("UpsertNamespace", mock.Anything, mock.Anything, true).Return(nil)
-
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10394", err)
 }
 
@@ -268,7 +300,8 @@ func TestInitNamespacesGatewayMultipleDB(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{"ethereum", "postgres", "sqlite3"})
 	nm.nsConfig = map[string]config.Section{"default": utTestConfig}
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10394", err)
 }
 
@@ -283,7 +316,8 @@ func TestInitNamespacesGatewayMultipleBlockchains(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{"ethereum", "postgres", "fabric"})
 	nm.nsConfig = map[string]config.Section{"default": utTestConfig}
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10394", err)
 }
 
@@ -298,7 +332,8 @@ func TestInitNamespacesMultipartyMissingPlugins(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{"ethereum", "postgres"})
 	nm.nsConfig = map[string]config.Section{"default": utTestConfig}
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10391", err)
 }
 
@@ -313,7 +348,8 @@ func TestInitNamespacesGatewayWithDX(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{"ethereum", "ffdx"})
 	nm.nsConfig = map[string]config.Section{"default": utTestConfig}
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10393", err)
 }
 
@@ -328,7 +364,8 @@ func TestInitNamespacesGatewayWithSharedStorage(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{"ethereum", "ipfs"})
 	nm.nsConfig = map[string]config.Section{"default": utTestConfig}
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10393", err)
 }
 
@@ -343,7 +380,8 @@ func TestInitNamespacesGatewayUnknownPlugin(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{"ethereum", "bad_unknown_plugin"})
 	nm.nsConfig = map[string]config.Section{"default": utTestConfig}
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10390.*unknown", err)
 }
 
@@ -358,7 +396,8 @@ func TestInitNamespacesGatewayNoDB(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{"ethereum"})
 	nm.nsConfig = map[string]config.Section{"default": utTestConfig}
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10392", err)
 }
 
@@ -373,7 +412,8 @@ func TestInitNamespacesUnknownMode(t *testing.T) {
 	utTestConfig.AddKnownKey(coreconfig.NamespacePlugins, []string{"ethereum", "postgres", "ffdx", "ipfs", "erc721"})
 	nm.nsConfig = map[string]config.Section{"default": utTestConfig}
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10389", err)
 }
 
@@ -392,7 +432,8 @@ func TestInitNamespacesUpsertNotNeeded(t *testing.T) {
 	nm.mdi.On("GetNamespace", mock.Anything, mock.Anything).Return(&core.Namespace{
 		Type: core.NamespaceTypeBroadcast, // any broadcasted NS will not be updated
 	}, nil)
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.NoError(t, err)
 }
 
@@ -403,7 +444,8 @@ func TestInitNamespacesDefaultMissing(t *testing.T) {
 	nm := newTestNamespaceManager(false)
 	defer nm.cleanup(t)
 
-	err := nm.initNamespaces(context.Background(), nm.mdi)
+	plugins := getTestPlugins()
+	err := nm.initNamespaces(context.Background(), nm.mdi, plugins)
 	assert.Regexp(t, "FF10166", err)
 }
 
@@ -449,7 +491,8 @@ func TestInitNamespacesDupName(t *testing.T) {
 	nm := newTestNamespaceManager(false)
 	defer nm.cleanup(t)
 
-	nsList, err := nm.getPredefinedNamespaces(context.Background())
+	plugins := getTestPlugins()
+	nsList, err := nm.getPredefinedNamespaces(context.Background(), plugins)
 	assert.NoError(t, err)
 	assert.Len(t, nsList, 3)
 	names := make([]string, len(nsList))

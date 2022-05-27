@@ -29,16 +29,25 @@ import (
 )
 
 func (am *assetManager) GetTokenTransfers(ctx context.Context, ns string, filter database.AndFilter) ([]*core.TokenTransfer, *database.FilterResult, error) {
-	return am.database.GetTokenTransfers(ctx, am.scopeNS(ns, filter))
+	db, err := am.namespace.GetDatabasePlugin(ctx, ns)
+	if err != nil {
+		return nil, nil, err
+	}
+	return db.GetTokenTransfers(ctx, am.scopeNS(ns, filter))
 }
 
 func (am *assetManager) GetTokenTransferByID(ctx context.Context, ns, id string) (*core.TokenTransfer, error) {
+	db, err := am.namespace.GetDatabasePlugin(ctx, ns)
+	if err != nil {
+		return nil, err
+	}
+
 	transferID, err := fftypes.ParseUUID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	return am.database.GetTokenTransferByID(ctx, transferID)
+	return db.GetTokenTransferByID(ctx, transferID)
 }
 
 func (am *assetManager) NewTransfer(ns string, transfer *core.TokenTransferInput) sysmessaging.MessageSender {
@@ -208,9 +217,14 @@ func (s *transferSender) sendInternal(ctx context.Context, method sendMethod) (e
 		return err
 	}
 
+	db, err := s.mgr.namespace.GetDatabasePlugin(ctx, s.namespace)
+	if err != nil {
+		return err
+	}
+
 	var op *core.Operation
 	var pool *core.TokenPool
-	err = s.mgr.database.RunAsGroup(ctx, func(ctx context.Context) (err error) {
+	err = db.RunAsGroup(ctx, func(ctx context.Context) (err error) {
 		pool, err = s.mgr.validateTransfer(ctx, s.namespace, s.transfer)
 		if err != nil {
 			return err
@@ -219,7 +233,7 @@ func (s *transferSender) sendInternal(ctx context.Context, method sendMethod) (e
 			return i18n.NewError(ctx, coremsgs.MsgCannotTransferToSelf)
 		}
 
-		plugin, err := s.mgr.selectTokenPlugin(ctx, s.transfer.Connector)
+		plugin, err := s.mgr.selectTokenPlugin(ctx, s.transfer.Connector, s.namespace)
 		if err != nil {
 			return err
 		}
@@ -241,7 +255,7 @@ func (s *transferSender) sendInternal(ctx context.Context, method sendMethod) (e
 			txid,
 			core.OpTypeTokenTransfer)
 		if err = txcommon.AddTokenTransferInputs(op, &s.transfer.TokenTransfer); err == nil {
-			err = s.mgr.database.InsertOperation(ctx, op)
+			err = db.InsertOperation(ctx, op)
 		}
 		return err
 	})

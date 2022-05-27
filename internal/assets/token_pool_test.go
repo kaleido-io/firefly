@@ -25,8 +25,10 @@ import (
 	"github.com/hyperledger/firefly/mocks/databasemocks"
 	"github.com/hyperledger/firefly/mocks/datamocks"
 	"github.com/hyperledger/firefly/mocks/identitymanagermocks"
+	"github.com/hyperledger/firefly/mocks/namespacemocks"
 	"github.com/hyperledger/firefly/mocks/operationmocks"
 	"github.com/hyperledger/firefly/mocks/syncasyncmocks"
+	"github.com/hyperledger/firefly/mocks/tokenmocks"
 	"github.com/hyperledger/firefly/mocks/txcommonmocks"
 	"github.com/hyperledger/firefly/pkg/core"
 	"github.com/hyperledger/firefly/pkg/database"
@@ -41,6 +43,9 @@ func TestCreateTokenPoolBadName(t *testing.T) {
 
 	pool := &core.TokenPool{}
 
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdm := am.data.(*datamocks.Manager)
 	mdm.On("VerifyNamespaceExists", context.Background(), "ns1").Return(nil)
 
@@ -56,7 +61,9 @@ func TestCreateTokenPoolGetError(t *testing.T) {
 		Name: "testpool",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdm := am.data.(*datamocks.Manager)
 	mdi.On("GetTokenPool", context.Background(), "ns1", "testpool").Return(nil, fmt.Errorf("pop"))
 	mdm.On("VerifyNamespaceExists", context.Background(), "ns1").Return(nil)
@@ -75,7 +82,9 @@ func TestCreateTokenPoolDuplicateName(t *testing.T) {
 		Name: "testpool",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdm := am.data.(*datamocks.Manager)
 	mdi.On("GetTokenPool", context.Background(), "ns1", "testpool").Return(&core.TokenPool{}, nil)
 	mdm.On("VerifyNamespaceExists", context.Background(), "ns1").Return(nil)
@@ -94,7 +103,16 @@ func TestCreateTokenPoolDefaultConnectorSuccess(t *testing.T) {
 		Name: "testpool",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+	rag := mdi.On("RunAsGroup", mock.Anything, mock.Anything).Maybe()
+	rag.RunFn = func(a mock.Arguments) {
+		rag.ReturnArguments = mock.Arguments{a[1].(func(context.Context) error)(a[0].(context.Context))}
+	}
 	mdm := am.data.(*datamocks.Manager)
 	mim := am.identity.(*identitymanagermocks.Manager)
 	mth := am.txHelper.(*txcommonmocks.Helper)
@@ -127,9 +145,13 @@ func TestCreateTokenPoolDefaultConnectorNoConnectors(t *testing.T) {
 		Name: "testpool",
 	}
 
-	am.tokens = make(map[string]tokens.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
-	mdi := am.database.(*databasemocks.Plugin)
 	mdm := am.data.(*datamocks.Manager)
 	mdi.On("GetTokenPool", context.Background(), "ns1", "testpool").Return(nil, nil)
 	mdm.On("VerifyNamespaceExists", context.Background(), "ns1").Return(nil)
@@ -149,10 +171,12 @@ func TestCreateTokenPoolDefaultConnectorMultipleConnectors(t *testing.T) {
 		Name: "testpool",
 	}
 
-	am.tokens["magic-tokens"] = nil
-	am.tokens["magic-tokens2"] = nil
-
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": nil, "magic-tokens-2": nil}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdm := am.data.(*datamocks.Manager)
 	mdi.On("GetTokenPool", context.Background(), "ns1", "testpool").Return(nil, nil)
 	mdm.On("VerifyNamespaceExists", context.Background(), "ns1").Return(nil)
@@ -168,6 +192,12 @@ func TestCreateTokenPoolMissingNamespace(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
 
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	pool := &core.TokenPool{
 		Name: "testpool",
 	}
@@ -184,13 +214,17 @@ func TestCreateTokenPoolMissingNamespace(t *testing.T) {
 func TestCreateTokenPoolNoConnectors(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
-	am.tokens = nil
 
 	pool := &core.TokenPool{
 		Name: "testpool",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": nil, "magic-tokens-2": nil}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdm := am.data.(*datamocks.Manager)
 	mdi.On("GetTokenPool", context.Background(), "ns1", "testpool").Return(nil, nil)
 	mdm.On("VerifyNamespaceExists", context.Background(), "ns1").Return(nil)
@@ -210,7 +244,12 @@ func TestCreateTokenPoolIdentityFail(t *testing.T) {
 		Name: "testpool",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdm := am.data.(*datamocks.Manager)
 	mim := am.identity.(*identitymanagermocks.Manager)
 	mdi.On("GetTokenPool", context.Background(), "ns1", "testpool").Return(nil, nil)
@@ -234,7 +273,12 @@ func TestCreateTokenPoolWrongConnector(t *testing.T) {
 		Name:      "testpool",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdm := am.data.(*datamocks.Manager)
 	mim := am.identity.(*identitymanagermocks.Manager)
 	mdi.On("GetTokenPool", context.Background(), "ns1", "testpool").Return(nil, nil)
@@ -258,7 +302,16 @@ func TestCreateTokenPoolFail(t *testing.T) {
 		Name:      "testpool",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+	rag := mdi.On("RunAsGroup", mock.Anything, mock.Anything).Maybe()
+	rag.RunFn = func(a mock.Arguments) {
+		rag.ReturnArguments = mock.Arguments{a[1].(func(context.Context) error)(a[0].(context.Context))}
+	}
 	mdm := am.data.(*datamocks.Manager)
 	mim := am.identity.(*identitymanagermocks.Manager)
 	mth := am.txHelper.(*txcommonmocks.Helper)
@@ -292,7 +345,16 @@ func TestCreateTokenPoolTransactionFail(t *testing.T) {
 		Name:      "testpool",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+	rag := mdi.On("RunAsGroup", mock.Anything, mock.Anything).Maybe()
+	rag.RunFn = func(a mock.Arguments) {
+		rag.ReturnArguments = mock.Arguments{a[1].(func(context.Context) error)(a[0].(context.Context))}
+	}
 	mdm := am.data.(*datamocks.Manager)
 	mim := am.identity.(*identitymanagermocks.Manager)
 	mth := am.txHelper.(*txcommonmocks.Helper)
@@ -310,6 +372,72 @@ func TestCreateTokenPoolTransactionFail(t *testing.T) {
 	mth.AssertExpectations(t)
 }
 
+func TestCreateTokenPoolDefaultConnectorFail(t *testing.T) {
+	am, cancel := newTestAssets(t)
+	defer cancel()
+
+	pool := &core.TokenPool{
+		Name: "testpool",
+	}
+
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mdm := am.data.(*datamocks.Manager)
+	mim := am.identity.(*identitymanagermocks.Manager)
+	mth := am.txHelper.(*txcommonmocks.Helper)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("pop"))
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+	mdi.On("GetTokenPool", context.Background(), "ns1", "testpool").Return(nil, nil)
+	mim.On("NormalizeSigningKey", context.Background(), "", identity.KeyNormalizationBlockchainPlugin).Return("0x12345", nil)
+	mdm.On("VerifyNamespaceExists", context.Background(), "ns1").Return(nil)
+	mth.On("SubmitNewTransaction", context.Background(), "ns1", core.TransactionTypeTokenPool).Return(fftypes.NewUUID(), nil)
+
+	_, err := am.CreateTokenPool(context.Background(), "ns1", pool, false)
+	assert.Regexp(t, "pop", err)
+
+	mdi.AssertExpectations(t)
+}
+
+func TestCreateTokenPoolDBFail(t *testing.T) {
+	am, cancel := newTestAssets(t)
+	defer cancel()
+
+	pool := &core.TokenPool{
+		Name: "testpool",
+	}
+
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("pop"))
+
+	_, err := am.CreateTokenPool(context.Background(), "ns1", pool, false)
+	assert.Regexp(t, "pop", err)
+
+	mdi.AssertExpectations(t)
+}
+
+func TestCreateTokenPoolInternalDBFail(t *testing.T) {
+	am, cancel := newTestAssets(t)
+	defer cancel()
+
+	pool := &core.TokenPool{
+		Name: "testpool",
+	}
+
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("pop"))
+
+	_, err := am.createTokenPoolInternal(context.Background(), pool, false)
+	assert.Regexp(t, "pop", err)
+
+	mdi.AssertExpectations(t)
+}
+
 func TestCreateTokenPoolOpInsertFail(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
@@ -319,7 +447,16 @@ func TestCreateTokenPoolOpInsertFail(t *testing.T) {
 		Name:      "testpool",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+	rag := mdi.On("RunAsGroup", mock.Anything, mock.Anything).Maybe()
+	rag.RunFn = func(a mock.Arguments) {
+		rag.ReturnArguments = mock.Arguments{a[1].(func(context.Context) error)(a[0].(context.Context))}
+	}
 	mdm := am.data.(*datamocks.Manager)
 	mim := am.identity.(*identitymanagermocks.Manager)
 	mth := am.txHelper.(*txcommonmocks.Helper)
@@ -347,7 +484,16 @@ func TestCreateTokenPoolSyncSuccess(t *testing.T) {
 		Name:      "testpool",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+	rag := mdi.On("RunAsGroup", mock.Anything, mock.Anything).Maybe()
+	rag.RunFn = func(a mock.Arguments) {
+		rag.ReturnArguments = mock.Arguments{a[1].(func(context.Context) error)(a[0].(context.Context))}
+	}
 	mdm := am.data.(*datamocks.Manager)
 	mim := am.identity.(*identitymanagermocks.Manager)
 	mth := am.txHelper.(*txcommonmocks.Helper)
@@ -381,7 +527,16 @@ func TestCreateTokenPoolAsyncSuccess(t *testing.T) {
 		Name:      "testpool",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+	rag := mdi.On("RunAsGroup", mock.Anything, mock.Anything).Maybe()
+	rag.RunFn = func(a mock.Arguments) {
+		rag.ReturnArguments = mock.Arguments{a[1].(func(context.Context) error)(a[0].(context.Context))}
+	}
 	mdm := am.data.(*datamocks.Manager)
 	mim := am.identity.(*identitymanagermocks.Manager)
 	mth := am.txHelper.(*txcommonmocks.Helper)
@@ -415,7 +570,16 @@ func TestCreateTokenPoolConfirm(t *testing.T) {
 		Name:      "testpool",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+	rag := mdi.On("RunAsGroup", mock.Anything, mock.Anything).Maybe()
+	rag.RunFn = func(a mock.Arguments) {
+		rag.ReturnArguments = mock.Arguments{a[1].(func(context.Context) error)(a[0].(context.Context))}
+	}
 	mdm := am.data.(*datamocks.Manager)
 	msa := am.syncasync.(*syncasyncmocks.Bridge)
 	mim := am.identity.(*identitymanagermocks.Manager)
@@ -458,7 +622,16 @@ func TestActivateTokenPool(t *testing.T) {
 		Connector: "magic-tokens",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+	rag := mdi.On("RunAsGroup", mock.Anything, mock.Anything).Maybe()
+	rag.RunFn = func(a mock.Arguments) {
+		rag.ReturnArguments = mock.Arguments{a[1].(func(context.Context) error)(a[0].(context.Context))}
+	}
 	mom := am.operations.(*operationmocks.Manager)
 	mdi.On("GetOperations", context.Background(), mock.Anything).Return(nil, nil, nil)
 	mdi.On("InsertOperation", context.Background(), mock.MatchedBy(func(op *core.Operation) bool {
@@ -480,6 +653,13 @@ func TestActivateTokenPoolBadConnector(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
 
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+
 	pool := &core.TokenPool{
 		Namespace: "ns1",
 		Connector: "bad",
@@ -487,6 +667,22 @@ func TestActivateTokenPoolBadConnector(t *testing.T) {
 
 	err := am.ActivateTokenPool(context.Background(), pool)
 	assert.Regexp(t, "FF10272", err)
+}
+
+func TestActivateTokenPoolBadDB(t *testing.T) {
+	am, cancel := newTestAssets(t)
+	defer cancel()
+
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("pop"))
+
+	pool := &core.TokenPool{
+		Namespace: "ns1",
+		Connector: "test",
+	}
+
+	err := am.ActivateTokenPool(context.Background(), pool)
+	assert.Regexp(t, "pop", err)
 }
 
 func TestActivateTokenPoolOpInsertFail(t *testing.T) {
@@ -498,7 +694,16 @@ func TestActivateTokenPoolOpInsertFail(t *testing.T) {
 		Connector: "magic-tokens",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+	rag := mdi.On("RunAsGroup", mock.Anything, mock.Anything).Maybe()
+	rag.RunFn = func(a mock.Arguments) {
+		rag.ReturnArguments = mock.Arguments{a[1].(func(context.Context) error)(a[0].(context.Context))}
+	}
 	mdi.On("GetOperations", context.Background(), mock.Anything).Return(nil, nil, nil)
 	mdi.On("InsertOperation", context.Background(), mock.MatchedBy(func(op *core.Operation) bool {
 		return op.Type == core.OpTypeTokenActivatePool
@@ -519,7 +724,16 @@ func TestActivateTokenPoolFail(t *testing.T) {
 		Connector: "magic-tokens",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+	rag := mdi.On("RunAsGroup", mock.Anything, mock.Anything).Maybe()
+	rag.RunFn = func(a mock.Arguments) {
+		rag.ReturnArguments = mock.Arguments{a[1].(func(context.Context) error)(a[0].(context.Context))}
+	}
 	mom := am.operations.(*operationmocks.Manager)
 	mdi.On("GetOperations", context.Background(), mock.Anything).Return(nil, nil, nil)
 	mdi.On("InsertOperation", context.Background(), mock.MatchedBy(func(op *core.Operation) bool {
@@ -546,7 +760,16 @@ func TestActivateTokenPoolExisting(t *testing.T) {
 		Connector: "magic-tokens",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+	rag := mdi.On("RunAsGroup", mock.Anything, mock.Anything).Maybe()
+	rag.RunFn = func(a mock.Arguments) {
+		rag.ReturnArguments = mock.Arguments{a[1].(func(context.Context) error)(a[0].(context.Context))}
+	}
 	mdi.On("GetOperations", context.Background(), mock.Anything).Return([]*core.Operation{{}}, nil, nil)
 
 	err := am.ActivateTokenPool(context.Background(), pool)
@@ -564,7 +787,16 @@ func TestActivateTokenPoolExistingFail(t *testing.T) {
 		Connector: "magic-tokens",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+	rag := mdi.On("RunAsGroup", mock.Anything, mock.Anything).Maybe()
+	rag.RunFn = func(a mock.Arguments) {
+		rag.ReturnArguments = mock.Arguments{a[1].(func(context.Context) error)(a[0].(context.Context))}
+	}
 	mdi.On("GetOperations", context.Background(), mock.Anything).Return(nil, nil, fmt.Errorf("pop"))
 
 	err := am.ActivateTokenPool(context.Background(), pool)
@@ -582,7 +814,16 @@ func TestActivateTokenPoolSyncSuccess(t *testing.T) {
 		Connector: "magic-tokens",
 	}
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+	rag := mdi.On("RunAsGroup", mock.Anything, mock.Anything).Maybe()
+	rag.RunFn = func(a mock.Arguments) {
+		rag.ReturnArguments = mock.Arguments{a[1].(func(context.Context) error)(a[0].(context.Context))}
+	}
 	mth := am.txHelper.(*txcommonmocks.Helper)
 	mom := am.operations.(*operationmocks.Manager)
 	mdi.On("GetOperations", context.Background(), mock.Anything).Return(nil, nil, nil)
@@ -606,7 +847,12 @@ func TestGetTokenPool(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("GetTokenPool", context.Background(), "ns1", "abc").Return(&core.TokenPool{}, nil)
 	_, err := am.GetTokenPool(context.Background(), "ns1", "magic-tokens", "abc")
 	assert.NoError(t, err)
@@ -614,11 +860,26 @@ func TestGetTokenPool(t *testing.T) {
 	mdi.AssertExpectations(t)
 }
 
+func TestGetTokenPoolBadDB(t *testing.T) {
+	am, cancel := newTestAssets(t)
+	defer cancel()
+
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("pop"))
+	_, err := am.GetTokenPool(context.Background(), "ns1", "magic-tokens", "abc")
+	assert.Regexp(t, "pop", err)
+}
+
 func TestGetTokenPoolNotFound(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("GetTokenPool", context.Background(), "ns1", "abc").Return(nil, nil)
 	_, err := am.GetTokenPool(context.Background(), "ns1", "magic-tokens", "abc")
 	assert.Regexp(t, "FF10109", err)
@@ -630,7 +891,12 @@ func TestGetTokenPoolFailed(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("GetTokenPool", context.Background(), "ns1", "abc").Return(nil, fmt.Errorf("pop"))
 	_, err := am.GetTokenPool(context.Background(), "ns1", "magic-tokens", "abc")
 	assert.Regexp(t, "pop", err)
@@ -641,6 +907,12 @@ func TestGetTokenPoolFailed(t *testing.T) {
 func TestGetTokenPoolBadPlugin(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	_, err := am.GetTokenPool(context.Background(), "", "", "")
 	assert.Regexp(t, "FF10272", err)
@@ -650,6 +922,12 @@ func TestGetTokenPoolBadNamespace(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
 
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	_, err := am.GetTokenPool(context.Background(), "", "magic-tokens", "")
 	assert.Regexp(t, "FF00140", err)
 }
@@ -657,6 +935,13 @@ func TestGetTokenPoolBadNamespace(t *testing.T) {
 func TestGetTokenPoolBadName(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
+
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	_, err := am.GetTokenPool(context.Background(), "ns1", "magic-tokens", "")
 	assert.Regexp(t, "FF00140", err)
@@ -667,7 +952,12 @@ func TestGetTokenPoolByID(t *testing.T) {
 	defer cancel()
 
 	u := fftypes.NewUUID()
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("GetTokenPoolByID", context.Background(), u).Return(&core.TokenPool{}, nil)
 	_, err := am.GetTokenPoolByNameOrID(context.Background(), "ns1", u.String())
 	assert.NoError(t, err)
@@ -675,9 +965,26 @@ func TestGetTokenPoolByID(t *testing.T) {
 	mdi.AssertExpectations(t)
 }
 
+func TestGetTokenPoolByIDBadDB(t *testing.T) {
+	am, cancel := newTestAssets(t)
+	defer cancel()
+
+	u := fftypes.NewUUID()
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("pop"))
+	_, err := am.GetTokenPoolByNameOrID(context.Background(), "ns1", u.String())
+	assert.Regexp(t, "pop", err)
+}
+
 func TestGetTokenPoolByIDBadNamespace(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 
 	_, err := am.GetTokenPoolByNameOrID(context.Background(), "", "")
 	assert.Regexp(t, "FF00140", err)
@@ -688,7 +995,12 @@ func TestGetTokenPoolByIDBadID(t *testing.T) {
 	defer cancel()
 
 	u := fftypes.NewUUID()
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("GetTokenPoolByID", context.Background(), u).Return(nil, fmt.Errorf("pop"))
 	_, err := am.GetTokenPoolByNameOrID(context.Background(), "ns1", u.String())
 	assert.EqualError(t, err, "pop")
@@ -701,7 +1013,12 @@ func TestGetTokenPoolByIDNilPool(t *testing.T) {
 	defer cancel()
 
 	u := fftypes.NewUUID()
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("GetTokenPoolByID", context.Background(), u).Return(nil, nil)
 	_, err := am.GetTokenPoolByNameOrID(context.Background(), "ns1", u.String())
 	assert.Regexp(t, "FF10109", err)
@@ -713,7 +1030,12 @@ func TestGetTokenPoolByName(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("GetTokenPool", context.Background(), "ns1", "abc").Return(&core.TokenPool{}, nil)
 	_, err := am.GetTokenPoolByNameOrID(context.Background(), "ns1", "abc")
 	assert.NoError(t, err)
@@ -725,6 +1047,13 @@ func TestGetTokenPoolByNameBadName(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
 
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
+
 	_, err := am.GetTokenPoolByNameOrID(context.Background(), "ns1", "")
 	assert.Regexp(t, "FF00140", err)
 }
@@ -733,7 +1062,12 @@ func TestGetTokenPoolByNameNilPool(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
 
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	mdi.On("GetTokenPool", context.Background(), "ns1", "abc").Return(nil, fmt.Errorf("pop"))
 	_, err := am.GetTokenPoolByNameOrID(context.Background(), "ns1", "abc")
 	assert.EqualError(t, err, "pop")
@@ -746,7 +1080,12 @@ func TestGetTokenPools(t *testing.T) {
 	defer cancel()
 
 	u := fftypes.NewUUID()
-	mdi := am.database.(*databasemocks.Plugin)
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	fb := database.TokenPoolQueryFactory.NewFilter(context.Background())
 	f := fb.And(fb.Eq("id", u))
 	mdi.On("GetTokenPools", context.Background(), f).Return([]*core.TokenPool{}, nil, nil)
@@ -756,10 +1095,29 @@ func TestGetTokenPools(t *testing.T) {
 	mdi.AssertExpectations(t)
 }
 
+func TestGetTokenPoolsBadName(t *testing.T) {
+	am, cancel := newTestAssets(t)
+	defer cancel()
+
+	u := fftypes.NewUUID()
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("pop"))
+	fb := database.TokenPoolQueryFactory.NewFilter(context.Background())
+	f := fb.And(fb.Eq("id", u))
+	_, _, err := am.GetTokenPools(context.Background(), "ns1", f)
+	assert.Regexp(t, "pop", err)
+}
+
 func TestGetTokenPoolsBadNamespace(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
 
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	u := fftypes.NewUUID()
 	fb := database.TokenPoolQueryFactory.NewFilter(context.Background())
 	f := fb.And(fb.Eq("id", u))
@@ -771,6 +1129,12 @@ func TestGetTokenPoolByNameOrIDBadNamespace(t *testing.T) {
 	am, cancel := newTestAssets(t)
 	defer cancel()
 
+	mti := &tokenmocks.Plugin{}
+	mdi := &databasemocks.Plugin{}
+	mnm := am.namespace.(*namespacemocks.Manager)
+	mti.On("Name").Return("ut").Maybe()
+	mnm.On("GetTokensPlugins", mock.Anything, mock.Anything).Return(map[string]tokens.Plugin{"magic-tokens": mti}, nil)
+	mnm.On("GetDatabasePlugin", mock.Anything, mock.Anything).Return(mdi, nil)
 	_, err := am.GetTokenPoolByNameOrID(context.Background(), "!wrong", "magic-tokens")
 	assert.Regexp(t, "FF00140", err)
 }

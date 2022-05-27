@@ -48,6 +48,11 @@ type approvalData struct {
 }
 
 func (am *assetManager) PrepareOperation(ctx context.Context, op *core.Operation) (*core.PreparedOperation, error) {
+	db, err := am.namespace.GetDatabasePlugin(ctx, op.Namespace)
+	if err != nil {
+		return nil, err
+	}
+
 	switch op.Type {
 	case core.OpTypeTokenCreatePool:
 		pool, err := txcommon.RetrieveTokenPoolCreateInputs(ctx, op)
@@ -61,7 +66,7 @@ func (am *assetManager) PrepareOperation(ctx context.Context, op *core.Operation
 		if err != nil {
 			return nil, err
 		}
-		pool, err := am.database.GetTokenPoolByID(ctx, poolID)
+		pool, err := db.GetTokenPoolByID(ctx, poolID)
 		if err != nil {
 			return nil, err
 		} else if pool == nil {
@@ -74,7 +79,7 @@ func (am *assetManager) PrepareOperation(ctx context.Context, op *core.Operation
 		if err != nil {
 			return nil, err
 		}
-		pool, err := am.database.GetTokenPoolByID(ctx, transfer.Pool)
+		pool, err := db.GetTokenPoolByID(ctx, transfer.Pool)
 		if err != nil {
 			return nil, err
 		} else if pool == nil {
@@ -87,7 +92,7 @@ func (am *assetManager) PrepareOperation(ctx context.Context, op *core.Operation
 		if err != nil {
 			return nil, err
 		}
-		pool, err := am.database.GetTokenPoolByID(ctx, approval.Pool)
+		pool, err := db.GetTokenPoolByID(ctx, approval.Pool)
 		if err != nil {
 			return nil, err
 		} else if pool == nil {
@@ -103,7 +108,7 @@ func (am *assetManager) PrepareOperation(ctx context.Context, op *core.Operation
 func (am *assetManager) RunOperation(ctx context.Context, op *core.PreparedOperation) (outputs fftypes.JSONObject, complete bool, err error) {
 	switch data := op.Data.(type) {
 	case createPoolData:
-		plugin, err := am.selectTokenPlugin(ctx, data.Pool.Connector)
+		plugin, err := am.selectTokenPlugin(ctx, data.Pool.Connector, op.Namespace)
 		if err != nil {
 			return nil, false, err
 		}
@@ -111,7 +116,7 @@ func (am *assetManager) RunOperation(ctx context.Context, op *core.PreparedOpera
 		return nil, complete, err
 
 	case activatePoolData:
-		plugin, err := am.selectTokenPlugin(ctx, data.Pool.Connector)
+		plugin, err := am.selectTokenPlugin(ctx, data.Pool.Connector, op.Namespace)
 		if err != nil {
 			return nil, false, err
 		}
@@ -119,7 +124,7 @@ func (am *assetManager) RunOperation(ctx context.Context, op *core.PreparedOpera
 		return nil, complete, err
 
 	case transferData:
-		plugin, err := am.selectTokenPlugin(ctx, data.Pool.Connector)
+		plugin, err := am.selectTokenPlugin(ctx, data.Pool.Connector, op.Namespace)
 		if err != nil {
 			return nil, false, err
 		}
@@ -135,7 +140,7 @@ func (am *assetManager) RunOperation(ctx context.Context, op *core.PreparedOpera
 		}
 
 	case approvalData:
-		plugin, err := am.selectTokenPlugin(ctx, data.Pool.Connector)
+		plugin, err := am.selectTokenPlugin(ctx, data.Pool.Connector, op.Namespace)
 		if err != nil {
 			return nil, false, err
 		}
@@ -147,6 +152,11 @@ func (am *assetManager) RunOperation(ctx context.Context, op *core.PreparedOpera
 }
 
 func (am *assetManager) OnOperationUpdate(ctx context.Context, op *core.Operation, update *operations.OperationUpdate) error {
+	db, err := am.namespace.GetDatabasePlugin(ctx, op.Namespace)
+	if err != nil {
+		return err
+	}
+
 	// Write an event for failed pool operations
 	if op.Type == core.OpTypeTokenCreatePool && update.Status == core.OpStatusFailed {
 		tokenPool, err := txcommon.RetrieveTokenPoolCreateInputs(ctx, op)
@@ -160,7 +170,7 @@ func (am *assetManager) OnOperationUpdate(ctx context.Context, op *core.Operatio
 		} else {
 			event.Correlator = tokenPool.ID
 		}
-		if err := am.database.InsertEvent(ctx, event); err != nil {
+		if err := db.InsertEvent(ctx, event); err != nil {
 			return err
 		}
 	}
@@ -178,7 +188,7 @@ func (am *assetManager) OnOperationUpdate(ctx context.Context, op *core.Operatio
 		} else {
 			event.Correlator = tokenTransfer.LocalID
 		}
-		if err := am.database.InsertEvent(ctx, event); err != nil {
+		if err := db.InsertEvent(ctx, event); err != nil {
 			return err
 		}
 	}
@@ -196,7 +206,7 @@ func (am *assetManager) OnOperationUpdate(ctx context.Context, op *core.Operatio
 		} else {
 			event.Correlator = tokenApproval.LocalID
 		}
-		if err := am.database.InsertEvent(ctx, event); err != nil {
+		if err := db.InsertEvent(ctx, event); err != nil {
 			return err
 		}
 	}

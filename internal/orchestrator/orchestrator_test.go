@@ -369,7 +369,7 @@ func TestIdentityPlugin(t *testing.T) {
 	identityConfig.AddKnownKey(coreconfig.PluginConfigName, "flapflip")
 	identityConfig.AddKnownKey(coreconfig.PluginConfigType, "onchain")
 	config.Set("plugins.identity", []fftypes.JSONObject{{}})
-	or.mns.On("Init", mock.Anything, or.mdi).Return(nil)
+	or.mns.On("Init", mock.Anything, or.mdi, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	err := or.Init(ctx, cancelCtx)
 	assert.NoError(t, err)
@@ -770,7 +770,7 @@ func TestGoodTokensPlugin(t *testing.T) {
 	config.Set("plugins.tokens", []fftypes.JSONObject{{}})
 	or.database = or.mdi
 	or.tokens = nil
-	or.mns.On("Init", mock.Anything, or.mdi).Return(nil)
+	or.mns.On("Init", mock.Anything, or.mdi, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	err := or.Init(ctx, cancelCtx)
 	assert.NoError(t, err)
@@ -829,7 +829,7 @@ func TestGoodDeprecatedTokensPlugin(t *testing.T) {
 	config.Set("tokens", []fftypes.JSONObject{{}})
 	or.database = or.mdi
 	or.tokens = nil
-	or.mns.On("Init", mock.Anything, or.mdi).Return(nil)
+	or.mns.On("Init", mock.Anything, or.mdi, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	err := or.Init(ctx, cancelCtx)
 	assert.NoError(t, err)
@@ -925,11 +925,12 @@ func TestInitIdentityComponentFail(t *testing.T) {
 	assert.Regexp(t, "FF10128", err)
 }
 
-func TestInitAssetsComponentFail(t *testing.T) {
+func TestInitAssetsNamespaceMissingFail(t *testing.T) {
 	or := newTestOrchestrator()
 	defer or.cleanup(t)
 	or.databases = nil
 	or.assets = nil
+	or.namespace = nil
 	err := or.initComponents(context.Background())
 	assert.Regexp(t, "FF10128", err)
 }
@@ -1067,7 +1068,7 @@ func TestInitOK(t *testing.T) {
 	or.database = or.mdi
 	err := config.ReadConfig("core", configDir+"/firefly.core.yaml")
 	assert.NoError(t, err)
-	or.mns.On("Init", mock.Anything, or.mdi).Return(nil)
+	or.mns.On("Init", mock.Anything, or.mdi, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	err = or.Init(ctx, cancelCtx)
 	assert.NoError(t, err)
@@ -1092,7 +1093,7 @@ func TestInitOKWithMetrics(t *testing.T) {
 	or.database = or.mdi
 	err := config.ReadConfig("core", configDir+"/firefly.core.yaml")
 	assert.NoError(t, err)
-	or.mns.On("Init", mock.Anything, or.mdi).Return(nil)
+	or.mns.On("Init", mock.Anything, or.mdi, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	err = or.Init(ctx, cancelCtx)
 	assert.NoError(t, err)
@@ -1115,7 +1116,7 @@ func TestInitNamespaceFail(t *testing.T) {
 	or.database = or.mdi
 	err := config.ReadConfig("core", configDir+"/firefly.core.yaml")
 	assert.NoError(t, err)
-	or.mns.On("Init", mock.Anything, or.mdi).Return(fmt.Errorf("pop"))
+	or.mns.On("Init", mock.Anything, or.mdi, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("pop"))
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	err = or.Init(ctx, cancelCtx)
 	assert.EqualError(t, err, "pop")

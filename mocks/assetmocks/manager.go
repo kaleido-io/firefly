@@ -209,7 +209,7 @@ func (_m *Manager) GetTokenBalances(ctx context.Context, ns string, filter datab
 }
 
 // GetTokenConnectors provides a mock function with given fields: ctx, ns
-func (_m *Manager) GetTokenConnectors(ctx context.Context, ns string) []*core.TokenConnector {
+func (_m *Manager) GetTokenConnectors(ctx context.Context, ns string) ([]*core.TokenConnector, error) {
 	ret := _m.Called(ctx, ns)
 
 	var r0 []*core.TokenConnector
@@ -221,7 +221,14 @@ func (_m *Manager) GetTokenConnectors(ctx context.Context, ns string) []*core.To
 		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, ns)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GetTokenPool provides a mock function with given fields: ctx, ns, connector, poolName

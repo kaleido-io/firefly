@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/firefly/internal/data"
 	"github.com/hyperledger/firefly/internal/identity"
 	"github.com/hyperledger/firefly/internal/metrics"
+	"github.com/hyperledger/firefly/internal/namespace"
 	"github.com/hyperledger/firefly/internal/operations"
 	"github.com/hyperledger/firefly/internal/privatemessaging"
 	"github.com/hyperledger/firefly/internal/syncasync"
@@ -59,7 +60,7 @@ type Manager interface {
 	BurnTokens(ctx context.Context, ns string, transfer *core.TokenTransferInput, waitConfirm bool) (*core.TokenTransfer, error)
 	TransferTokens(ctx context.Context, ns string, transfer *core.TokenTransferInput, waitConfirm bool) (*core.TokenTransfer, error)
 
-	GetTokenConnectors(ctx context.Context, ns string) []*core.TokenConnector
+	GetTokenConnectors(ctx context.Context, ns string) ([]*core.TokenConnector, error)
 
 	NewApproval(ns string, approve *core.TokenApprovalInput) sysmessaging.MessageSender
 	TokenApproval(ctx context.Context, ns string, approval *core.TokenApprovalInput, waitConfirm bool) (*core.TokenApproval, error)
@@ -71,37 +72,37 @@ type Manager interface {
 }
 
 type assetManager struct {
-	ctx              context.Context
-	database         database.Plugin
-	txHelper         txcommon.Helper
-	identity         identity.Manager
-	data             data.Manager
-	syncasync        syncasync.Bridge
-	broadcast        broadcast.Manager
-	messaging        privatemessaging.Manager
-	tokens           map[string]tokens.Plugin
+	ctx context.Context
+	// database         database.Plugin
+	txHelper  txcommon.Helper
+	identity  identity.Manager
+	data      data.Manager
+	syncasync syncasync.Bridge
+	broadcast broadcast.Manager
+	messaging privatemessaging.Manager
+	// tokens           map[string]tokens.Plugin
 	metrics          metrics.Manager
 	operations       operations.Manager
 	keyNormalization int
+	namespace        namespace.Manager
 }
 
-func NewAssetManager(ctx context.Context, di database.Plugin, im identity.Manager, dm data.Manager, sa syncasync.Bridge, bm broadcast.Manager, pm privatemessaging.Manager, ti map[string]tokens.Plugin, mm metrics.Manager, om operations.Manager, txHelper txcommon.Helper) (Manager, error) {
-	if di == nil || im == nil || sa == nil || bm == nil || pm == nil || ti == nil || mm == nil || om == nil {
+func NewAssetManager(ctx context.Context, im identity.Manager, dm data.Manager, sa syncasync.Bridge, bm broadcast.Manager, pm privatemessaging.Manager, mm metrics.Manager, om operations.Manager, txHelper txcommon.Helper, ns namespace.Manager) (Manager, error) {
+	if im == nil || sa == nil || bm == nil || pm == nil || ns == nil || mm == nil || om == nil {
 		return nil, i18n.NewError(ctx, coremsgs.MsgInitializationNilDepError, "AssetManager")
 	}
 	am := &assetManager{
 		ctx:              ctx,
-		database:         di,
 		txHelper:         txHelper,
 		identity:         im,
 		data:             dm,
 		syncasync:        sa,
 		broadcast:        bm,
 		messaging:        pm,
-		tokens:           ti,
 		keyNormalization: identity.ParseKeyNormalizationConfig(config.GetString(coreconfig.AssetManagerKeyNormalization)),
 		metrics:          mm,
 		operations:       om,
+		namespace:        ns,
 	}
 	om.RegisterHandler(ctx, am, []core.OpType{
 		core.OpTypeTokenCreatePool,
@@ -116,8 +117,13 @@ func (am *assetManager) Name() string {
 	return "AssetManager"
 }
 
-func (am *assetManager) selectTokenPlugin(ctx context.Context, name string) (tokens.Plugin, error) {
-	for pluginName, plugin := range am.tokens {
+func (am *assetManager) selectTokenPlugin(ctx context.Context, name string, ns string) (tokens.Plugin, error) {
+	tokens, err := am.namespace.GetTokensPlugins(ctx, ns)
+	if err != nil {
+		return nil, err
+	}
+
+	for pluginName, plugin := range tokens {
 		if pluginName == name {
 			return plugin, nil
 		}
@@ -130,20 +136,38 @@ func (am *assetManager) scopeNS(ns string, filter database.AndFilter) database.A
 }
 
 func (am *assetManager) GetTokenBalances(ctx context.Context, ns string, filter database.AndFilter) ([]*core.TokenBalance, *database.FilterResult, error) {
-	return am.database.GetTokenBalances(ctx, am.scopeNS(ns, filter))
+	db, err := am.namespace.GetDatabasePlugin(ctx, ns)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return db.GetTokenBalances(ctx, am.scopeNS(ns, filter))
 }
 
 func (am *assetManager) GetTokenAccounts(ctx context.Context, ns string, filter database.AndFilter) ([]*core.TokenAccount, *database.FilterResult, error) {
-	return am.database.GetTokenAccounts(ctx, am.scopeNS(ns, filter))
+	db, err := am.namespace.GetDatabasePlugin(ctx, ns)
+	if err != nil {
+		return nil, nil, err
+	}
+	return db.GetTokenAccounts(ctx, am.scopeNS(ns, filter))
 }
 
 func (am *assetManager) GetTokenAccountPools(ctx context.Context, ns, key string, filter database.AndFilter) ([]*core.TokenAccountPool, *database.FilterResult, error) {
-	return am.database.GetTokenAccountPools(ctx, key, am.scopeNS(ns, filter))
+	db, err := am.namespace.GetDatabasePlugin(ctx, ns)
+	if err != nil {
+		return nil, nil, err
+	}
+	return db.GetTokenAccountPools(ctx, key, am.scopeNS(ns, filter))
 }
 
-func (am *assetManager) GetTokenConnectors(ctx context.Context, ns string) []*core.TokenConnector {
+func (am *assetManager) GetTokenConnectors(ctx context.Context, ns string) ([]*core.TokenConnector, error) {
+	tokens, err := am.namespace.GetTokensPlugins(ctx, ns)
+	if err != nil {
+		return nil, err
+	}
+
 	connectors := []*core.TokenConnector{}
-	for token := range am.tokens {
+	for token := range tokens {
 		connectors = append(
 			connectors,
 			&core.TokenConnector{
@@ -151,11 +175,15 @@ func (am *assetManager) GetTokenConnectors(ctx context.Context, ns string) []*co
 			},
 		)
 	}
-	return connectors
+	return connectors, nil
 }
 
 func (am *assetManager) getDefaultTokenConnector(ctx context.Context, ns string) (string, error) {
-	tokenConnectors := am.GetTokenConnectors(ctx, ns)
+	tokenConnectors, err := am.GetTokenConnectors(ctx, ns)
+	if err != nil {
+		return "", err
+	}
+
 	if len(tokenConnectors) != 1 {
 		return "", i18n.NewError(ctx, coremsgs.MsgFieldNotSpecified, "connector")
 	}
