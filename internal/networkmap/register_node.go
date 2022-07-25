@@ -50,6 +50,13 @@ func (nm *networkMap) RegisterNode(ctx context.Context, waitConfirm bool) (ident
 	if err != nil {
 		return nil, err
 	}
+
+	dxID := dxInfo.GetString("id")
+	if dxID != "" {
+		namespacedDestination := fmt.Sprintf("%s-%s", dxID, nm.namespace)
+		dxInfo["id"] = namespacedDestination
+	}
+
 	nodeRequest.Profile = dxInfo
 
 	return nm.RegisterIdentity(ctx, nodeRequest, waitConfirm)

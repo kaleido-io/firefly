@@ -51,6 +51,7 @@ type Manager interface {
 	CachedVerifierLookup(ctx context.Context, vType core.VerifierType, value string) (verifier *core.Verifier, err error)
 	GetMultipartyRootVerifier(ctx context.Context) (*core.VerifierRef, error)
 	GetMultipartyRootOrg(ctx context.Context) (*core.Identity, error)
+	GetLocalNode(ctx context.Context) (node *core.Identity, err error)
 	VerifyIdentityChain(ctx context.Context, identity *core.Identity) (immediateParent *core.Identity, retryable bool, err error)
 }
 
@@ -98,6 +99,10 @@ func ParseKeyNormalizationConfig(strConfigVal string) int {
 	default:
 		return KeyNormalizationNone
 	}
+}
+
+func (im *identityManager) GetLocalNode(ctx context.Context) (node *core.Identity, err error) {
+	return im.database.GetIdentityByName(ctx, core.IdentityTypeNode, im.namespace, config.GetString(coreconfig.NodeName))
 }
 
 // NormalizeSigningKey takes in only a "key" (which may be empty to use the default) to be normalized and returned.

@@ -113,6 +113,7 @@ type sendMessage struct {
 	Message   string `json:"message"`
 	Recipient string `json:"recipient"`
 	RequestID string `json:"requestId"`
+	Sender    string `json:"sender"`
 }
 
 type transferBlob struct {
@@ -278,7 +279,7 @@ func (h *FFDX) DownloadBlob(ctx context.Context, payloadRef string) (content io.
 	return res.RawBody(), nil
 }
 
-func (h *FFDX) SendMessage(ctx context.Context, nsOpID, peerID string, data []byte) (err error) {
+func (h *FFDX) SendMessage(ctx context.Context, nsOpID, peerID string, senderID string, data []byte) (err error) {
 	if err := h.checkInitialized(ctx); err != nil {
 		return err
 	}
@@ -289,6 +290,7 @@ func (h *FFDX) SendMessage(ctx context.Context, nsOpID, peerID string, data []by
 			Message:   string(data),
 			Recipient: peerID,
 			RequestID: nsOpID,
+			Sender:    senderID,
 		}).
 		SetResult(&responseData).
 		Post("/api/v1/messages")
