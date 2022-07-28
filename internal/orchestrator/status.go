@@ -20,10 +20,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hyperledger/firefly-common/pkg/config"
 	"github.com/hyperledger/firefly-common/pkg/fftypes"
 	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly/internal/coreconfig"
 	"github.com/hyperledger/firefly/pkg/core"
 	"github.com/hyperledger/firefly/pkg/database"
 )
@@ -100,7 +98,7 @@ func (or *orchestrator) GetStatus(ctx context.Context) (status *core.NamespaceSt
 	status = &core.NamespaceStatus{
 		Namespace: or.namespace,
 		Node: core.NamespaceStatusNode{
-			Name: config.GetString(coreconfig.NodeName),
+			Name: or.config.Multiparty.NodeName,
 		},
 		Org: core.NamespaceStatusOrg{
 			Name: or.config.Multiparty.Org.Name,
