@@ -127,6 +127,7 @@ var migrations = map[string]func(root *ConfigItem){
 						"channel":   fabconnect.Get("channel").value,
 					},
 				}
+				contract["firstEvent"] = "0"
 				namespaces.Each().Run(func(namespace *ConfigItem) {
 					if namespace.Get("multiparty").Get("enabled").value == true {
 						namespace.Get("multiparty").Get("contract").SetIfEmpty([]interface{}{contract})
