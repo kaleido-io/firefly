@@ -645,6 +645,41 @@ func (_m *Plugin) GetDataByID(ctx context.Context, namespace string, id *fftypes
 	return r0, r1
 }
 
+// GetDataPaths provides a mock function with given fields: ctx, namespace, parent
+func (_m *Plugin) GetDataPaths(ctx context.Context, namespace string, parent string) ([]string, *ffapi.FilterResult, error) {
+	ret := _m.Called(ctx, namespace, parent)
+
+	var r0 []string
+	var r1 *ffapi.FilterResult
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) ([]string, *ffapi.FilterResult, error)); ok {
+		return rf(ctx, namespace, parent)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) []string); ok {
+		r0 = rf(ctx, namespace, parent)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) *ffapi.FilterResult); ok {
+		r1 = rf(ctx, namespace, parent)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*ffapi.FilterResult)
+		}
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, string, string) error); ok {
+		r2 = rf(ctx, namespace, parent)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
 // GetDataRefs provides a mock function with given fields: ctx, namespace, filter
 func (_m *Plugin) GetDataRefs(ctx context.Context, namespace string, filter ffapi.Filter) (core.DataRefs, *ffapi.FilterResult, error) {
 	ret := _m.Called(ctx, namespace, filter)

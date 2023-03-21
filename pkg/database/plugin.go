@@ -131,6 +131,9 @@ type iDataCollection interface {
 	// GetData - Get data
 	GetData(ctx context.Context, namespace string, filter ffapi.Filter) (message core.DataArray, res *ffapi.FilterResult, err error)
 
+	// GetDataPaths - Use DB specific querying to get a list of sub-paths of a name
+	GetDataPaths(ctx context.Context, namespace string, parent string) (paths []string, res *ffapi.FilterResult, err error)
+
 	// GetDataRefs - Get data references only (no data)
 	GetDataRefs(ctx context.Context, namespace string, filter ffapi.Filter) (message core.DataRefs, res *ffapi.FilterResult, err error)
 

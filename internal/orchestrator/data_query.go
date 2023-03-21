@@ -19,6 +19,7 @@ package orchestrator
 import (
 	"context"
 	"database/sql/driver"
+	"strings"
 
 	"github.com/hyperledger/firefly-common/pkg/ffapi"
 	"github.com/hyperledger/firefly-common/pkg/fftypes"
@@ -273,6 +274,10 @@ func (or *orchestrator) GetMessageEvents(ctx context.Context, id string, filter 
 
 func (or *orchestrator) GetBatches(ctx context.Context, filter ffapi.AndFilter) ([]*core.BatchPersisted, *ffapi.FilterResult, error) {
 	return or.database().GetBatches(ctx, or.namespace.Name, filter)
+}
+
+func (or *orchestrator) GetDataPaths(ctx context.Context, parent string) ([]string, *ffapi.FilterResult, error) {
+	return or.database().GetDataPaths(ctx, or.namespace.Name, strings.TrimPrefix(parent, "/"))
 }
 
 func (or *orchestrator) GetData(ctx context.Context, filter ffapi.AndFilter) (core.DataArray, *ffapi.FilterResult, error) {

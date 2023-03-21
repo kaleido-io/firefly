@@ -489,6 +489,14 @@ func TestGetData(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestGetDataPaths(t *testing.T) {
+	or := newTestOrchestrator()
+	defer or.cleanup(t)
+	or.mdi.On("GetDataPaths", mock.Anything, "ns", "some/path").Return([]string{}, nil, nil)
+	_, _, err := or.GetDataPaths(context.Background(), "/some/path")
+	assert.NoError(t, err)
+}
+
 func TestGetDatatypeByID(t *testing.T) {
 	or := newTestOrchestrator()
 	defer or.cleanup(t)

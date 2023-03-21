@@ -445,6 +445,41 @@ func (_m *Orchestrator) GetDataByID(ctx context.Context, id string) (*core.Data,
 	return r0, r1
 }
 
+// GetDataPaths provides a mock function with given fields: ctx, parentPath
+func (_m *Orchestrator) GetDataPaths(ctx context.Context, parentPath string) ([]string, *ffapi.FilterResult, error) {
+	ret := _m.Called(ctx, parentPath)
+
+	var r0 []string
+	var r1 *ffapi.FilterResult
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]string, *ffapi.FilterResult, error)); ok {
+		return rf(ctx, parentPath)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []string); ok {
+		r0 = rf(ctx, parentPath)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) *ffapi.FilterResult); ok {
+		r1 = rf(ctx, parentPath)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*ffapi.FilterResult)
+		}
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, string) error); ok {
+		r2 = rf(ctx, parentPath)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
 // GetDatatypeByID provides a mock function with given fields: ctx, id
 func (_m *Orchestrator) GetDatatypeByID(ctx context.Context, id string) (*core.Datatype, error) {
 	ret := _m.Called(ctx, id)
