@@ -1,4 +1,4 @@
-// Copyright © 2022 Kaleido, Inc.
+// Copyright © 2023 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -36,6 +36,7 @@ import (
 	"github.com/hyperledger/firefly/pkg/core"
 	"github.com/hyperledger/firefly/pkg/database"
 	"github.com/hyperledger/firefly/pkg/events"
+	"github.com/hyperledger/firefly/pkg/leaderelection"
 )
 
 const (
@@ -49,30 +50,35 @@ type ackNack struct {
 }
 
 type eventDispatcher struct {
-	acksNacks     chan ackNack
-	cancelCtx     func()
-	closed        chan struct{}
-	connID        string
-	ctx           context.Context
-	enricher      *eventEnricher
-	data          data.Manager
-	database      database.Plugin
-	transport     events.Plugin
-	broadcast     broadcast.Manager        // optional
-	messaging     privatemessaging.Manager // optional
-	elected       bool
-	eventPoller   *eventPoller
-	inflight      map[fftypes.UUID]*core.Event
-	eventDelivery chan *core.EventDelivery
-	mux           sync.Mutex
-	namespace     string
-	readAhead     int
-	subscription  *subscription
-	txHelper      txcommon.Helper
+	acksNacks       chan ackNack
+	cancelCtx       func()
+	closed          chan struct{}
+	connID          string
+	ctx             context.Context
+	originalContext context.Context
+	enricher        *eventEnricher
+	data            data.Manager
+	database        database.Plugin
+	transport       events.Plugin
+	leaderElection  leaderelection.Plugin
+	broadcast       broadcast.Manager        // optional
+	messaging       privatemessaging.Manager // optional
+	elected         bool
+	eventPoller     *eventPoller
+	inflight        map[fftypes.UUID]*core.Event
+	eventDelivery   chan *core.EventDelivery
+	mux             sync.Mutex
+	namespace       string
+	readAhead       int
+	subscription    *subscription
+	txHelper        txcommon.Helper
+	pollerConf      *eventPollerConf
+	eventNotifier   *eventNotifier
 }
 
-func newEventDispatcher(ctx context.Context, enricher *eventEnricher, ei events.Plugin, di database.Plugin, dm data.Manager, bm broadcast.Manager, pm privatemessaging.Manager, connID string, sub *subscription, en *eventNotifier, txHelper txcommon.Helper) *eventDispatcher {
-	ctx, cancelCtx := context.WithCancel(ctx)
+func newEventDispatcher(ctx context.Context, enricher *eventEnricher, ei events.Plugin, di database.Plugin, dm data.Manager, bm broadcast.Manager, pm privatemessaging.Manager, connID string, sub *subscription, en *eventNotifier, txHelper txcommon.Helper, le leaderelection.Plugin) *eventDispatcher {
+	originalContext := ctx
+	ctx, cancelCtx := newContext(originalContext, connID, sub)
 	readAhead := config.GetUint(coreconfig.SubscriptionDefaultsReadAhead)
 	if sub.definition.Options.ReadAhead != nil {
 		readAhead = uint(*sub.definition.Options.ReadAhead)
@@ -81,28 +87,29 @@ func newEventDispatcher(ctx context.Context, enricher *eventEnricher, ei events.
 		readAhead = maxReadAhead
 	}
 	ed := &eventDispatcher{
-		ctx: log.WithLogField(log.WithLogField(ctx,
-			"role", fmt.Sprintf("ed[%s]", connID)),
-			"sub", fmt.Sprintf("%s/%s:%s", sub.definition.ID, sub.definition.Namespace, sub.definition.Name)),
-		enricher:      enricher,
-		database:      di,
-		transport:     ei,
-		broadcast:     bm,
-		messaging:     pm,
-		data:          dm,
-		connID:        connID,
-		cancelCtx:     cancelCtx,
-		subscription:  sub,
-		namespace:     sub.definition.Namespace,
-		inflight:      make(map[fftypes.UUID]*core.Event),
-		eventDelivery: make(chan *core.EventDelivery, readAhead+1),
-		readAhead:     int(readAhead),
-		acksNacks:     make(chan ackNack),
-		closed:        make(chan struct{}),
-		txHelper:      txHelper,
+		ctx:             ctx,
+		originalContext: originalContext,
+		enricher:        enricher,
+		database:        di,
+		transport:       ei,
+		broadcast:       bm,
+		messaging:       pm,
+		data:            dm,
+		eventNotifier:   en,
+		leaderElection:  le,
+		connID:          connID,
+		cancelCtx:       cancelCtx,
+		subscription:    sub,
+		namespace:       sub.definition.Namespace,
+		inflight:        make(map[fftypes.UUID]*core.Event),
+		eventDelivery:   make(chan *core.EventDelivery, readAhead+1),
+		readAhead:       int(readAhead),
+		acksNacks:       make(chan ackNack),
+		closed:          make(chan struct{}),
+		txHelper:        txHelper,
 	}
 
-	pollerConf := &eventPollerConf{
+	ed.pollerConf = &eventPollerConf{
 		eventBatchSize:             config.GetInt(coreconfig.EventDispatcherBufferLength),
 		eventBatchTimeout:          config.GetDuration(coreconfig.EventDispatcherBatchTimeout),
 		eventPollTimeout:           config.GetDuration(coreconfig.EventDispatcherPollTimeout),
@@ -123,8 +130,14 @@ func newEventDispatcher(ctx context.Context, enricher *eventEnricher, ei events.
 		firstEvent:       sub.definition.Options.FirstEvent,
 	}
 
-	ed.eventPoller = newEventPoller(ctx, di, en, pollerConf)
+	ed.eventPoller = newEventPoller(ctx, di, en, ed.pollerConf)
 	return ed
+}
+
+func newContext(originalContext context.Context, connID string, sub *subscription) (context.Context, context.CancelFunc) {
+	return context.WithCancel(log.WithLogField(log.WithLogField(originalContext,
+		"role", fmt.Sprintf("ed[%s]", connID)),
+		"sub", fmt.Sprintf("%s/%s:%s", sub.definition.ID, sub.definition.Namespace, sub.definition.Name)))
 }
 
 func (ed *eventDispatcher) start() {
@@ -134,24 +147,39 @@ func (ed *eventDispatcher) start() {
 func (ed *eventDispatcher) electAndStart() {
 	defer close(ed.closed)
 	l := log.L(ed.ctx)
-	l.Debugf("Dispatcher attempting to become leader")
-	select {
-	case ed.subscription.dispatcherElection <- true:
-		l.Debugf("Dispatcher became leader")
-		defer func() {
-			// Unelect ourselves on close, to let another dispatcher in
-			<-ed.subscription.dispatcherElection
-		}()
-	case <-ed.ctx.Done():
-		l.Debugf("Closed before we became leader")
-		return
+	// Loop while we're not the leader and haven't been closed
+	for {
+		l.Debugf("Dispatcher attempting to become leader")
+		go ed.leaderElection.RunLeaderElection(ed.ctx, ed.subscription.dispatcherElection)
+		select {
+		case elected := <-ed.subscription.dispatcherElection:
+			if elected {
+				ed.elected = elected
+				l.Debugf("Dispatcher became leader")
+				defer func() {
+					// Unelect ourselves on close, to let another dispatcher in
+					<-ed.subscription.dispatcherElection
+				}()
+				// We're ready to go
+				ed.eventPoller.start()
+				go ed.deliverEvents()
+				// Wait until the event poller closes
+				<-ed.eventPoller.closed
+				return
+			} else if ed.elected && !elected {
+				// We were previously elected, but just unelected. Cancel the current context and run for re-election.
+				ed.cancelCtx()
+				newContext, cancelFunc := newContext(ed.originalContext, ed.connID, ed.subscription)
+				ed.ctx = newContext
+				ed.cancelCtx = cancelFunc
+				l = log.L(ed.ctx)
+				ed.eventPoller = newEventPoller(newContext, ed.database, ed.eventNotifier, ed.pollerConf)
+			}
+		case <-ed.ctx.Done():
+			l.Debugf("Closed before we became leader")
+			return
+		}
 	}
-	// We're ready to go - not
-	ed.elected = true
-	ed.eventPoller.start()
-	go ed.deliverEvents()
-	// Wait until the event poller closes
-	<-ed.eventPoller.closed
 }
 
 func (ed *eventDispatcher) getEvents(ctx context.Context, filter ffapi.Filter, offset int64) ([]core.LocallySequenced, error) {

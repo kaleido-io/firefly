@@ -48,6 +48,7 @@ import (
 	"github.com/hyperledger/firefly/pkg/dataexchange"
 	eventsplugin "github.com/hyperledger/firefly/pkg/events"
 	idplugin "github.com/hyperledger/firefly/pkg/identity"
+	"github.com/hyperledger/firefly/pkg/leaderelection"
 	"github.com/hyperledger/firefly/pkg/sharedstorage"
 	"github.com/hyperledger/firefly/pkg/tokens"
 )
@@ -166,15 +167,21 @@ type AuthPlugin struct {
 	Plugin auth.Plugin
 }
 
+type LeaderElectionPlugin struct {
+	Name   string
+	Plugin leaderelection.Plugin
+}
+
 type Plugins struct {
-	Blockchain    BlockchainPlugin
-	Identity      IdentityPlugin
-	SharedStorage SharedStoragePlugin
-	DataExchange  DataExchangePlugin
-	Database      DatabasePlugin
-	Tokens        []TokensPlugin
-	Events        map[string]eventsplugin.Plugin
-	Auth          AuthPlugin
+	Blockchain     BlockchainPlugin
+	Identity       IdentityPlugin
+	SharedStorage  SharedStoragePlugin
+	DataExchange   DataExchangePlugin
+	Database       DatabasePlugin
+	Tokens         []TokensPlugin
+	Events         map[string]eventsplugin.Plugin
+	Auth           AuthPlugin
+	LeaderElection LeaderElectionPlugin
 }
 
 type Config struct {
@@ -254,6 +261,10 @@ func (or *orchestrator) dataexchange() dataexchange.Plugin {
 
 func (or *orchestrator) sharedstorage() sharedstorage.Plugin {
 	return or.plugins.SharedStorage.Plugin
+}
+
+func (or *orchestrator) leaderelection() leaderelection.Plugin {
+	return or.plugins.LeaderElection.Plugin
 }
 
 func (or *orchestrator) tokens() map[string]tokens.Plugin {
@@ -521,7 +532,7 @@ func (or *orchestrator) initComponents(ctx context.Context) (err error) {
 	}
 
 	if or.events == nil {
-		or.events, err = events.NewEventManager(ctx, or.namespace, or.database(), or.blockchain(), or.identity, or.defhandler, or.data, or.defsender, or.broadcast, or.messaging, or.assets, or.sharedDownload, or.metrics, or.operations, or.txHelper, or.plugins.Events, or.multiparty, or.cacheManager)
+		or.events, err = events.NewEventManager(ctx, or.namespace, or.database(), or.blockchain(), or.identity, or.defhandler, or.data, or.defsender, or.broadcast, or.messaging, or.assets, or.sharedDownload, or.metrics, or.operations, or.txHelper, or.plugins.Events, or.multiparty, or.cacheManager, or.leaderelection())
 		if err != nil {
 			return err
 		}

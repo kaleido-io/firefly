@@ -34,6 +34,7 @@ import (
 	"github.com/hyperledger/firefly/mocks/databasemocks"
 	"github.com/hyperledger/firefly/mocks/datamocks"
 	"github.com/hyperledger/firefly/mocks/eventsmocks"
+	"github.com/hyperledger/firefly/mocks/leaderelectionmocks"
 	"github.com/hyperledger/firefly/mocks/operationmocks"
 	"github.com/hyperledger/firefly/mocks/privatemessagingmocks"
 	"github.com/hyperledger/firefly/mocks/syncasyncmocks"
@@ -55,11 +56,17 @@ func newTestEventDispatcher(sub *subscription) (*eventDispatcher, func()) {
 	mom := &operationmocks.Manager{}
 	ctx := context.Background()
 	cmi := &cachemocks.Manager{}
+	mle := &leaderelectionmocks.Plugin{}
+	mle.On("RunLeaderElection", mock.Anything, mock.AnythingOfType("chan bool")).Run(
+		func(args mock.Arguments) {
+			c := args[1].(chan bool)
+			c <- true
+		})
 	cmi.On("GetCache", mock.Anything).Return(cache.NewUmanagedCache(ctx, 100, 5*time.Minute), nil)
 	txHelper, _ := txcommon.NewTransactionHelper(ctx, "ns1", mdi, mdm, cmi)
 	enricher := newEventEnricher("ns1", mdi, mdm, mom, txHelper)
 	ctx, cancel := context.WithCancel(context.Background())
-	return newEventDispatcher(ctx, enricher, mei, mdi, mdm, mbm, mpm, fftypes.NewUUID().String(), sub, newEventNotifier(ctx, "ut"), txHelper), func() {
+	return newEventDispatcher(ctx, enricher, mei, mdi, mdm, mbm, mpm, fftypes.NewUUID().String(), sub, newEventNotifier(ctx, "ut"), txHelper, mle), func() {
 		cancel()
 		coreconfig.Reset()
 	}

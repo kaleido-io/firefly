@@ -1,7 +1,5 @@
 {
-  "go.formatFlags": [
-    "-s"
-  ],
+  "go.formatFlags": ["-s"],
   "go.lintTool": "golangci-lint",
   "cSpell.words": [
     "actioned",
@@ -48,6 +46,7 @@
     "Infof",
     "IPFS",
     "karlseguin",
+    "leaderelection",
     "microservices",
     "msgid",
     "myinsert",

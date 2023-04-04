@@ -1,4 +1,4 @@
-// Copyright © 2022 Kaleido, Inc.
+// Copyright © 2023 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -35,6 +35,7 @@ import (
 	"github.com/hyperledger/firefly/pkg/core"
 	"github.com/hyperledger/firefly/pkg/database"
 	"github.com/hyperledger/firefly/pkg/events"
+	"github.com/hyperledger/firefly/pkg/leaderelection"
 )
 
 type subscription struct {
@@ -90,9 +91,10 @@ type subscriptionManager struct {
 	newOrUpdatedSubscriptions chan *fftypes.UUID
 	deletedSubscriptions      chan *fftypes.UUID
 	retry                     retry.Retry
+	leaderElection            leaderelection.Plugin
 }
 
-func newSubscriptionManager(ctx context.Context, ns string, enricher *eventEnricher, di database.Plugin, dm data.Manager, en *eventNotifier, bm broadcast.Manager, pm privatemessaging.Manager, txHelper txcommon.Helper, transports map[string]events.Plugin) (*subscriptionManager, error) {
+func newSubscriptionManager(ctx context.Context, ns string, enricher *eventEnricher, di database.Plugin, dm data.Manager, en *eventNotifier, bm broadcast.Manager, pm privatemessaging.Manager, txHelper txcommon.Helper, transports map[string]events.Plugin, le leaderelection.Plugin) (*subscriptionManager, error) {
 	ctx, cancelCtx := context.WithCancel(ctx)
 	sm := &subscriptionManager{
 		ctx:                       ctx,
@@ -452,7 +454,7 @@ func (sm *subscriptionManager) matchSubToConnLocked(conn *connection, sub *subsc
 	}
 	if conn.transport == sub.definition.Transport && conn.matcher(sub.definition.SubscriptionRef) {
 		if _, ok := conn.dispatchers[*sub.definition.ID]; !ok {
-			dispatcher := newEventDispatcher(sm.ctx, sm.enricher, conn.ei, sm.database, sm.data, sm.broadcast, sm.messaging, conn.id, sub, sm.eventNotifier, sm.txHelper)
+			dispatcher := newEventDispatcher(sm.ctx, sm.enricher, conn.ei, sm.database, sm.data, sm.broadcast, sm.messaging, conn.id, sub, sm.eventNotifier, sm.txHelper, sm.leaderElection)
 			conn.dispatchers[*sub.definition.ID] = dispatcher
 			dispatcher.start()
 		}
@@ -489,7 +491,7 @@ func (sm *subscriptionManager) ephemeralSubscription(ei events.Plugin, connID, n
 	}
 
 	// Create the dispatcher, and start immediately
-	dispatcher := newEventDispatcher(sm.ctx, sm.enricher, ei, sm.database, sm.data, sm.broadcast, sm.messaging, connID, newSub, sm.eventNotifier, sm.txHelper)
+	dispatcher := newEventDispatcher(sm.ctx, sm.enricher, ei, sm.database, sm.data, sm.broadcast, sm.messaging, connID, newSub, sm.eventNotifier, sm.txHelper, sm.leaderElection)
 	dispatcher.start()
 
 	conn.dispatchers[*subID] = dispatcher

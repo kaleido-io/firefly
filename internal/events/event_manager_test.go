@@ -148,7 +148,7 @@ func newTestEventManagerCommon(t *testing.T, metrics, dbconcurrency bool) *testE
 	mev.On("SetHandler", "ns1", mock.Anything).Return(nil).Maybe()
 	mev.On("ValidateOptions", mock.Anything).Return(nil).Maybe()
 	ns := &core.Namespace{Name: "ns1", NetworkName: "ns1"}
-	emi, err := NewEventManager(ctx, ns, mdi, mbi, mim, msh, mdm, mds, mbm, mpm, mam, msd, mmi, mom, txHelper, events, mmp, cmi)
+	emi, err := NewEventManager(ctx, ns, mdi, mbi, mim, msh, mdm, mds, mbm, mpm, mam, msd, mmi, mom, txHelper, events, mmp, cmi, nil)
 	em := emi.(*eventManager)
 	mockRunAsGroupPassthrough(mdi)
 	assert.NoError(t, err)
@@ -207,7 +207,7 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestStartStopBadDependencies(t *testing.T) {
-	_, err := NewEventManager(context.Background(), &core.Namespace{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	_, err := NewEventManager(context.Background(), &core.Namespace{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	assert.Regexp(t, "FF10128", err)
 
 }
@@ -263,7 +263,7 @@ func TestAggregatorCacheInitFail(t *testing.T) {
 	mbi.On("VerifierType").Return(core.VerifierTypeEthAddress)
 	mev.On("SetHandler", "ns1", mock.Anything).Return(nil).Maybe()
 	mev.On("ValidateOptions", mock.Anything).Return(nil).Maybe()
-	_, err := NewEventManager(context.Background(), ns, mdi, mbi, mim, msh, mdm, mds, mbm, mpm, mam, msd, mm, mom, txHelper, events, mmp, cmi)
+	_, err := NewEventManager(context.Background(), ns, mdi, mbi, mim, msh, mdm, mds, mbm, mpm, mam, msd, mm, mom, txHelper, events, mmp, cmi, nil)
 	assert.Equal(t, cacheInitError, err)
 }
 
@@ -312,7 +312,7 @@ func TestEventCacheInitFail(t *testing.T) {
 	mbi.On("VerifierType").Return(core.VerifierTypeEthAddress)
 	mev.On("SetHandler", "ns1", mock.Anything).Return(nil).Maybe()
 	mev.On("ValidateOptions", mock.Anything).Return(nil).Maybe()
-	_, err := NewEventManager(context.Background(), ns, mdi, mbi, mim, msh, mdm, mds, mbm, mpm, mam, msd, mm, mom, txHelper, events, mmp, cmi)
+	_, err := NewEventManager(context.Background(), ns, mdi, mbi, mim, msh, mdm, mds, mbm, mpm, mam, msd, mm, mom, txHelper, events, mmp, cmi, nil)
 	assert.Equal(t, cacheInitError, err)
 }
 
@@ -342,7 +342,7 @@ func TestStartStopEventListenerFail(t *testing.T) {
 	mbi.On("VerifierType").Return(core.VerifierTypeEthAddress)
 	mev.On("SetHandler", "ns1", mock.Anything).Return(fmt.Errorf("pop"))
 	ns := &core.Namespace{Name: "ns1", NetworkName: "ns1"}
-	_, err := NewEventManager(context.Background(), ns, mdi, mbi, mim, msh, mdm, mds, mbm, mpm, mam, msd, mm, mom, txHelper, events, mmp, cmi)
+	_, err := NewEventManager(context.Background(), ns, mdi, mbi, mim, msh, mdm, mds, mbm, mpm, mam, msd, mm, mom, txHelper, events, mmp, cmi, nil)
 	assert.EqualError(t, err, "pop")
 }
 
