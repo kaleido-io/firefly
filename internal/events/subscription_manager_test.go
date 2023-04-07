@@ -107,6 +107,12 @@ func TestRegisterDurableSubscriptions(t *testing.T) {
 			return ctx.Err()
 		},
 	)
+	mle1 := testED1.leaderElection.(*leaderelectionmocks.Plugin)
+	mle1.On("RunLeaderElection", mock.Anything, mock.AnythingOfType("chan bool")).Run(
+		func(args mock.Arguments) {
+			c := args[1].(chan bool)
+			go func() { c <- true }()
+		})
 
 	defer cancel1()
 	testED1.start()
@@ -853,7 +859,8 @@ func TestDeleteDurableSubscriptionOk(t *testing.T) {
 		Transport: "websockets",
 	}
 	sub := &subscription{
-		definition: subDef,
+		definition:         subDef,
+		dispatcherElection: make(chan bool),
 	}
 	testED1, _ := newTestEventDispatcher(sub)
 
@@ -864,6 +871,12 @@ func TestDeleteDurableSubscriptionOk(t *testing.T) {
 
 	sm.durableSubs[*subID] = sub
 	ed, _ := newTestEventDispatcher(sub)
+	mle := ed.leaderElection.(*leaderelectionmocks.Plugin)
+	mle.On("RunLeaderElection", mock.Anything, mock.AnythingOfType("chan bool")).Run(
+		func(args mock.Arguments) {
+			c := args[1].(chan bool)
+			go func() { c <- true }()
+		})
 	ed.database = mdi
 	ed.start()
 	sm.connections["conn1"] = &connection{

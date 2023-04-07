@@ -38,6 +38,7 @@ import (
 	"github.com/hyperledger/firefly/internal/events/eifactory"
 	"github.com/hyperledger/firefly/internal/events/system"
 	"github.com/hyperledger/firefly/internal/identity/iifactory"
+	"github.com/hyperledger/firefly/internal/leaderelection/lefactory"
 	"github.com/hyperledger/firefly/internal/metrics"
 	"github.com/hyperledger/firefly/internal/orchestrator"
 	"github.com/hyperledger/firefly/internal/sharedstorage/ssfactory"
@@ -49,6 +50,7 @@ import (
 	"github.com/hyperledger/firefly/pkg/dataexchange"
 	"github.com/hyperledger/firefly/pkg/events"
 	"github.com/hyperledger/firefly/pkg/identity"
+	"github.com/hyperledger/firefly/pkg/leaderelection"
 	"github.com/hyperledger/firefly/pkg/sharedstorage"
 	"github.com/hyperledger/firefly/pkg/tokens"
 	"github.com/spf13/viper"
@@ -99,28 +101,30 @@ type namespaceManager struct {
 	watchConfig         func() // indirect from viper.WatchConfig for testing
 	nsStartupRetry      *retry.Retry
 
-	orchestratorFactory  func(ns *core.Namespace, config orchestrator.Config, plugins *orchestrator.Plugins, metrics metrics.Manager, cacheManager cache.Manager) orchestrator.Orchestrator
-	blockchainFactory    func(ctx context.Context, pluginType string) (blockchain.Plugin, error)
-	databaseFactory      func(ctx context.Context, pluginType string) (database.Plugin, error)
-	dataexchangeFactory  func(ctx context.Context, pluginType string) (dataexchange.Plugin, error)
-	sharedstorageFactory func(ctx context.Context, pluginType string) (sharedstorage.Plugin, error)
-	tokensFactory        func(ctx context.Context, pluginType string) (tokens.Plugin, error)
-	identityFactory      func(ctx context.Context, pluginType string) (identity.Plugin, error)
-	eventsFactory        func(ctx context.Context, pluginType string) (events.Plugin, error)
-	authFactory          func(ctx context.Context, pluginType string) (auth.Plugin, error)
+	orchestratorFactory   func(ns *core.Namespace, config orchestrator.Config, plugins *orchestrator.Plugins, metrics metrics.Manager, cacheManager cache.Manager) orchestrator.Orchestrator
+	blockchainFactory     func(ctx context.Context, pluginType string) (blockchain.Plugin, error)
+	databaseFactory       func(ctx context.Context, pluginType string) (database.Plugin, error)
+	dataexchangeFactory   func(ctx context.Context, pluginType string) (dataexchange.Plugin, error)
+	sharedstorageFactory  func(ctx context.Context, pluginType string) (sharedstorage.Plugin, error)
+	tokensFactory         func(ctx context.Context, pluginType string) (tokens.Plugin, error)
+	identityFactory       func(ctx context.Context, pluginType string) (identity.Plugin, error)
+	eventsFactory         func(ctx context.Context, pluginType string) (events.Plugin, error)
+	authFactory           func(ctx context.Context, pluginType string) (auth.Plugin, error)
+	leaderelectionFactory func(ctx context.Context, pluginType string) (leaderelection.Plugin, error)
 }
 
 type pluginCategory string
 
 const (
-	pluginCategoryBlockchain    pluginCategory = "blockchain"
-	pluginCategoryDatabase      pluginCategory = "database"
-	pluginCategoryDataexchange  pluginCategory = "dataexchange"
-	pluginCategorySharedstorage pluginCategory = "sharedstorage"
-	pluginCategoryTokens        pluginCategory = "tokens"
-	pluginCategoryIdentity      pluginCategory = "identity"
-	pluginCategoryEvents        pluginCategory = "events"
-	pluginCategoryAuth          pluginCategory = "auth"
+	pluginCategoryBlockchain     pluginCategory = "blockchain"
+	pluginCategoryDatabase       pluginCategory = "database"
+	pluginCategoryDataexchange   pluginCategory = "dataexchange"
+	pluginCategorySharedstorage  pluginCategory = "sharedstorage"
+	pluginCategoryTokens         pluginCategory = "tokens"
+	pluginCategoryIdentity       pluginCategory = "identity"
+	pluginCategoryEvents         pluginCategory = "events"
+	pluginCategoryAuth           pluginCategory = "auth"
+	pluginCategoryLeaderElection pluginCategory = "leaderelection"
 )
 
 type plugin struct {
@@ -133,14 +137,15 @@ type plugin struct {
 	configHash *fftypes.Bytes32
 	loadTime   *fftypes.FFTime
 
-	blockchain    blockchain.Plugin
-	database      database.Plugin
-	dataexchange  dataexchange.Plugin
-	sharedstorage sharedstorage.Plugin
-	tokens        tokens.Plugin
-	identity      identity.Plugin
-	events        events.Plugin
-	auth          auth.Plugin
+	blockchain     blockchain.Plugin
+	database       database.Plugin
+	dataexchange   dataexchange.Plugin
+	sharedstorage  sharedstorage.Plugin
+	tokens         tokens.Plugin
+	identity       identity.Plugin
+	events         events.Plugin
+	auth           auth.Plugin
+	leaderelection leaderelection.Plugin
 }
 
 func stringSlicesEqual(a, b []string) bool {
@@ -162,15 +167,16 @@ func NewNamespaceManager() Manager {
 		tokenBroadcastNames: make(map[string]string),
 		watchConfig:         viper.WatchConfig,
 
-		orchestratorFactory:  orchestrator.NewOrchestrator,
-		blockchainFactory:    bifactory.GetPlugin,
-		databaseFactory:      difactory.GetPlugin,
-		dataexchangeFactory:  dxfactory.GetPlugin,
-		sharedstorageFactory: ssfactory.GetPlugin,
-		tokensFactory:        tifactory.GetPlugin,
-		identityFactory:      iifactory.GetPlugin,
-		eventsFactory:        eifactory.GetPlugin,
-		authFactory:          authfactory.GetPlugin,
+		orchestratorFactory:   orchestrator.NewOrchestrator,
+		blockchainFactory:     bifactory.GetPlugin,
+		databaseFactory:       difactory.GetPlugin,
+		dataexchangeFactory:   dxfactory.GetPlugin,
+		sharedstorageFactory:  ssfactory.GetPlugin,
+		tokensFactory:         tifactory.GetPlugin,
+		identityFactory:       iifactory.GetPlugin,
+		eventsFactory:         eifactory.GetPlugin,
+		authFactory:           authfactory.GetPlugin,
+		leaderelectionFactory: lefactory.GetPlugin,
 		nsStartupRetry: &retry.Retry{
 			InitialDelay: config.GetDuration(coreconfig.NamespacesRetryInitDelay),
 			MaximumDelay: config.GetDuration(coreconfig.NamespacesRetryMaxDelay),
@@ -483,6 +489,10 @@ func (nm *namespaceManager) loadPlugins(ctx context.Context, rawConfig fftypes.J
 	}
 
 	if err := nm.getAuthPlugin(ctx, newPlugins, rawConfig); err != nil {
+		return nil, err
+	}
+
+	if err := nm.getLeaderElectionPlugins(ctx, newPlugins, rawConfig); err != nil {
 		return nil, err
 	}
 
@@ -1047,6 +1057,23 @@ func (nm *namespaceManager) validateNSPlugins(ctx context.Context, ns *namespace
 				Name:   pluginName,
 				Plugin: p.auth,
 			}
+		case pluginCategoryLeaderElection:
+			if result.LeaderElection.Plugin != nil {
+				return nil, i18n.NewError(ctx, coremsgs.MsgNamespaceMultiplePluginType, ns.Name, "leaderelection")
+			}
+			result.LeaderElection = orchestrator.LeaderElectionPlugin{
+				Name:   pluginName,
+				Plugin: p.leaderelection,
+			}
+		}
+	}
+
+	// If no leader election plugin was selected, load the default implementation
+	if result.LeaderElection.Plugin == nil {
+		defaultLeadershipElectionPlugin, _ := lefactory.GetPlugin(ctx, lefactory.NewNonePluginName)
+		result.LeaderElection = orchestrator.LeaderElectionPlugin{
+			Name:   lefactory.NewNonePluginName,
+			Plugin: defaultLeadershipElectionPlugin,
 		}
 	}
 	return &result, nil
@@ -1191,6 +1218,27 @@ func (nm *namespaceManager) getAuthPlugin(ctx context.Context, plugins map[strin
 	return nil
 }
 
+func (nm *namespaceManager) getLeaderElectionPlugins(ctx context.Context, plugins map[string]*plugin, rawConfig fftypes.JSONObject) (err error) {
+	leConfigArraySize := leaderelectionConfig.ArraySize()
+	rawPluginLeaderElectionConfig := rawConfig.GetObject("plugins").GetObjectArray("leaderelection")
+	if len(rawPluginLeaderElectionConfig) != leConfigArraySize {
+		log.L(ctx).Errorf("Expected len(%d) for plugins.leaderelection: %s", leConfigArraySize, rawPluginLeaderElectionConfig)
+		return i18n.NewError(ctx, coremsgs.MsgConfigArrayVsRawConfigMismatch)
+	}
+	for i := 0; i < leConfigArraySize; i++ {
+		config := leaderelectionConfig.ArrayEntry(i)
+		pc, err := nm.validatePluginConfig(ctx, plugins, pluginCategoryLeaderElection, config, rawPluginLeaderElectionConfig[i])
+		if err != nil {
+			return err
+		}
+
+		pc.leaderelection, err = nm.leaderelectionFactory(ctx, pc.pluginType)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 func (nm *namespaceManager) Authorize(ctx context.Context, authReq *fftypes.AuthReq) error {
 	or, err := nm.Orchestrator(ctx, authReq.Namespace, true)
 	if err != nil {

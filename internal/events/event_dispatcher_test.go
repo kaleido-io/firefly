@@ -58,11 +58,6 @@ func newTestEventDispatcher(sub *subscription) (*eventDispatcher, func()) {
 	ctx := context.Background()
 	cmi := &cachemocks.Manager{}
 	mle := &leaderelectionmocks.Plugin{}
-	mle.On("RunLeaderElection", mock.Anything, mock.AnythingOfType("chan bool")).Run(
-		func(args mock.Arguments) {
-			c := args[1].(chan bool)
-			go func() { c <- true }()
-		})
 	cmi.On("GetCache", mock.Anything).Return(cache.NewUmanagedCache(ctx, 100, 5*time.Minute), nil)
 	mdi.On("GetOffset", mock.Anything, mock.Anything, mock.Anything).Return(&core.Offset{RowID: 3333333, Current: 0}, nil).Maybe()
 	txHelper, _ := txcommon.NewTransactionHelper(ctx, "ns1", mdi, mdm, cmi)
@@ -103,15 +98,20 @@ func TestEventDispatcherStartStop(t *testing.T) {
 			return ctx.Err()
 		},
 	)
+	mle := ed.leaderElection.(*leaderelectionmocks.Plugin)
+	mle.On("RunLeaderElection", mock.Anything, mock.AnythingOfType("chan bool")).Run(
+		func(args mock.Arguments) {
+			c := args[1].(chan bool)
+			go func() { c <- true }()
+		})
 	confirmedElected := make(chan bool)
 	ge.RunFn = func(a mock.Arguments) {
-		<-confirmedElected
+		confirmedElected <- true
 	}
 
 	assert.Equal(t, int(10), ed.readAhead)
 	ed.start()
-	confirmedElected <- true
-	close(confirmedElected)
+	<-confirmedElected
 	ed.eventPoller.eventNotifier.newEvents <- 12345
 	ed.close()
 }
@@ -146,6 +146,18 @@ func TestEventDispatcherLeaderElection(t *testing.T) {
 
 	gev1Wait := make(chan bool)
 	gev1Done := make(chan struct{})
+	mle1 := ed1.leaderElection.(*leaderelectionmocks.Plugin)
+	mle1.On("RunLeaderElection", mock.Anything, mock.AnythingOfType("chan bool")).Run(
+		func(args mock.Arguments) {
+			c := args[1].(chan bool)
+			go func() { c <- true }()
+		})
+	mle2 := ed2.leaderElection.(*leaderelectionmocks.Plugin)
+	mle2.On("RunLeaderElection", mock.Anything, mock.AnythingOfType("chan bool")).Run(
+		func(args mock.Arguments) {
+			c := args[1].(chan bool)
+			go func() { c <- false }()
+		})
 	mdi1 := ed1.database.(*databasemocks.Plugin)
 	gev1 := mdi1.On("GetEvents", mock.Anything, mock.Anything, mock.Anything).Return([]*core.Event{}, nil, nil)
 	mdi1.On("GetOffset", mock.Anything, core.OffsetTypeSubscription, subID.String()).Return(&core.Offset{
@@ -168,6 +180,54 @@ func TestEventDispatcherLeaderElection(t *testing.T) {
 	close(gev1Done)
 	cancel1()
 
+}
+
+func TestEventDispatcherUnelected(t *testing.T) {
+	ten := uint16(10)
+	oldest := core.SubOptsFirstEventOldest
+	ed, cancel := newTestEventDispatcher(&subscription{
+		dispatcherElection: make(chan bool, 1),
+		definition: &core.Subscription{
+			SubscriptionRef: core.SubscriptionRef{Namespace: "ns1", Name: "sub1"},
+			Ephemeral:       true,
+			Options: core.SubscriptionOptions{
+				SubscriptionCoreOptions: core.SubscriptionCoreOptions{
+					ReadAhead:  &ten,
+					FirstEvent: &oldest,
+				},
+			},
+		},
+	})
+	defer cancel()
+	mdi := ed.database.(*databasemocks.Plugin)
+	ge := mdi.On("GetEvents", mock.Anything, mock.Anything, mock.Anything).Return(
+		func(ctx context.Context, ns string, filter ffapi.Filter) []*core.Event {
+			return []*core.Event{}
+		},
+		func(ctx context.Context, ns string, filter ffapi.Filter) *ffapi.FilterResult {
+			return nil
+		},
+		func(ctx context.Context, ns string, filter ffapi.Filter) error {
+			return ctx.Err()
+		},
+	)
+	mle := ed.leaderElection.(*leaderelectionmocks.Plugin)
+	var electionResultChannel chan bool
+	mle.On("RunLeaderElection", mock.Anything, mock.AnythingOfType("chan bool")).Run(
+		func(args mock.Arguments) {
+			electionResultChannel = args[1].(chan bool)
+			go func() { electionResultChannel <- true }()
+		})
+	confirmedElected := make(chan bool)
+	ge.RunFn = func(a mock.Arguments) {
+		confirmedElected <- true
+	}
+
+	assert.Equal(t, int(10), ed.readAhead)
+	ed.start()
+	<-confirmedElected
+	electionResultChannel <- false
+	<-ed.closed
 }
 
 func TestEventDispatcherReadAheadOutOfOrderAcks(t *testing.T) {

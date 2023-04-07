@@ -40,14 +40,15 @@ var (
 	namespaceConfigSection = config.RootSection("namespaces")
 	namespacePredefined    = namespaceConfigSection.SubArray(NamespacePredefined)
 
-	blockchainConfig    = config.RootArray("plugins.blockchain")
-	tokensConfig        = config.RootArray("plugins.tokens")
-	databaseConfig      = config.RootArray("plugins.database")
-	sharedstorageConfig = config.RootArray("plugins.sharedstorage")
-	dataexchangeConfig  = config.RootArray("plugins.dataexchange")
-	identityConfig      = config.RootArray("plugins.identity")
-	authConfig          = config.RootArray("plugins.auth")
-	eventsConfig        = config.RootSection("events") // still at root
+	blockchainConfig     = config.RootArray("plugins.blockchain")
+	tokensConfig         = config.RootArray("plugins.tokens")
+	databaseConfig       = config.RootArray("plugins.database")
+	sharedstorageConfig  = config.RootArray("plugins.sharedstorage")
+	dataexchangeConfig   = config.RootArray("plugins.dataexchange")
+	identityConfig       = config.RootArray("plugins.identity")
+	authConfig           = config.RootArray("plugins.auth")
+	leaderelectionConfig = config.RootArray("plugins.leaderelection")
+	eventsConfig         = config.RootSection("events") // still at root
 
 	// Deprecated configs
 	deprecatedTokensConfig        = config.RootArray("tokens")

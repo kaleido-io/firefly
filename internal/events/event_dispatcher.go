@@ -149,19 +149,27 @@ func (ed *eventDispatcher) electAndStart() {
 	l := log.L(ed.ctx)
 	l.Debugf("Dispatcher attempting to become leader")
 	ed.leaderElection.RunLeaderElection(ed.ctx, ed.subscription.dispatcherElection)
-	select {
-	case <-ed.subscription.dispatcherElection:
-		l.Debugf("Dispatcher became leader")
-	case <-ed.ctx.Done():
-		l.Debugf("Closed before we became leader")
-		return
+	for {
+		select {
+		case elected := <-ed.subscription.dispatcherElection:
+			if elected {
+				l.Debugf("Dispatcher became leader")
+				// We're ready to go
+				ed.elected = true
+				ed.eventPoller.start()
+				go ed.deliverEvents()
+			} else if ed.elected {
+				// if we were elected previously, close down
+				l.Debugf("Shutting down event dispatcher due to no longer being the leader")
+				return
+			}
+		case <-ed.ctx.Done():
+			l.Debugf("Event dispatcher context closed")
+			return
+		case <-ed.eventPoller.closed:
+			return
+		}
 	}
-	// We're ready to go
-	ed.elected = true
-	ed.eventPoller.start()
-	go ed.deliverEvents()
-	// Wait until the event poller closes
-	<-ed.eventPoller.closed
 }
 
 func (ed *eventDispatcher) getEvents(ctx context.Context, filter ffapi.Filter, offset int64) ([]core.LocallySequenced, error) {
