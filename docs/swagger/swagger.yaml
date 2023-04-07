@@ -27024,6 +27024,7 @@ paths:
                           - token_transfer
                           - contract_deploy
                           - contract_invoke
+                          - contract_invoke_pin
                           - token_approval
                           - data_publish
                           type: string
@@ -27567,6 +27568,7 @@ paths:
                           - token_transfer
                           - contract_deploy
                           - contract_invoke
+                          - contract_invoke_pin
                           - token_approval
                           - data_publish
                           type: string
@@ -28019,6 +28021,7 @@ paths:
                           - token_transfer
                           - contract_deploy
                           - contract_invoke
+                          - contract_invoke_pin
                           - token_approval
                           - data_publish
                           type: string
@@ -29374,6 +29377,7 @@ paths:
                           - token_transfer
                           - contract_deploy
                           - contract_invoke
+                          - contract_invoke_pin
                           - token_approval
                           - data_publish
                           type: string
@@ -35147,6 +35151,7 @@ paths:
                           - token_transfer
                           - contract_deploy
                           - contract_invoke
+                          - contract_invoke_pin
                           - token_approval
                           - data_publish
                           type: string
@@ -35676,6 +35681,7 @@ paths:
                           - token_transfer
                           - contract_deploy
                           - contract_invoke
+                          - contract_invoke_pin
                           - token_approval
                           - data_publish
                           type: string
@@ -36106,6 +36112,7 @@ paths:
                           - token_transfer
                           - contract_deploy
                           - contract_invoke
+                          - contract_invoke_pin
                           - token_approval
                           - data_publish
                           type: string
@@ -37426,6 +37433,7 @@ paths:
                           - token_transfer
                           - contract_deploy
                           - contract_invoke
+                          - contract_invoke_pin
                           - token_approval
                           - data_publish
                           type: string

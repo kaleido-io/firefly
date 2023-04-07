@@ -113,6 +113,7 @@ func newSubscriptionManager(ctx context.Context, ns string, enricher *eventEnric
 		broadcast:                 bm, // optional
 		messaging:                 pm, // optional
 		txHelper:                  txHelper,
+		leaderElection:            le,
 		retry: retry.Retry{
 			InitialDelay: config.GetDuration(coreconfig.SubscriptionsRetryInitialDelay),
 			MaximumDelay: config.GetDuration(coreconfig.SubscriptionsRetryMaxDelay),

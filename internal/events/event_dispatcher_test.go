@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/firefly-common/pkg/config"
+	"github.com/hyperledger/firefly-common/pkg/ffapi"
 	"github.com/hyperledger/firefly-common/pkg/fftypes"
 	"github.com/hyperledger/firefly-common/pkg/log"
 	"github.com/hyperledger/firefly/internal/cache"
@@ -60,9 +61,10 @@ func newTestEventDispatcher(sub *subscription) (*eventDispatcher, func()) {
 	mle.On("RunLeaderElection", mock.Anything, mock.AnythingOfType("chan bool")).Run(
 		func(args mock.Arguments) {
 			c := args[1].(chan bool)
-			c <- true
+			go func() { c <- true }()
 		})
 	cmi.On("GetCache", mock.Anything).Return(cache.NewUmanagedCache(ctx, 100, 5*time.Minute), nil)
+	mdi.On("GetOffset", mock.Anything, mock.Anything, mock.Anything).Return(&core.Offset{RowID: 3333333, Current: 0}, nil).Maybe()
 	txHelper, _ := txcommon.NewTransactionHelper(ctx, "ns1", mdi, mdm, cmi)
 	enricher := newEventEnricher("ns1", mdi, mdm, mom, txHelper)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -90,7 +92,17 @@ func TestEventDispatcherStartStop(t *testing.T) {
 	})
 	defer cancel()
 	mdi := ed.database.(*databasemocks.Plugin)
-	ge := mdi.On("GetEvents", mock.Anything, mock.Anything, mock.Anything).Return([]*core.Event{}, nil, nil)
+	ge := mdi.On("GetEvents", mock.Anything, mock.Anything, mock.Anything).Return(
+		func(ctx context.Context, ns string, filter ffapi.Filter) []*core.Event {
+			return []*core.Event{}
+		},
+		func(ctx context.Context, ns string, filter ffapi.Filter) *ffapi.FilterResult {
+			return nil
+		},
+		func(ctx context.Context, ns string, filter ffapi.Filter) error {
+			return ctx.Err()
+		},
+	)
 	confirmedElected := make(chan bool)
 	ge.RunFn = func(a mock.Arguments) {
 		<-confirmedElected

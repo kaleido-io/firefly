@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/firefly-common/pkg/config"
+	"github.com/hyperledger/firefly-common/pkg/ffapi"
 	"github.com/hyperledger/firefly-common/pkg/fftypes"
 	"github.com/hyperledger/firefly/internal/cache"
 	"github.com/hyperledger/firefly/internal/coreconfig"
@@ -32,6 +33,7 @@ import (
 	"github.com/hyperledger/firefly/mocks/databasemocks"
 	"github.com/hyperledger/firefly/mocks/datamocks"
 	"github.com/hyperledger/firefly/mocks/eventsmocks"
+	"github.com/hyperledger/firefly/mocks/leaderelectionmocks"
 	"github.com/hyperledger/firefly/mocks/operationmocks"
 	"github.com/hyperledger/firefly/mocks/privatemessagingmocks"
 	"github.com/hyperledger/firefly/pkg/core"
@@ -51,6 +53,12 @@ func newTestSubManager(t *testing.T, mei *eventsmocks.Plugin) (*subscriptionMana
 	mom := &operationmocks.Manager{}
 	ctx := context.Background()
 	cmi := &cachemocks.Manager{}
+	mle := &leaderelectionmocks.Plugin{}
+	mle.On("RunLeaderElection", mock.Anything, mock.Anything).Run(
+		func(args mock.Arguments) {
+			c := args[1].(chan bool)
+			go func() { c <- true }()
+		})
 	cmi.On("GetCache", mock.Anything).Return(cache.NewUmanagedCache(ctx, 100, 5*time.Minute), nil)
 	txHelper, _ := txcommon.NewTransactionHelper(ctx, "ns1", mdi, mdm, cmi)
 	enricher := newEventEnricher("ns1", mdi, mdm, mom, txHelper)
@@ -60,9 +68,19 @@ func newTestSubManager(t *testing.T, mei *eventsmocks.Plugin) (*subscriptionMana
 	mei.On("Capabilities").Return(&events.Capabilities{}).Maybe()
 	mei.On("InitConfig", mock.Anything).Return()
 	mei.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	mdi.On("GetEvents", mock.Anything, mock.Anything, mock.Anything).Return([]*core.Event{}, nil, nil).Maybe()
+	mdi.On("GetEvents", mock.Anything, mock.Anything, mock.Anything).Return(
+		func(ctx context.Context, ns string, filter ffapi.Filter) []*core.Event {
+			return []*core.Event{}
+		},
+		func(ctx context.Context, ns string, filter ffapi.Filter) *ffapi.FilterResult {
+			return nil
+		},
+		func(ctx context.Context, ns string, filter ffapi.Filter) error {
+			return ctx.Err()
+		},
+	).Maybe()
 	mdi.On("GetOffset", mock.Anything, mock.Anything, mock.Anything).Return(&core.Offset{RowID: 3333333, Current: 0}, nil).Maybe()
-	sm, err := newSubscriptionManager(ctx, "ns1", enricher, mdi, mdm, newEventNotifier(ctx, "ut"), mbm, mpm, txHelper, nil, nil)
+	sm, err := newSubscriptionManager(ctx, "ns1", enricher, mdi, mdm, newEventNotifier(ctx, "ut"), mbm, mpm, txHelper, nil, mle)
 	assert.NoError(t, err)
 	sm.transports = map[string]events.Plugin{
 		"ut": mei,
@@ -76,16 +94,29 @@ func TestRegisterDurableSubscriptions(t *testing.T) {
 	sub2 := fftypes.NewUUID()
 
 	// Set some existing ones to be cleaned out
-	testED1, cancel1 := newTestEventDispatcher(&subscription{definition: &core.Subscription{SubscriptionRef: core.SubscriptionRef{ID: sub1}}})
-	testED1.start()
+	testED1, cancel1 := newTestEventDispatcher(&subscription{definition: &core.Subscription{SubscriptionRef: core.SubscriptionRef{ID: sub1}}, dispatcherElection: make(chan bool)})
+	mdi1 := testED1.database.(*databasemocks.Plugin)
+	mdi1.On("GetEvents", mock.Anything, mock.Anything, mock.Anything).Return(
+		func(ctx context.Context, ns string, filter ffapi.Filter) []*core.Event {
+			return []*core.Event{}
+		},
+		func(ctx context.Context, ns string, filter ffapi.Filter) *ffapi.FilterResult {
+			return nil
+		},
+		func(ctx context.Context, ns string, filter ffapi.Filter) error {
+			return ctx.Err()
+		},
+	)
+
 	defer cancel1()
+	testED1.start()
 
 	mei := testED1.transport.(*eventsmocks.Plugin)
 	sm, cancel := newTestSubManager(t, mei)
 	defer cancel()
 
-	mdi := sm.database.(*databasemocks.Plugin)
-	mdi.On("GetSubscriptions", mock.Anything, "ns1", mock.Anything).Return([]*core.Subscription{
+	mdi2 := sm.database.(*databasemocks.Plugin)
+	mdi2.On("GetSubscriptions", mock.Anything, "ns1", mock.Anything).Return([]*core.Subscription{
 		{SubscriptionRef: core.SubscriptionRef{
 			ID: sub1,
 		}, Transport: "ut"},

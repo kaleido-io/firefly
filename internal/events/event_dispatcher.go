@@ -147,39 +147,21 @@ func (ed *eventDispatcher) start() {
 func (ed *eventDispatcher) electAndStart() {
 	defer close(ed.closed)
 	l := log.L(ed.ctx)
-	// Loop while we're not the leader and haven't been closed
-	for {
-		l.Debugf("Dispatcher attempting to become leader")
-		go ed.leaderElection.RunLeaderElection(ed.ctx, ed.subscription.dispatcherElection)
-		select {
-		case elected := <-ed.subscription.dispatcherElection:
-			if elected {
-				ed.elected = elected
-				l.Debugf("Dispatcher became leader")
-				defer func() {
-					// Unelect ourselves on close, to let another dispatcher in
-					<-ed.subscription.dispatcherElection
-				}()
-				// We're ready to go
-				ed.eventPoller.start()
-				go ed.deliverEvents()
-				// Wait until the event poller closes
-				<-ed.eventPoller.closed
-				return
-			} else if ed.elected && !elected {
-				// We were previously elected, but just unelected. Cancel the current context and run for re-election.
-				ed.cancelCtx()
-				newContext, cancelFunc := newContext(ed.originalContext, ed.connID, ed.subscription)
-				ed.ctx = newContext
-				ed.cancelCtx = cancelFunc
-				l = log.L(ed.ctx)
-				ed.eventPoller = newEventPoller(newContext, ed.database, ed.eventNotifier, ed.pollerConf)
-			}
-		case <-ed.ctx.Done():
-			l.Debugf("Closed before we became leader")
-			return
-		}
+	l.Debugf("Dispatcher attempting to become leader")
+	ed.leaderElection.RunLeaderElection(ed.ctx, ed.subscription.dispatcherElection)
+	select {
+	case <-ed.subscription.dispatcherElection:
+		l.Debugf("Dispatcher became leader")
+	case <-ed.ctx.Done():
+		l.Debugf("Closed before we became leader")
+		return
 	}
+	// We're ready to go
+	ed.elected = true
+	ed.eventPoller.start()
+	go ed.deliverEvents()
+	// Wait until the event poller closes
+	<-ed.eventPoller.closed
 }
 
 func (ed *eventDispatcher) getEvents(ctx context.Context, filter ffapi.Filter, offset int64) ([]core.LocallySequenced, error) {
