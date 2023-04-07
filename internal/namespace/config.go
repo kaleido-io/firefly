@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/firefly/internal/dataexchange/dxfactory"
 	"github.com/hyperledger/firefly/internal/events/eifactory"
 	"github.com/hyperledger/firefly/internal/identity/iifactory"
+	"github.com/hyperledger/firefly/internal/leaderelection/lefactory"
 	"github.com/hyperledger/firefly/internal/sharedstorage/ssfactory"
 	"github.com/hyperledger/firefly/internal/tokens/tifactory"
 	"github.com/hyperledger/firefly/pkg/core"
@@ -92,4 +93,5 @@ func InitConfig() {
 	tifactory.InitConfig(tokensConfig)
 	authfactory.InitConfigArray(authConfig)
 	eifactory.InitConfig(eventsConfig)
+	lefactory.InitConfig(leaderelectionConfig)
 }

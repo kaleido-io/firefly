@@ -36,7 +36,7 @@ func (k *Kubernetes) Name() string {
 
 func (k *Kubernetes) InitConfig(config config.Section) {}
 
-func (k *Kubernetes) Init(ctx context.Context, config config.Section) error {
+func (k *Kubernetes) Init(ctx context.Context, name string, config config.Section) error {
 	return nil
 }
 

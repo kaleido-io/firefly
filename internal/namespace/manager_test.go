@@ -36,6 +36,7 @@ import (
 	"github.com/hyperledger/firefly/internal/dataexchange/dxfactory"
 	"github.com/hyperledger/firefly/internal/events/eifactory"
 	"github.com/hyperledger/firefly/internal/identity/iifactory"
+	"github.com/hyperledger/firefly/internal/leaderelection/lefactory"
 	"github.com/hyperledger/firefly/internal/metrics"
 	"github.com/hyperledger/firefly/internal/orchestrator"
 	"github.com/hyperledger/firefly/internal/sharedstorage/ssfactory"
@@ -46,6 +47,7 @@ import (
 	"github.com/hyperledger/firefly/mocks/dataexchangemocks"
 	"github.com/hyperledger/firefly/mocks/eventsmocks"
 	"github.com/hyperledger/firefly/mocks/identitymocks"
+	"github.com/hyperledger/firefly/mocks/leaderelectionmocks"
 	"github.com/hyperledger/firefly/mocks/metricsmocks"
 	"github.com/hyperledger/firefly/mocks/operationmocks"
 	"github.com/hyperledger/firefly/mocks/orchestratormocks"
@@ -58,6 +60,7 @@ import (
 	"github.com/hyperledger/firefly/pkg/dataexchange"
 	"github.com/hyperledger/firefly/pkg/events"
 	"github.com/hyperledger/firefly/pkg/identity"
+	"github.com/hyperledger/firefly/pkg/leaderelection"
 	"github.com/hyperledger/firefly/pkg/sharedstorage"
 	"github.com/hyperledger/firefly/pkg/tokens"
 	"github.com/spf13/viper"
@@ -130,6 +133,7 @@ type nmMocks struct {
 	mai *authmocks.Plugin
 	mii *identitymocks.Plugin
 	mo  *orchestratormocks.Orchestrator
+	lei *leaderelectionmocks.Plugin
 }
 
 func (nmm *nmMocks) cleanup(t *testing.T) {
@@ -148,6 +152,7 @@ func (nmm *nmMocks) cleanup(t *testing.T) {
 	nmm.mei[1].AssertExpectations(t)
 	nmm.mei[2].AssertExpectations(t)
 	nmm.mo.AssertExpectations(t)
+	nmm.lei.AssertExpectations(t)
 }
 
 func factoryMocks(m *mock.Mock, name string) {
@@ -170,6 +175,7 @@ func mockPluginFactories(inm Manager) (nmm *nmMocks) {
 		mai: &authmocks.Plugin{},
 		mii: &identitymocks.Plugin{},
 		mo:  &orchestratormocks.Orchestrator{},
+		lei: &leaderelectionmocks.Plugin{},
 	}
 	factoryMocks(&nmm.mbi.Mock, "ethereum")
 	factoryMocks(&nmm.mdi.Mock, "postgres")
@@ -181,6 +187,7 @@ func mockPluginFactories(inm Manager) (nmm *nmMocks) {
 	factoryMocks(&nmm.mei[1].Mock, "websockets")
 	factoryMocks(&nmm.mei[2].Mock, "webhooks")
 	factoryMocks(&nmm.mai.Mock, "basicauth")
+	factoryMocks(&nmm.lei.Mock, "none")
 
 	nm.orchestratorFactory = func(ns *core.Namespace, config orchestrator.Config, plugins *orchestrator.Plugins, metrics metrics.Manager, cacheManager cache.Manager) orchestrator.Orchestrator {
 		return nmm.mo
@@ -220,6 +227,9 @@ func mockPluginFactories(inm Manager) (nmm *nmMocks) {
 	}
 	nm.authFactory = func(ctx context.Context, pluginType string) (auth.Plugin, error) {
 		return nmm.mai, nil
+	}
+	nm.leaderelectionFactory = func(ctx context.Context, pluginType string) (leaderelection.Plugin, error) {
+		return nmm.lei, nil
 	}
 
 	nmm.nm = nm
@@ -268,7 +278,7 @@ func newTestNamespaceManager(t *testing.T, initConfig bool) (*namespaceManager, 
 		nmm.mei[1].On("Init", mock.Anything, mock.Anything).Return(nil)
 		nmm.mei[2].On("Init", mock.Anything, mock.Anything).Return(nil)
 		nmm.mai.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-
+		nmm.lei.On("Init", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 		err = nmm.nm.Init(nmm.nm.ctx, nmm.nm.cancelCtx, nmm.nm.reset, nmm.nm.reloadConfig)
 		assert.NoError(t, err)
 	}
@@ -1215,6 +1225,46 @@ func TestAuthPluginDuplicate(t *testing.T) {
 	plugins["basicauth"] = &plugin{}
 	err := nm.getAuthPlugin(context.Background(), plugins, nm.dumpRootConfig())
 	assert.Regexp(t, "FF10395", err)
+}
+
+func TestLeaderElectionPlugin(t *testing.T) {
+	nm, _, cleanup := newTestNamespaceManager(t, false)
+	defer cleanup()
+	lefactory.InitConfig(leaderelectionConfig)
+	config.Set("plugins.leaderelection", []fftypes.JSONObject{{}})
+	leaderelectionConfig.AddKnownKey(coreconfig.PluginConfigName, "nonetype")
+	leaderelectionConfig.AddKnownKey(coreconfig.PluginConfigType, "none")
+	plugins := make(map[string]*plugin)
+	err := nm.getLeaderElectionPlugins(context.Background(), plugins, nm.dumpRootConfig())
+	assert.Equal(t, 1, len(plugins))
+	assert.NoError(t, err)
+}
+
+func TestLeaderElectionPluginNoType(t *testing.T) {
+	nm, _, cleanup := newTestNamespaceManager(t, false)
+	defer cleanup()
+	lefactory.InitConfig(leaderelectionConfig)
+	config.Set("plugins.leaderelection", []fftypes.JSONObject{{}})
+	leaderelectionConfig.AddKnownKey(coreconfig.PluginConfigName, "flapflip")
+	plugins := make(map[string]*plugin)
+	err := nm.getLeaderElectionPlugins(context.Background(), plugins, nm.dumpRootConfig())
+	assert.Regexp(t, "FF10386", err)
+}
+
+func TestLeaderElectionPluginBadType(t *testing.T) {
+	nm, _, cleanup := newTestNamespaceManager(t, false)
+	defer cleanup()
+	lefactory.InitConfig(leaderelectionConfig)
+	config.Set("plugins.leaderelection", []fftypes.JSONObject{{}})
+	leaderelectionConfig.AddKnownKey(coreconfig.PluginConfigName, "flapflip")
+	leaderelectionConfig.AddKnownKey(coreconfig.PluginConfigType, "wrong//")
+
+	plugins := make(map[string]*plugin)
+	nm.leaderelectionFactory = func(ctx context.Context, pluginType string) (leaderelection.Plugin, error) {
+		return nil, fmt.Errorf("pop")
+	}
+	err := nm.getLeaderElectionPlugins(context.Background(), plugins, nm.dumpRootConfig())
+	assert.Regexp(t, "pop", err)
 }
 
 func TestRawConfigCorrelation(t *testing.T) {

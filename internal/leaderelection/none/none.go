@@ -36,7 +36,7 @@ func (k *None) Name() string {
 
 func (k *None) InitConfig(config config.Section) {}
 
-func (k *None) Init(ctx context.Context, config config.Section) error {
+func (k *None) Init(ctx context.Context, name string, config config.Section) error {
 	return nil
 }
 

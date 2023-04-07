@@ -33,13 +33,13 @@ func (_m *Plugin) Capabilities() *leaderelection.Capabilities {
 	return r0
 }
 
-// Init provides a mock function with given fields: ctx, _a1
-func (_m *Plugin) Init(ctx context.Context, _a1 config.Section) error {
-	ret := _m.Called(ctx, _a1)
+// Init provides a mock function with given fields: ctx, name, _a2
+func (_m *Plugin) Init(ctx context.Context, name string, _a2 config.Section) error {
+	ret := _m.Called(ctx, name, _a2)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, config.Section) error); ok {
-		r0 = rf(ctx, _a1)
+	if rf, ok := ret.Get(0).(func(context.Context, string, config.Section) error); ok {
+		r0 = rf(ctx, name, _a2)
 	} else {
 		r0 = ret.Error(0)
 	}

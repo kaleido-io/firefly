@@ -210,6 +210,8 @@ var (
 	PluginsDataExchangeList = ffc("plugins.dataexchange")
 	// PluginsIdentityList is the key containing a list of configured identity plugins
 	PluginsIdentityList = ffc("plugins.identity")
+	// PluginsLeaderElectionList is the key containing a list of configured leader election plugins
+	PluginsLeaderElectionList = ffc("plugins.leaderelection")
 	// DebugPort a HTTP port on which to enable the go debugger
 	DebugPort = ffc("debug.port")
 	// DebugAddress the HTTP interface for the debugger to listen on

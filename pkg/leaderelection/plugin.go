@@ -31,7 +31,7 @@ type Plugin interface {
 	InitConfig(config config.Section)
 
 	// Init initializes the plugin, with configuration
-	Init(ctx context.Context, config config.Section) error
+	Init(ctx context.Context, name string, config config.Section) error
 
 	// Capabilities returns capabilities - not called until after Init
 	Capabilities() *Capabilities
