@@ -35,6 +35,7 @@ jobs:
           path: firefly.tar.gz
 
   e2e-test:
+    needs: docker
     runs-on: ubuntu-latest
     strategy:
       matrix:
