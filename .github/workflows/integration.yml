@@ -35,7 +35,7 @@ jobs:
           path: firefly.tar.gz
 
   e2e-test:
-    runs-on: firefly-ubuntu-latest
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         test-suite:
@@ -100,6 +100,7 @@ jobs:
           DATABASE_TYPE: ${{ matrix.database-type }}
           BLOCKCHAIN_NODE: ${{ matrix.blockchain-node }}
           BUILD_FIREFLY: false
+          DOWNLOAD_CLI: true
           RESTART: true
         run: ./test/e2e/run.sh
 
@@ -111,7 +112,7 @@ jobs:
           path: containerlogs/logs.txt
 
   migration-test:
-    runs-on: firefly-ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
