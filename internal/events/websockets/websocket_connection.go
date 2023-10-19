@@ -38,23 +38,25 @@ type websocketStartedSub struct {
 }
 
 type websocketConnection struct {
-	ctx          context.Context
-	ws           *WebSockets
-	wsConn       *websocket.Conn
-	cancelCtx    func()
-	connID       string
-	sendMessages chan interface{}
-	senderDone   chan struct{}
-	receiverDone chan struct{}
-	autoAck      bool
-	started      []*websocketStartedSub
-	inflight     []*core.EventDeliveryResponse
-	mux          sync.Mutex
-	closed       bool
-	remoteAddr   string
-	userAgent    string
-	header       http.Header
-	auth         core.Authorizer
+	ctx             context.Context
+	ws              *WebSockets
+	wsConn          *websocket.Conn
+	cancelCtx       func()
+	connID          string
+	sendMessages    chan interface{}
+	senderDone      chan struct{}
+	receiverDone    chan struct{}
+	autoAck         bool
+	started         []*websocketStartedSub
+	inflight        []*core.EventDeliveryResponse
+	mux             sync.Mutex
+	closed          bool
+	remoteAddr      string
+	userAgent       string
+	header          http.Header
+	auth            core.Authorizer
+	namespaceScoped bool // if true then any request to listen is asserted to be in the context of namespace
+	namespace       string
 }
 
 func newConnection(pCtx context.Context, ws *WebSockets, wsConn *websocket.Conn, req *http.Request, auth core.Authorizer) *websocketConnection {
@@ -88,12 +90,22 @@ func (wc *websocketConnection) processAutoStart(req *http.Request) {
 	_, hasName := query["name"]
 	autoAck, hasAutoack := req.URL.Query()["autoack"]
 	isAutoack := hasAutoack && (len(autoAck) == 0 || autoAck[0] != "false")
+	namespace := query.Get("namespace")
+
+	if wc.namespaceScoped {
+		if namespace == "" {
+			namespace = wc.namespace
+		} else if namespace != wc.namespace {
+			wc.protocolError(i18n.NewError(wc.ctx, coremsgs.MsgWSWrongNamespace))
+			return
+		}
+	}
 	if hasEphemeral || hasName {
 		filter := core.NewSubscriptionFilterFromQuery(query)
 		err := wc.handleStart(&core.WSStart{
 			AutoAck:   &isAutoack,
 			Ephemeral: isEphemeral,
-			Namespace: query.Get("namespace"),
+			Namespace: namespace,
 			Name:      query.Get("name"),
 			Filter:    filter,
 		})
@@ -157,7 +169,16 @@ func (wc *websocketConnection) receiveLoop() {
 			var msg core.WSStart
 			err = json.Unmarshal(msgData, &msg)
 			if err == nil {
-				err = wc.authorizeMessage(msg.Namespace)
+				if wc.namespaceScoped {
+					if msg.Namespace == "" {
+						msg.Namespace = wc.namespace
+					} else if msg.Namespace != wc.namespace {
+						err = i18n.NewError(wc.ctx, coremsgs.MsgWSWrongNamespace)
+					}
+				}
+				if err == nil {
+					err = wc.authorizeMessage(msg.Namespace)
+				}
 				if err == nil {
 					err = wc.handleStart(&msg)
 				}
@@ -252,6 +273,15 @@ func (wc *websocketConnection) restartForNamespace(ns string, startTime time.Tim
 
 func (wc *websocketConnection) handleStart(start *core.WSStart) (err error) {
 	wc.mux.Lock()
+	if wc.namespaceScoped {
+		// this will very likely already be checked before we get here but
+		// it doesn't do any harm to do a final assertion just in case it hasn't been done yet
+		if start.Namespace == "" {
+			start.Namespace = wc.namespace
+		} else if start.Namespace != wc.namespace {
+			return i18n.NewError(wc.ctx, coremsgs.MsgWSWrongNamespace)
+		}
+	}
 	if start.AutoAck != nil {
 		if *start.AutoAck != wc.autoAck && len(wc.started) > 0 {
 			wc.mux.Unlock()
