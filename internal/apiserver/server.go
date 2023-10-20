@@ -397,7 +397,7 @@ func (as *apiServer) createMuxRouter(ctx context.Context, mgr namespace.Manager)
 	return r
 }
 
-func getNamespacedWebSocketHandler(ws *websockets.WebSockets, mgr namespace.Manager) ffapi.HandlerFunction {
+func getNamespacedWebSocketHandler(ws websockets.WebSocketsNamespaced, mgr namespace.Manager) ffapi.HandlerFunction {
 	return func(res http.ResponseWriter, req *http.Request) (status int, err error) {
 
 		vars := mux.Vars(req)

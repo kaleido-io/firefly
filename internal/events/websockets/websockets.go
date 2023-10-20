@@ -31,6 +31,10 @@ import (
 	"github.com/hyperledger/firefly/pkg/events"
 )
 
+type WebSocketsNamespaced interface {
+	ServeHTTPNamespaced(namespace string, res http.ResponseWriter, req *http.Request)
+}
+
 type WebSockets struct {
 	ctx          context.Context
 	capabilities *events.Capabilities
