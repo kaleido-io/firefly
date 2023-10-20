@@ -82,6 +82,18 @@ func newConnection(pCtx context.Context, ws *WebSockets, wsConn *websocket.Conn,
 	return wc
 }
 
+func (wc *websocketConnection) assertNamespace(namespace string) (string, error) {
+
+	if wc.namespaceScoped {
+		if namespace == "" {
+			namespace = wc.namespace
+		} else if namespace != wc.namespace {
+			return "", i18n.NewError(wc.ctx, coremsgs.MsgWSWrongNamespace)
+		}
+	}
+	return namespace, nil
+}
+
 // processAutoStart gives a helper to specify query parameters to auto-start your subscription
 func (wc *websocketConnection) processAutoStart(req *http.Request) {
 	query := req.URL.Query()
@@ -90,16 +102,12 @@ func (wc *websocketConnection) processAutoStart(req *http.Request) {
 	_, hasName := query["name"]
 	autoAck, hasAutoack := req.URL.Query()["autoack"]
 	isAutoack := hasAutoack && (len(autoAck) == 0 || autoAck[0] != "false")
-	namespace := query.Get("namespace")
-
-	if wc.namespaceScoped {
-		if namespace == "" {
-			namespace = wc.namespace
-		} else if namespace != wc.namespace {
-			wc.protocolError(i18n.NewError(wc.ctx, coremsgs.MsgWSWrongNamespace))
-			return
-		}
+	namespace, err := wc.assertNamespace(query.Get("namespace"))
+	if err != nil {
+		wc.protocolError(err)
+		return
 	}
+
 	if hasEphemeral || hasName {
 		filter := core.NewSubscriptionFilterFromQuery(query)
 		err := wc.handleStart(&core.WSStart{
@@ -169,13 +177,7 @@ func (wc *websocketConnection) receiveLoop() {
 			var msg core.WSStart
 			err = json.Unmarshal(msgData, &msg)
 			if err == nil {
-				if wc.namespaceScoped {
-					if msg.Namespace == "" {
-						msg.Namespace = wc.namespace
-					} else if msg.Namespace != wc.namespace {
-						err = i18n.NewError(wc.ctx, coremsgs.MsgWSWrongNamespace)
-					}
-				}
+				msg.Namespace, err = wc.assertNamespace(msg.Namespace)
 				if err == nil {
 					err = wc.authorizeMessage(msg.Namespace)
 				}
@@ -272,16 +274,15 @@ func (wc *websocketConnection) restartForNamespace(ns string, startTime time.Tim
 }
 
 func (wc *websocketConnection) handleStart(start *core.WSStart) (err error) {
-	wc.mux.Lock()
-	if wc.namespaceScoped {
-		// this will very likely already be checked before we get here but
-		// it doesn't do any harm to do a final assertion just in case it hasn't been done yet
-		if start.Namespace == "" {
-			start.Namespace = wc.namespace
-		} else if start.Namespace != wc.namespace {
-			return i18n.NewError(wc.ctx, coremsgs.MsgWSWrongNamespace)
-		}
+	// this will very likely already be checked before we get here but
+	// it doesn't do any harm to do a final assertion just in case it hasn't been done yet
+
+	start.Namespace, err = wc.assertNamespace(start.Namespace)
+	if err != nil {
+		return err
 	}
+
+	wc.mux.Lock()
 	if start.AutoAck != nil {
 		if *start.AutoAck != wc.autoAck && len(wc.started) > 0 {
 			wc.mux.Unlock()

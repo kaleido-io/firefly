@@ -963,3 +963,21 @@ func TestNamespaceScopedSuccess(t *testing.T) {
 
 	cbs.AssertExpectations(t)
 }
+
+func TestHandleStartWrongNamespace(t *testing.T) {
+
+	// it is not currently possible through exported functions to get to handleStart with the wrong namespace
+	// but we like to have a final assertion in there as a safety net for accidentaly data leakage across namespaces
+	// so to prove that safety net, we need to drive the private function handleStart directly.
+	wc := &websocketConnection{
+		ctx:             context.Background(),
+		namespaceScoped: true,
+		namespace:       "ns1",
+	}
+	startMessage := &core.WSStart{
+		Namespace: "ns2",
+	}
+	err := wc.handleStart(startMessage)
+	assert.Error(t, err)
+	assert.Regexp(t, "FF10462", err)
+}
