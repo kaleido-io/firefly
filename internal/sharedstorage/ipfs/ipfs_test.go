@@ -229,3 +229,51 @@ func TestIPFSDownloadError(t *testing.T) {
 	assert.Regexp(t, "FF10136", err)
 
 }
+
+func TestIPFSDownloadNotFound(t *testing.T) {
+	i := &IPFS{}
+
+	mockedClient := &http.Client{}
+	httpmock.ActivateNonDefault(mockedClient)
+	defer httpmock.DeactivateAndReset()
+
+	resetConf()
+	utConfig.SubSection(IPFSConfAPISubconf).Set(ffresty.HTTPConfigURL, "http://localhost:12345")
+	utConfig.SubSection(IPFSConfGatewaySubconf).Set(ffresty.HTTPConfigURL, "http://localhost:12345")
+	utConfig.SubSection(IPFSConfGatewaySubconf).Set(ffresty.HTTPCustomClient, mockedClient)
+
+	err := i.Init(context.Background(), utConfig)
+	assert.NoError(t, err)
+
+	data := []byte(`{}`)
+	httpmock.RegisterResponder("GET", "http://localhost:12345/ipfs/QmRAQfHNnknnz8S936M2yJGhhVNA6wXJ4jTRP3VXtptmmL",
+		httpmock.NewBytesResponder(404, data))
+
+	_, err = i.DownloadData(context.Background(), "QmRAQfHNnknnz8S936M2yJGhhVNA6wXJ4jTRP3VXtptmmL")
+	assert.Regexp(t, "FF10136", err)
+
+}
+
+func TestIPFSDownloadUnAuthorized(t *testing.T) {
+	i := &IPFS{}
+
+	mockedClient := &http.Client{}
+	httpmock.ActivateNonDefault(mockedClient)
+	defer httpmock.DeactivateAndReset()
+
+	resetConf()
+	utConfig.SubSection(IPFSConfAPISubconf).Set(ffresty.HTTPConfigURL, "http://localhost:12345")
+	utConfig.SubSection(IPFSConfGatewaySubconf).Set(ffresty.HTTPConfigURL, "http://localhost:12345")
+	utConfig.SubSection(IPFSConfGatewaySubconf).Set(ffresty.HTTPCustomClient, mockedClient)
+
+	err := i.Init(context.Background(), utConfig)
+	assert.NoError(t, err)
+
+	data := []byte(`{}`)
+	httpmock.RegisterResponder("GET", "http://localhost:12345/ipfs/QmRAQfHNnknnz8S936M2yJGhhVNA6wXJ4jTRP3VXtptmmL",
+		httpmock.NewBytesResponder(401, data))
+
+	_, err = i.DownloadData(context.Background(), "QmRAQfHNnknnz8S936M2yJGhhVNA6wXJ4jTRP3VXtptmmL")
+	assert.Regexp(t, "FF10136", err)
+
+}

@@ -131,7 +131,7 @@ func TestDownloadBlobDownloadDataReadFail(t *testing.T) {
 	mdx.AssertExpectations(t)
 }
 
-func TestDownloadBlobDownloadDataCBCalled(t *testing.T) {
+func TestDownloadBlobDownloadEmpty(t *testing.T) {
 
 	dm, cancel := newTestDownloadManager(t)
 	defer cancel()
@@ -162,4 +162,26 @@ func TestOperationUpdate(t *testing.T) {
 	dm, cancel := newTestDownloadManager(t)
 	defer cancel()
 	assert.NoError(t, dm.OnOperationUpdate(context.Background(), nil, nil))
+}
+
+func TestDownloadBatchEmpty(t *testing.T) {
+
+	dm, cancel := newTestDownloadManager(t)
+	defer cancel()
+
+	reader := ioutil.NopCloser(bytes.NewBuffer([]byte{}))
+
+	mss := dm.sharedstorage.(*sharedstoragemocks.Plugin)
+	mss.On("DownloadData", mock.Anything, "ref1").Return(reader, nil)
+
+	mdc := &shareddownloadmocks.Callbacks{}
+	mdc.On("SharedStorageBlobDownloaded", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("pop"))
+	dm.callbacks = mdc
+
+	_, _, err := dm.downloadBatch(dm.ctx, downloadBatchData{
+		PayloadRef: "ref1",
+	})
+	assert.Regexp(t, "FF10466", err)
+
+	mss.AssertExpectations(t)
 }

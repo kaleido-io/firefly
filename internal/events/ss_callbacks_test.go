@@ -128,7 +128,7 @@ func TestSharedStorageBatchDownloadedBadData(t *testing.T) {
 	mss.On("Name").Return("utdx").Maybe()
 
 	_, err := em.SharedStorageBatchDownloaded(mss, "payload1", []byte("!json"))
-	assert.NoError(t, err)
+	assert.Regexp(t, "FF10376", err.Error())
 
 	mss.AssertExpectations(t)
 

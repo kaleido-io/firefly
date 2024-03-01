@@ -1,4 +1,4 @@
-// Copyright © 2023 Kaleido, Inc.
+// Copyright © 2024 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -127,6 +127,10 @@ func (dm *downloadManager) downloadBatch(ctx context.Context, data downloadBatch
 	}
 	if len(batchBytes) == int(maxReadLimit) {
 		return nil, core.OpPhasePending, i18n.WrapError(ctx, err, coremsgs.MsgDownloadBatchMaxBytes, data.PayloadRef)
+	}
+
+	if len(batchBytes) == 0 {
+		return nil, core.OpPhasePending, i18n.WrapError(ctx, err, coremsgs.MsgDownloadBatchFailedEmpty, data.PayloadRef)
 	}
 
 	// Parse and store the batch

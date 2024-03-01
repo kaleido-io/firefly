@@ -1,4 +1,4 @@
-// Copyright © 2023 Kaleido, Inc.
+// Copyright © 2024 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -21,7 +21,9 @@ import (
 	"encoding/json"
 
 	"github.com/hyperledger/firefly-common/pkg/fftypes"
+	"github.com/hyperledger/firefly-common/pkg/i18n"
 	"github.com/hyperledger/firefly-common/pkg/log"
+	"github.com/hyperledger/firefly/internal/coremsgs"
 	"github.com/hyperledger/firefly/pkg/core"
 	"github.com/hyperledger/firefly/pkg/sharedstorage"
 )
@@ -40,7 +42,7 @@ func (em *eventManager) SharedStorageBatchDownloaded(ss sharedstorage.Plugin, pa
 	err := json.Unmarshal(data, &batch)
 	if err != nil {
 		l.Errorf("Invalid batch downloaded from %s '%s': %s", ss.Name(), payloadRef, err)
-		return nil, nil
+		return nil, i18n.WrapError(em.ctx, err, coremsgs.MsgDownloadSharedFailed, payloadRef)
 	}
 	l.Infof("Shared storage batch downloaded from %s '%s' id=%s (len=%d)", ss.Name(), payloadRef, batch.ID, len(data))
 
