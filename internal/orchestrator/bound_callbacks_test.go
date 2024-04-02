@@ -82,8 +82,8 @@ func TestBoundCallbacks(t *testing.T) {
 	_, err := bc.SharedStorageBatchDownloaded("payload1", []byte(`{}`))
 	assert.EqualError(t, err, "pop")
 
-	mei.On("SharedStorageBlobDownloaded", mss, *hash, int64(12345), "payload1", dataID).Return(nil)
-	err = bc.SharedStorageBlobDownloaded(*hash, 12345, "payload1", dataID)
+	mei.On("SharedStorageBlobDownloaded", mss, *hash, int64(12345), "public1", "dx1", dataID, false).Return(nil)
+	err = bc.SharedStorageBlobDownloaded(*hash, 12345, "public1", "dx1", dataID, false)
 	assert.NoError(t, err)
 
 	mei.On("BlockchainEventBatch", []*blockchain.EventToDispatch{{Type: blockchain.EventTypeBatchPinComplete}}).Return(nil)
@@ -119,7 +119,7 @@ func TestBoundCallbacksStopped(t *testing.T) {
 	_, err := bc.SharedStorageBatchDownloaded("payload1", []byte(`{}`))
 	assert.Regexp(t, "FF10446", err)
 
-	err = bc.SharedStorageBlobDownloaded(*fftypes.NewRandB32(), 12345, "payload1", nil)
+	err = bc.SharedStorageBlobDownloaded(*fftypes.NewRandB32(), 12345, "public1", "dx1", nil, false)
 	assert.Regexp(t, "FF10446", err)
 
 	err = bc.BlockchainEventBatch([]*blockchain.EventToDispatch{})

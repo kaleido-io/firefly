@@ -165,6 +165,7 @@ var (
 	APIEndpointsPostData                        = ffm("api.endpoints.postData", "Creates a new data item in this FireFly node")
 	APIEndpointsPostDataValuePublish            = ffm("api.endpoints.postDataValuePublish", "Publishes the JSON value from the specified data resource, to shared storage")
 	APIEndpointsPostDataBlobPublish             = ffm("api.endpoints.postDataBlobPublish", "Publishes the binary blob attachment stored in your local data exchange, to shared storage")
+	APIEndpointsPostDownload                    = ffm("api.endpoints.postDownload", "Downloads a blob from shared storage")
 	APIEndpointsPostNewContractAPI              = ffm("api.endpoints.postNewContractAPI", "Creates and broadcasts a new custom smart contract API")
 	APIEndpointsPostNewContractInterface        = ffm("api.endpoints.postNewContractInterface", "Creates and broadcasts a new custom smart contract interface")
 	APIEndpointsPostNewContractListener         = ffm("api.endpoints.postNewContractListener", "Creates a new blockchain listener for events emitted by custom smart contracts")

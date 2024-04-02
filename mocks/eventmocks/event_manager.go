@@ -381,17 +381,17 @@ func (_m *EventManager) SharedStorageBatchDownloaded(ss sharedstorage.Plugin, pa
 	return r0, r1
 }
 
-// SharedStorageBlobDownloaded provides a mock function with given fields: ss, hash, size, payloadRef, dataID
-func (_m *EventManager) SharedStorageBlobDownloaded(ss sharedstorage.Plugin, hash fftypes.Bytes32, size int64, payloadRef string, dataID *fftypes.UUID) error {
-	ret := _m.Called(ss, hash, size, payloadRef, dataID)
+// SharedStorageBlobDownloaded provides a mock function with given fields: ss, hash, size, publicRef, dxRef, dataID, isNew
+func (_m *EventManager) SharedStorageBlobDownloaded(ss sharedstorage.Plugin, hash fftypes.Bytes32, size int64, publicRef string, dxRef string, dataID *fftypes.UUID, isNew bool) error {
+	ret := _m.Called(ss, hash, size, publicRef, dxRef, dataID, isNew)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SharedStorageBlobDownloaded")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(sharedstorage.Plugin, fftypes.Bytes32, int64, string, *fftypes.UUID) error); ok {
-		r0 = rf(ss, hash, size, payloadRef, dataID)
+	if rf, ok := ret.Get(0).(func(sharedstorage.Plugin, fftypes.Bytes32, int64, string, string, *fftypes.UUID, bool) error); ok {
+		r0 = rf(ss, hash, size, publicRef, dxRef, dataID, isNew)
 	} else {
 		r0 = ret.Error(0)
 	}

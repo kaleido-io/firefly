@@ -1062,6 +1062,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -5228,6 +5229,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -7220,6 +7222,7 @@ paths:
                         - contract_invoke_pin
                         - token_approval
                         - data_publish
+                        - data_download
                         type: string
                       type:
                         description: The type of the message
@@ -7938,6 +7941,111 @@ paths:
                     description: The version of the datatype. Multiple versions can
                       exist with the same name. Use of semantic versioning is encourages,
                       such as v1.0.1
+                    type: string
+                type: object
+          description: Success
+        default:
+          description: ""
+      tags:
+      - Default Namespace
+  /download:
+    post:
+      description: Downloads a blob from shared storage
+      operationId: postDownload
+      parameters:
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                idempotencyKey:
+                  description: An optional identifier to allow idempotent submission
+                    of requests. Stored on the transaction uniquely within a namespace
+                  type: string
+                payloadRef:
+                  description: A reference to the item to be downloaded from shared
+                    storage
+                  type: string
+              type: object
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                properties:
+                  created:
+                    description: The time the operation was created
+                    format: date-time
+                    type: string
+                  error:
+                    description: Any error reported back from the plugin for this
+                      operation
+                    type: string
+                  id:
+                    description: The UUID of the operation
+                    format: uuid
+                    type: string
+                  input:
+                    additionalProperties:
+                      description: The input to this operation
+                    description: The input to this operation
+                    type: object
+                  namespace:
+                    description: The namespace of the operation
+                    type: string
+                  output:
+                    additionalProperties:
+                      description: Any output reported back from the plugin for this
+                        operation
+                    description: Any output reported back from the plugin for this
+                      operation
+                    type: object
+                  plugin:
+                    description: The plugin responsible for performing the operation
+                    type: string
+                  retry:
+                    description: If this operation was initiated as a retry to a previous
+                      operation, this field points to the UUID of the operation being
+                      retried
+                    format: uuid
+                    type: string
+                  status:
+                    description: The current status of the operation
+                    type: string
+                  tx:
+                    description: The UUID of the FireFly transaction the operation
+                      is part of
+                    format: uuid
+                    type: string
+                  type:
+                    description: The type of the operation
+                    enum:
+                    - blockchain_pin_batch
+                    - blockchain_network_action
+                    - blockchain_deploy
+                    - blockchain_invoke
+                    - sharedstorage_upload_batch
+                    - sharedstorage_upload_blob
+                    - sharedstorage_upload_value
+                    - sharedstorage_download_batch
+                    - sharedstorage_download_blob
+                    - dataexchange_send_batch
+                    - dataexchange_send_blob
+                    - token_create_pool
+                    - token_activate_pool
+                    - token_transfer
+                    - token_approval
+                    type: string
+                  updated:
+                    description: The last update time of the operation
+                    format: date-time
                     type: string
                 type: object
           description: Success
@@ -9635,6 +9743,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -9914,6 +10023,7 @@ paths:
                         - contract_invoke_pin
                         - token_approval
                         - data_publish
+                        - data_download
                         type: string
                       type:
                         description: The type of the message
@@ -10317,6 +10427,7 @@ paths:
                     - contract_invoke_pin
                     - token_approval
                     - data_publish
+                    - data_download
                     type: string
                 type: object
           description: Success
@@ -10425,6 +10536,7 @@ paths:
                       - contract_invoke_pin
                       - token_approval
                       - data_publish
+                      - data_download
                       type: string
                     type:
                       description: The type of the message
@@ -10554,6 +10666,7 @@ paths:
                         - contract_invoke_pin
                         - token_approval
                         - data_publish
+                        - data_download
                         type: string
                       type:
                         description: The type of the message
@@ -10713,6 +10826,7 @@ paths:
                         - contract_invoke_pin
                         - token_approval
                         - data_publish
+                        - data_download
                         type: string
                       type:
                         description: The type of the message
@@ -10908,6 +11022,7 @@ paths:
                       - contract_invoke_pin
                       - token_approval
                       - data_publish
+                      - data_download
                       type: string
                     type:
                       description: The type of the message
@@ -11043,6 +11158,7 @@ paths:
                         - contract_invoke_pin
                         - token_approval
                         - data_publish
+                        - data_download
                         type: string
                       type:
                         description: The type of the message
@@ -11208,6 +11324,7 @@ paths:
                         - contract_invoke_pin
                         - token_approval
                         - data_publish
+                        - data_download
                         type: string
                       type:
                         description: The type of the message
@@ -11399,6 +11516,7 @@ paths:
                       - contract_invoke_pin
                       - token_approval
                       - data_publish
+                      - data_download
                       type: string
                     type:
                       description: The type of the message
@@ -11619,6 +11737,7 @@ paths:
                         - contract_invoke_pin
                         - token_approval
                         - data_publish
+                        - data_download
                         type: string
                       type:
                         description: The type of the message
@@ -12922,6 +13041,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -14339,6 +14459,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -17572,6 +17693,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -18632,6 +18754,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -19794,6 +19917,7 @@ paths:
                         - contract_invoke_pin
                         - token_approval
                         - data_publish
+                        - data_download
                         type: string
                       type:
                         description: The type of the message
@@ -20554,6 +20678,118 @@ paths:
                     description: The version of the datatype. Multiple versions can
                       exist with the same name. Use of semantic versioning is encourages,
                       such as v1.0.1
+                    type: string
+                type: object
+          description: Success
+        default:
+          description: ""
+      tags:
+      - Non-Default Namespace
+  /namespaces/{ns}/download:
+    post:
+      description: Downloads a blob from shared storage
+      operationId: postDownloadNamespace
+      parameters:
+      - description: The namespace which scopes this request
+        in: path
+        name: ns
+        required: true
+        schema:
+          example: default
+          type: string
+      - description: Server-side request timeout (milliseconds, or set a custom suffix
+          like 10s)
+        in: header
+        name: Request-Timeout
+        schema:
+          default: 2m0s
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                idempotencyKey:
+                  description: An optional identifier to allow idempotent submission
+                    of requests. Stored on the transaction uniquely within a namespace
+                  type: string
+                payloadRef:
+                  description: A reference to the item to be downloaded from shared
+                    storage
+                  type: string
+              type: object
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                properties:
+                  created:
+                    description: The time the operation was created
+                    format: date-time
+                    type: string
+                  error:
+                    description: Any error reported back from the plugin for this
+                      operation
+                    type: string
+                  id:
+                    description: The UUID of the operation
+                    format: uuid
+                    type: string
+                  input:
+                    additionalProperties:
+                      description: The input to this operation
+                    description: The input to this operation
+                    type: object
+                  namespace:
+                    description: The namespace of the operation
+                    type: string
+                  output:
+                    additionalProperties:
+                      description: Any output reported back from the plugin for this
+                        operation
+                    description: Any output reported back from the plugin for this
+                      operation
+                    type: object
+                  plugin:
+                    description: The plugin responsible for performing the operation
+                    type: string
+                  retry:
+                    description: If this operation was initiated as a retry to a previous
+                      operation, this field points to the UUID of the operation being
+                      retried
+                    format: uuid
+                    type: string
+                  status:
+                    description: The current status of the operation
+                    type: string
+                  tx:
+                    description: The UUID of the FireFly transaction the operation
+                      is part of
+                    format: uuid
+                    type: string
+                  type:
+                    description: The type of the operation
+                    enum:
+                    - blockchain_pin_batch
+                    - blockchain_network_action
+                    - blockchain_deploy
+                    - blockchain_invoke
+                    - sharedstorage_upload_batch
+                    - sharedstorage_upload_blob
+                    - sharedstorage_upload_value
+                    - sharedstorage_download_batch
+                    - sharedstorage_download_blob
+                    - dataexchange_send_batch
+                    - dataexchange_send_blob
+                    - token_create_pool
+                    - token_activate_pool
+                    - token_transfer
+                    - token_approval
+                    type: string
+                  updated:
+                    description: The last update time of the operation
+                    format: date-time
                     type: string
                 type: object
           description: Success
@@ -22328,6 +22564,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -22614,6 +22851,7 @@ paths:
                         - contract_invoke_pin
                         - token_approval
                         - data_publish
+                        - data_download
                         type: string
                       type:
                         description: The type of the message
@@ -23038,6 +23276,7 @@ paths:
                     - contract_invoke_pin
                     - token_approval
                     - data_publish
+                    - data_download
                     type: string
                 type: object
           description: Success
@@ -23191,6 +23430,7 @@ paths:
                       - contract_invoke_pin
                       - token_approval
                       - data_publish
+                      - data_download
                       type: string
                     type:
                       description: The type of the message
@@ -23326,6 +23566,7 @@ paths:
                         - contract_invoke_pin
                         - token_approval
                         - data_publish
+                        - data_download
                         type: string
                       type:
                         description: The type of the message
@@ -23491,6 +23732,7 @@ paths:
                         - contract_invoke_pin
                         - token_approval
                         - data_publish
+                        - data_download
                         type: string
                       type:
                         description: The type of the message
@@ -23693,6 +23935,7 @@ paths:
                       - contract_invoke_pin
                       - token_approval
                       - data_publish
+                      - data_download
                       type: string
                     type:
                       description: The type of the message
@@ -23828,6 +24071,7 @@ paths:
                         - contract_invoke_pin
                         - token_approval
                         - data_publish
+                        - data_download
                         type: string
                       type:
                         description: The type of the message
@@ -23993,6 +24237,7 @@ paths:
                         - contract_invoke_pin
                         - token_approval
                         - data_publish
+                        - data_download
                         type: string
                       type:
                         description: The type of the message
@@ -24191,6 +24436,7 @@ paths:
                       - contract_invoke_pin
                       - token_approval
                       - data_publish
+                      - data_download
                       type: string
                     type:
                       description: The type of the message
@@ -24411,6 +24657,7 @@ paths:
                         - contract_invoke_pin
                         - token_approval
                         - data_publish
+                        - data_download
                         type: string
                       type:
                         description: The type of the message
@@ -29868,6 +30115,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -30412,6 +30660,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -30865,6 +31114,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -32575,6 +32825,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -33064,6 +33315,7 @@ paths:
                       - contract_invoke_pin
                       - token_approval
                       - data_publish
+                      - data_download
                       type: string
                   type: object
                 type: array
@@ -33206,6 +33458,7 @@ paths:
                     - contract_invoke_pin
                     - token_approval
                     - data_publish
+                    - data_download
                     type: string
                 type: object
           description: Success
@@ -38952,6 +39205,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -39482,6 +39736,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -39913,6 +40168,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -41574,6 +41830,7 @@ paths:
                           - contract_invoke_pin
                           - token_approval
                           - data_publish
+                          - data_download
                           type: string
                         type:
                           description: The type of the message
@@ -42049,6 +42306,7 @@ paths:
                       - contract_invoke_pin
                       - token_approval
                       - data_publish
+                      - data_download
                       type: string
                   type: object
                 type: array
@@ -42184,6 +42442,7 @@ paths:
                     - contract_invoke_pin
                     - token_approval
                     - data_publish
+                    - data_download
                     type: string
                 type: object
           description: Success

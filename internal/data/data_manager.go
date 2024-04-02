@@ -356,7 +356,7 @@ func (dm *dataManager) resolveRef(ctx context.Context, dataRef *core.DataRef) (*
 	}
 }
 
-func (dm *dataManager) resolveBlob(ctx context.Context, namespace string, blobRef *core.BlobRef, dataID *fftypes.UUID) (*core.Blob, error) {
+func (dm *dataManager) resolveBlob(ctx context.Context, blobRef *core.BlobRef, dataID *fftypes.UUID) (*core.Blob, error) {
 	if blobRef != nil && blobRef.Hash != nil {
 		fb := database.BlobQueryFactory.NewFilter(ctx)
 		blobs, _, err := dm.database.GetBlobs(ctx, dm.dm.namespace.Name, fb.And(fb.Eq("data_id", dataID), fb.Eq("hash", blobRef.Hash)))
@@ -411,7 +411,7 @@ func (dm *dataManager) validateInputData(ctx context.Context, inData *core.DataR
 		return nil, err
 	}
 
-	blob, err := dm.resolveBlob(ctx, dm.namespace.Name, blobRef, inData.ID)
+	blob, err := dm.resolveBlob(ctx, blobRef, inData.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -466,7 +466,7 @@ func (dm *dataManager) ResolveInlineData(ctx context.Context, newMessage *NewMes
 			if d == nil {
 				return i18n.NewError(ctx, coremsgs.MsgDataReferenceUnresolvable, i)
 			}
-			if _, err = dm.resolveBlob(ctx, dm.namespace.Name, d.Blob, d.ID); err != nil {
+			if _, err = dm.resolveBlob(ctx, d.Blob, d.ID); err != nil {
 				return err
 			}
 		case dataOrValue.Value != nil || dataOrValue.Blob != nil:

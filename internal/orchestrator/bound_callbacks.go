@@ -1,4 +1,4 @@
-// Copyright © 2023 Kaleido, Inc.
+// Copyright © 2024 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -52,11 +52,11 @@ func (bc *boundCallbacks) SharedStorageBatchDownloaded(payloadRef string, data [
 	return bc.o.events.SharedStorageBatchDownloaded(bc.o.sharedstorage(), payloadRef, data)
 }
 
-func (bc *boundCallbacks) SharedStorageBlobDownloaded(hash fftypes.Bytes32, size int64, payloadRef string, dataID *fftypes.UUID) error {
+func (bc *boundCallbacks) SharedStorageBlobDownloaded(hash fftypes.Bytes32, size int64, publicRef, dxRef string, dataID *fftypes.UUID, isNew bool) error {
 	if err := bc.checkStopped(); err != nil {
 		return err
 	}
-	return bc.o.events.SharedStorageBlobDownloaded(bc.o.sharedstorage(), hash, size, payloadRef, dataID)
+	return bc.o.events.SharedStorageBlobDownloaded(bc.o.sharedstorage(), hash, size, publicRef, dxRef, dataID, isNew)
 }
 
 func (bc *boundCallbacks) BlockchainEventBatch(batch []*blockchain.EventToDispatch) error {

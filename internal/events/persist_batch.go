@@ -1,4 +1,4 @@
-// Copyright © 2023 Kaleido, Inc.
+// Copyright © 2024 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -177,7 +177,8 @@ func (em *eventManager) checkAndInitiateBlobDownloads(ctx context.Context, batch
 				log.L(ctx).Errorf("Invalid data entry %d id=%s in batch '%s' - missing public blob reference", i, data.ID, batch.ID)
 				return false, nil
 			}
-			if err = em.sharedDownload.InitiateDownloadBlob(ctx, batch.Payload.TX.ID, data.ID, data.Blob.Public, false /* batch processing does not currently use idempotency keys */); err != nil {
+			_, err := em.sharedDownload.InitiateDownloadBlob(ctx, batch.Payload.TX.ID, data.ID, data.Blob.Public, false /* batch processing does not currently use idempotency keys */)
+			if err != nil {
 				return false, err
 			}
 		}

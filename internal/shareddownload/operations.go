@@ -33,6 +33,7 @@ type downloadBatchData struct {
 }
 
 type downloadBlobData struct {
+	IsNew      bool          `json:"isNew"`
 	DataID     *fftypes.UUID `json:"dataId"`
 	PayloadRef string        `json:"payloadRef"`
 }
@@ -49,8 +50,9 @@ func getDownloadBatchOutputs(batchID *fftypes.UUID) fftypes.JSONObject {
 	}
 }
 
-func addDownloadBlobInputs(op *core.Operation, dataID *fftypes.UUID, payloadRef string) {
+func addDownloadBlobInputs(op *core.Operation, dataID *fftypes.UUID, payloadRef string, isNew bool) {
 	op.Input = fftypes.JSONObject{
+		"isNew":      isNew,
 		"dataId":     dataID.String(),
 		"payloadRef": payloadRef,
 	}
@@ -68,12 +70,13 @@ func retrieveDownloadBatchInputs(op *core.Operation) (payloadRef string) {
 	return op.Input.GetString("payloadRef")
 }
 
-func retrieveDownloadBlobInputs(ctx context.Context, op *core.Operation) (dataID *fftypes.UUID, payloadRef string, err error) {
+func retrieveDownloadBlobInputs(ctx context.Context, op *core.Operation) (dataID *fftypes.UUID, payloadRef string, isNew bool, err error) {
 	dataID, err = fftypes.ParseUUID(ctx, op.Input.GetString("dataId"))
 	if err != nil {
-		return nil, "", err
+		return nil, "", false, err
 	}
 	payloadRef = op.Input.GetString("payloadRef")
+	isNew = op.Input.GetBool("isNew")
 	return
 }
 
@@ -85,11 +88,11 @@ func (dm *downloadManager) PrepareOperation(ctx context.Context, op *core.Operat
 		return opDownloadBatch(op, payloadRef), nil
 
 	case core.OpTypeSharedStorageDownloadBlob:
-		dataID, payloadRef, err := retrieveDownloadBlobInputs(ctx, op)
+		dataID, payloadRef, isNew, err := retrieveDownloadBlobInputs(ctx, op)
 		if err != nil {
 			return nil, err
 		}
-		return opDownloadBlob(op, dataID, payloadRef), nil
+		return opDownloadBlob(op, dataID, payloadRef, isNew), nil
 
 	default:
 		return nil, i18n.NewError(ctx, coremsgs.MsgOperationNotSupported, op.Type)
@@ -154,7 +157,7 @@ func (dm *downloadManager) downloadBlob(ctx context.Context, data downloadBlobDa
 	log.L(ctx).Infof("Transferred blob '%s' (%s) from shared storage '%s' to local data exchange '%s'", hash, units.HumanSizeWithPrecision(float64(blobSize), 2), data.PayloadRef, dxPayloadRef)
 
 	// then callback to store metadata
-	if err := dm.callbacks.SharedStorageBlobDownloaded(*hash, blobSize, dxPayloadRef, data.DataID); err != nil {
+	if err := dm.callbacks.SharedStorageBlobDownloaded(*hash, blobSize, data.PayloadRef, dxPayloadRef, data.DataID, data.IsNew); err != nil {
 		return nil, core.OpPhasePending, err
 	}
 
@@ -177,13 +180,14 @@ func opDownloadBatch(op *core.Operation, payloadRef string) *core.PreparedOperat
 	}
 }
 
-func opDownloadBlob(op *core.Operation, dataID *fftypes.UUID, payloadRef string) *core.PreparedOperation {
+func opDownloadBlob(op *core.Operation, dataID *fftypes.UUID, payloadRef string, isNew bool) *core.PreparedOperation {
 	return &core.PreparedOperation{
 		ID:        op.ID,
 		Namespace: op.Namespace,
 		Plugin:    op.Plugin,
 		Type:      op.Type,
 		Data: downloadBlobData{
+			IsNew:      isNew,
 			DataID:     dataID,
 			PayloadRef: payloadRef,
 		},

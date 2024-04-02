@@ -1,4 +1,4 @@
-// Copyright © 2023 Kaleido, Inc.
+// Copyright © 2024 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -183,7 +183,7 @@ func (om *operationsManager) RunOperation(ctx context.Context, op *core.Prepared
 			failState = core.OpStatusPending
 			log.L(ctx).Infof("Setting operation %s operation %s status to %s after conflict", op.Type, op.ID, failState)
 		case phase == core.OpPhaseInitializing && idempotentSubmit:
-			// We haven't submitted the operation yet - so we will reuse the operation if the user retires with the same idempotency key
+			// We haven't submitted the operation yet - so we will reuse the operation if the user retries with the same idempotency key
 			failState = core.OpStatusInitialized
 		case phase == core.OpPhasePending:
 			// This error is past the point we have submitted to the connector - idempotency error from here on in on resubmit.

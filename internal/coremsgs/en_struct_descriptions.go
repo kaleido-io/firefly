@@ -719,4 +719,8 @@ var (
 
 	// DefinitionPublish field descriptions
 	DefinitionPublishNetworkName = ffm("DefinitionPublish.networkName", "An optional name to be used for publishing this definition to the multiparty network, which may differ from the local name")
+
+	// DownloadInput field descriptions
+	DownloadInputPayloadRef     = ffm("DownloadInput.payloadRef", "A reference to the item to be downloaded from shared storage")
+	DownloadInputIdempotencyKey = ffm("DownloadInput.idempotencyKey", "An optional identifier to allow idempotent submission of requests. Stored on the transaction uniquely within a namespace")
 )

@@ -45,6 +45,8 @@ var (
 	TransactionTypeTokenApproval = fftypes.FFEnumValue("txtype", "token_approval")
 	// TransactionTypeDataPublish represents a publish to shared storage
 	TransactionTypeDataPublish = fftypes.FFEnumValue("txtype", "data_publish")
+	// TransactionTypeDataDownload represents a download from shared storage
+	TransactionTypeDataDownload = fftypes.FFEnumValue("txtype", "data_download")
 )
 
 // TransactionRef refers to a transaction, in other types

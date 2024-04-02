@@ -1,4 +1,4 @@
-// Copyright © 2023 Kaleido, Inc.
+// Copyright © 2024 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -69,16 +69,18 @@ func (em *eventManager) SharedStorageBatchDownloaded(ss sharedstorage.Plugin, pa
 	return batch.ID, nil
 }
 
-func (em *eventManager) SharedStorageBlobDownloaded(ss sharedstorage.Plugin, hash fftypes.Bytes32, size int64, payloadRef string, dataID *fftypes.UUID) error {
+func (em *eventManager) SharedStorageBlobDownloaded(ss sharedstorage.Plugin, hash fftypes.Bytes32, size int64, publicRef, dxRef string, dataID *fftypes.UUID, isNew bool) error {
 	l := log.L(em.ctx)
 	l.Infof("Blob received event from public storage %s: Hash='%v'", ss.Name(), hash)
 
 	// Dispatch to the blob receiver for efficient batch DB operations
 	blobHash := hash
 	em.blobReceiver.blobReceived(em.ctx, &blobNotification{
+		isNew:     isNew,
+		publicRef: publicRef,
 		blob: &core.Blob{
 			Namespace:  em.namespace.Name,
-			PayloadRef: payloadRef,
+			PayloadRef: dxRef,
 			Hash:       &blobHash,
 			Size:       size,
 			Created:    fftypes.Now(),

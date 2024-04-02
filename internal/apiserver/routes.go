@@ -140,6 +140,7 @@ var routes = append(
 		postData,
 		postDataBlobPublish,
 		postDataValuePublish,
+		postDownload,
 		postNetworkAction,
 		postNewContractAPI,
 		postNewContractInterface,

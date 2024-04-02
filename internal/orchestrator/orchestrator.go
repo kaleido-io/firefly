@@ -73,6 +73,7 @@ type Orchestrator interface {
 	NetworkMap() networkmap.Manager
 	Operations() operations.Manager
 	Identity() identity.Manager
+	SharedDownload() shareddownload.Manager
 
 	// Status
 	GetStatus(ctx context.Context) (*core.NamespaceStatus, error)
@@ -405,6 +406,10 @@ func (or *orchestrator) Identity() identity.Manager {
 	return or.identity
 }
 
+func (or *orchestrator) SharedDownload() shareddownload.Manager {
+	return or.sharedDownload
+}
+
 func (or *orchestrator) initHandlers(ctx context.Context) {
 	// Update all the handlers to point to this instance of the orchestrator
 	setHandlers(ctx, or.plugins, or.namespace, or.config.Multiparty.Node.Name, or, &or.bc)
@@ -526,7 +531,7 @@ func (or *orchestrator) initManagers(ctx context.Context) (err error) {
 		}
 
 		if or.sharedDownload == nil {
-			or.sharedDownload, err = shareddownload.NewDownloadManager(ctx, or.namespace, or.database(), or.sharedstorage(), or.dataexchange(), or.operations, &or.bc)
+			or.sharedDownload, err = shareddownload.NewDownloadManager(ctx, or.namespace, or.database(), or.sharedstorage(), or.dataexchange(), or.operations, or.txHelper, &or.bc)
 			if err != nil {
 				return err
 			}

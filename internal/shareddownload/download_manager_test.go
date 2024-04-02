@@ -33,6 +33,7 @@ import (
 	"github.com/hyperledger/firefly/mocks/operationmocks"
 	"github.com/hyperledger/firefly/mocks/shareddownloadmocks"
 	"github.com/hyperledger/firefly/mocks/sharedstoragemocks"
+	"github.com/hyperledger/firefly/mocks/txcommonmocks"
 	"github.com/hyperledger/firefly/pkg/core"
 	"github.com/hyperledger/firefly/pkg/database"
 	"github.com/stretchr/testify/assert"
@@ -49,6 +50,7 @@ func newTestDownloadManager(t *testing.T) (*downloadManager, func()) {
 	mdx := &dataexchangemocks.Plugin{}
 	mci := &shareddownloadmocks.Callbacks{}
 	mom := &operationmocks.Manager{}
+	mth := &txcommonmocks.Helper{}
 	mom.On("RegisterHandler", mock.Anything, mock.Anything, []core.OpType{
 		core.OpTypeSharedStorageDownloadBatch,
 		core.OpTypeSharedStorageDownloadBlob,
@@ -56,14 +58,14 @@ func newTestDownloadManager(t *testing.T) (*downloadManager, func()) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ns := &core.Namespace{Name: "ns1", NetworkName: "ns1"}
-	pm, err := NewDownloadManager(ctx, ns, mdi, mss, mdx, mom, mci)
+	pm, err := NewDownloadManager(ctx, ns, mdi, mss, mdx, mom, mth, mci)
 	assert.NoError(t, err)
 
 	return pm.(*downloadManager), cancel
 }
 
 func TestNewDownloadManagerMissingDeps(t *testing.T) {
-	_, err := NewDownloadManager(context.Background(), &core.Namespace{}, nil, nil, nil, nil, nil)
+	_, err := NewDownloadManager(context.Background(), &core.Namespace{}, nil, nil, nil, nil, nil, nil)
 	assert.Regexp(t, "FF10128", err)
 }
 

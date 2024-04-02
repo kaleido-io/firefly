@@ -1,4 +1,4 @@
-// Copyright © 2023 Kaleido, Inc.
+// Copyright © 2024 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/firefly/internal/coreconfig"
 	"github.com/hyperledger/firefly/internal/coremsgs"
 	"github.com/hyperledger/firefly/internal/operations"
+	"github.com/hyperledger/firefly/internal/txcommon"
 	"github.com/hyperledger/firefly/pkg/core"
 	"github.com/hyperledger/firefly/pkg/database"
 	"github.com/hyperledger/firefly/pkg/dataexchange"
@@ -40,7 +41,8 @@ type Manager interface {
 	WaitStop()
 
 	InitiateDownloadBatch(ctx context.Context, tx *fftypes.UUID, payloadRef string, idempotentSubmit bool) error
-	InitiateDownloadBlob(ctx context.Context, tx *fftypes.UUID, dataID *fftypes.UUID, payloadRef string, idempotentSubmit bool) error
+	InitiateDownloadBlob(ctx context.Context, tx *fftypes.UUID, dataID *fftypes.UUID, payloadRef string, idempotentSubmit bool) (*core.Operation, error)
+	DownloadNewBlob(ctx context.Context, payloadRef string, IdempotencyKey core.IdempotencyKey) (*core.Operation, error)
 }
 
 // downloadManager operates a number of workers that can perform downloads/retries. Each download
@@ -56,6 +58,7 @@ type downloadManager struct {
 	sharedstorage              sharedstorage.Plugin // optional
 	dataexchange               dataexchange.Plugin
 	operations                 operations.Manager
+	txHelper                   txcommon.Helper
 	callbacks                  Callbacks
 	workerCount                int
 	workers                    []*downloadWorker
@@ -77,11 +80,11 @@ type downloadWork struct {
 
 type Callbacks interface {
 	SharedStorageBatchDownloaded(payloadRef string, data []byte) (batchID *fftypes.UUID, err error)
-	SharedStorageBlobDownloaded(hash fftypes.Bytes32, size int64, payloadRef string, dataID *fftypes.UUID) error
+	SharedStorageBlobDownloaded(hash fftypes.Bytes32, size int64, publicRef, dxRef string, dataID *fftypes.UUID, isNew bool) error
 }
 
-func NewDownloadManager(ctx context.Context, ns *core.Namespace, di database.Plugin, ss sharedstorage.Plugin, dx dataexchange.Plugin, om operations.Manager, cb Callbacks) (Manager, error) {
-	if di == nil || dx == nil || ss == nil || cb == nil {
+func NewDownloadManager(ctx context.Context, ns *core.Namespace, di database.Plugin, ss sharedstorage.Plugin, dx dataexchange.Plugin, om operations.Manager, txHelper txcommon.Helper, cb Callbacks) (Manager, error) {
+	if di == nil || dx == nil || ss == nil || om == nil || txHelper == nil || cb == nil {
 		return nil, i18n.NewError(ctx, coremsgs.MsgInitializationNilDepError, "DownloadManager")
 	}
 
@@ -94,6 +97,7 @@ func NewDownloadManager(ctx context.Context, ns *core.Namespace, di database.Plu
 		sharedstorage:              ss,
 		dataexchange:               dx,
 		operations:                 om,
+		txHelper:                   txHelper,
 		callbacks:                  cb,
 		broadcastBatchPayloadLimit: config.GetByteSize(coreconfig.BroadcastBatchPayloadLimit),
 		workerCount:                config.GetInt(coreconfig.DownloadWorkerCount),
@@ -231,10 +235,21 @@ func (dm *downloadManager) InitiateDownloadBatch(ctx context.Context, tx *fftype
 	return dm.createAndDispatchOp(ctx, op, opDownloadBatch(op, payloadRef), idempotentSubmit)
 }
 
-func (dm *downloadManager) InitiateDownloadBlob(ctx context.Context, tx *fftypes.UUID, dataID *fftypes.UUID, payloadRef string, idempotentSubmit bool) error {
+func (dm *downloadManager) InitiateDownloadBlob(ctx context.Context, tx *fftypes.UUID, dataID *fftypes.UUID, payloadRef string, idempotentSubmit bool) (*core.Operation, error) {
 	op := core.NewOperation(dm.sharedstorage, dm.namespace.Name, tx, core.OpTypeSharedStorageDownloadBlob)
-	addDownloadBlobInputs(op, dataID, payloadRef)
-	return dm.createAndDispatchOp(ctx, op, opDownloadBlob(op, dataID, payloadRef), idempotentSubmit)
+	addDownloadBlobInputs(op, dataID, payloadRef, false)
+	return op, dm.createAndDispatchOp(ctx, op, opDownloadBlob(op, dataID, payloadRef, false), idempotentSubmit)
+}
+
+func (dm *downloadManager) DownloadNewBlob(ctx context.Context, payloadRef string, idempotencyKey core.IdempotencyKey) (*core.Operation, error) {
+	tx, err := dm.txHelper.SubmitNewTransaction(ctx, core.TransactionTypeDataDownload, idempotencyKey)
+	if err != nil {
+		return nil, err
+	}
+	dataID := fftypes.NewUUID()
+	op := core.NewOperation(dm.sharedstorage, dm.namespace.Name, tx, core.OpTypeSharedStorageDownloadBlob)
+	addDownloadBlobInputs(op, dataID, payloadRef, true)
+	return op, dm.createAndDispatchOp(ctx, op, opDownloadBlob(op, dataID, payloadRef, true), true)
 }
 
 func (dm *downloadManager) createAndDispatchOp(ctx context.Context, op *core.Operation, preparedOp *core.PreparedOperation, idempotentSubmit bool) error {

@@ -1,4 +1,4 @@
-// Copyright © 2023 Kaleido, Inc.
+// Copyright © 2024 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -33,6 +33,8 @@ import (
 
 type blobNotification struct {
 	blob       *core.Blob
+	isNew      bool
+	publicRef  string
 	onComplete func()
 }
 
@@ -237,6 +239,36 @@ func (br *blobReceiver) insertNewBlobs(ctx context.Context, notifications []*blo
 			return nil, err
 		}
 	}
+
+	// Insert any new data items
+	data := make(core.DataArray, 0)
+	for _, notification := range notifications {
+		if notification.isNew {
+			newData := &core.Data{
+				ID: notification.blob.DataID,
+				Blob: &core.BlobRef{
+					Hash:   notification.blob.Hash,
+					Size:   notification.blob.Size,
+					Name:   notification.blob.PayloadRef,
+					Public: notification.publicRef,
+				},
+				Created:   fftypes.Now(),
+				Namespace: br.aggregator.namespace,
+			}
+			newData.Hash, err = newData.CalcHash(ctx)
+			if err != nil {
+				return nil, err
+			}
+			data = append(data, newData)
+		}
+	}
+	if len(data) > 0 {
+		err = br.database.InsertDataArray(ctx, data)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return newHashes, nil
 
 }
