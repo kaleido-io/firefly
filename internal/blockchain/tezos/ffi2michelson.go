@@ -1,4 +1,4 @@
-// Copyright © 2024 Kaleido, Inc.
+// Copyright © 2023 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -19,7 +19,6 @@ package tezos
 import (
 	"errors"
 	"fmt"
-	"slices"
 
 	"blockwatch.cc/tzgo/micheline"
 	"blockwatch.cc/tzgo/tezos"
@@ -35,7 +34,6 @@ const (
 	_internalBoolean = "boolean"
 	_internalList    = "list"
 	_internalStruct  = "struct"
-	_internalMap     = "map"
 	_internalInteger = "integer"
 	_internalNat     = "nat"
 	_internalString  = "string"
@@ -43,13 +41,6 @@ const (
 	_internalOption  = "option"
 	_internalAddress = "address"
 	_internalBytes   = "bytes"
-)
-
-// Tezos map
-const (
-	_key        = "key"
-	_value      = "value"
-	_mapEntries = "mapEntries"
 )
 
 func processArgs(payloadSchema map[string]interface{}, input map[string]interface{}, methodName string) (micheline.Parameters, error) {
@@ -152,44 +143,6 @@ func processMichelson(entry interface{}, details map[string]interface{}) (resp m
 func processSchemaEntry(entry interface{}, schema map[string]interface{}) (resp micheline.Prim, err error) {
 	entryType := schema["type"].(string)
 	switch entryType {
-	case _internalMap:
-		schemaArgs := schema["args"].([]interface{})
-
-		mapResp := micheline.NewMap()
-		mapEntries := entry.(map[string]interface{})[_mapEntries]
-		if mapEntries == nil {
-			return resp, fmt.Errorf("mapEntries schema property must be present")
-		}
-		for _, mapEntry := range mapEntries.([]interface{}) {
-			for name := range mapEntry.(map[string]interface{}) {
-				if !slices.Contains([]string{_key, _value}, name) {
-					return resp, errors.New("Unknown schema field '" + name + "' in map entry")
-				}
-			}
-
-			var k micheline.Prim
-			var v micheline.Prim
-			for i := len(schemaArgs) - 1; i >= 0; i-- {
-				arg := schemaArgs[i].(map[string]interface{})
-
-				if arg["name"] == _key {
-					if k, err = extractValue(_key, arg, mapEntry); err != nil {
-						return resp, err
-					}
-				}
-
-				if arg["name"] == _value {
-					if v, err = extractValue(_value, arg, mapEntry); err != nil {
-						return resp, err
-					}
-				}
-			}
-
-			mapElem := micheline.NewMapElem(k, v)
-			mapResp.Args = append(mapResp.Args, mapElem)
-		}
-
-		resp = mapResp
 	case _internalStruct:
 		schemaArgs := schema["args"].([]interface{})
 
@@ -198,11 +151,15 @@ func processSchemaEntry(entry interface{}, schema map[string]interface{}) (resp 
 			arg := schemaArgs[i].(map[string]interface{})
 
 			argName := arg["name"].(string)
-			processedEntry, err := extractValue(argName, arg, entry)
+			elem := entry.(map[string]interface{})
+			if _, ok := elem[argName]; !ok {
+				return resp, errors.New("Schema field '" + argName + "' wasn't found")
+			}
+
+			processedEntry, err := processSchemaEntry(elem[argName], arg)
 			if err != nil {
 				return resp, err
 			}
-
 			newPair := forgePair(processedEntry, rightPairElem)
 			rightPairElem = &newPair
 
@@ -248,15 +205,6 @@ func processSchemaEntry(entry interface{}, schema map[string]interface{}) (resp 
 	}
 
 	return resp, err
-}
-
-func extractValue(argName string, arg map[string]interface{}, entry interface{}) (resp micheline.Prim, err error) {
-	elem := entry.(map[string]interface{})
-	if _, ok := elem[argName]; !ok {
-		return resp, errors.New("Schema field '" + argName + "' wasn't found")
-	}
-
-	return processSchemaEntry(elem[argName], arg)
 }
 
 // TODO: define an algorithm to support any number of variants.

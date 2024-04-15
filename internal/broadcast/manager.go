@@ -1,4 +1,4 @@
-// Copyright © 2024 Kaleido, Inc.
+// Copyright © 2023 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -106,12 +106,18 @@ func NewBroadcastManager(ctx context.Context, ns *core.Namespace, di database.Pl
 		}
 
 		ba.RegisterDispatcher(broadcastDispatcherName,
-			true,
+			core.TransactionTypeBatchPin,
 			[]core.MessageType{
 				core.MessageTypeBroadcast,
 				core.MessageTypeDefinition,
 				core.MessageTypeDeprecatedTransferBroadcast,
 				core.MessageTypeDeprecatedApprovalBroadcast,
+			}, bm.dispatchBatch, bo)
+
+		ba.RegisterDispatcher(broadcastDispatcherName,
+			core.TransactionTypeContractInvokePin,
+			[]core.MessageType{
+				core.MessageTypeBroadcast,
 			}, bm.dispatchBatch, bo)
 	}
 

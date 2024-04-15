@@ -63,9 +63,6 @@ func (am *assetManager) NewApproval(approval *core.TokenApprovalInput) syncasync
 		approval:         approval,
 		idempotentSubmit: approval.IdempotencyKey != "",
 	}
-	if approval.Namespace == "" {
-		approval.Namespace = am.namespace
-	}
 	sender.setDefaults()
 	return sender
 }
