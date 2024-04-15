@@ -1,4 +1,4 @@
-// Copyright © 2024 Kaleido, Inc.
+// Copyright © 2023 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -273,7 +273,7 @@ func (h *FFDX) Capabilities() *dataexchange.Capabilities {
 	return h.capabilities
 }
 
-func (h *FFDX) beforeConnect(ctx context.Context, w wsclient.WSClient) error {
+func (h *FFDX) beforeConnect(ctx context.Context) error {
 	h.initMutex.Lock()
 	defer h.initMutex.Unlock()
 

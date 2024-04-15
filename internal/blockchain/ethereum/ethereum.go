@@ -1,4 +1,4 @@
-// Copyright © 2024 Kaleido, Inc.
+// Copyright © 2023 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -31,6 +31,7 @@ import (
 	"github.com/hyperledger/firefly-common/pkg/fftypes"
 	"github.com/hyperledger/firefly-common/pkg/i18n"
 	"github.com/hyperledger/firefly-common/pkg/log"
+	"github.com/hyperledger/firefly-common/pkg/retry"
 	"github.com/hyperledger/firefly-common/pkg/wsclient"
 	"github.com/hyperledger/firefly-signer/pkg/abi"
 	"github.com/hyperledger/firefly-signer/pkg/ffi2abi"
@@ -60,23 +61,24 @@ const (
 type Ethereum struct {
 	ctx                  context.Context
 	cancelCtx            context.CancelFunc
-	pluginTopic          string
+	topic                string
 	prefixShort          string
 	prefixLong           string
 	capabilities         *blockchain.Capabilities
 	callbacks            common.BlockchainCallbacks
 	client               *resty.Client
 	streams              *streamManager
-	streamID             map[string]string
-	wsconn               map[string]wsclient.WSClient
-	wsConfig             *wsclient.WSConfig
-	closed               map[string]chan struct{}
+	streamID             string
+	wsconn               wsclient.WSClient
+	closed               chan struct{}
 	addressResolveAlways bool
 	addressResolver      *addressResolver
 	metrics              metrics.Manager
 	ethconnectConf       config.Section
 	subs                 common.FireflySubscriptions
 	cache                cache.CInterface
+	backgroundRetry      *retry.Retry
+	backgroundStart      bool
 }
 
 type eventStreamWebsocket struct {
@@ -160,7 +162,7 @@ func (e *Ethereum) Init(ctx context.Context, cancelCtx context.CancelFunc, conf 
 		return i18n.NewError(ctx, coremsgs.MsgMissingPluginConfig, "url", ethconnectConf)
 	}
 
-	e.wsConfig, err = wsclient.GenerateConfig(ctx, ethconnectConf)
+	wsConfig, err := wsclient.GenerateConfig(ctx, ethconnectConf)
 	if err == nil {
 		e.client, err = ffresty.New(e.ctx, ethconnectConf)
 	}
@@ -169,15 +171,19 @@ func (e *Ethereum) Init(ctx context.Context, cancelCtx context.CancelFunc, conf 
 		return err
 	}
 
-	e.pluginTopic = ethconnectConf.GetString(EthconnectConfigTopic)
-	if e.pluginTopic == "" {
+	e.topic = ethconnectConf.GetString(EthconnectConfigTopic)
+	if e.topic == "" {
 		return i18n.NewError(ctx, coremsgs.MsgMissingPluginConfig, "topic", ethconnectConf)
 	}
 	e.prefixShort = ethconnectConf.GetString(EthconnectPrefixShort)
 	e.prefixLong = ethconnectConf.GetString(EthconnectPrefixLong)
 
-	if e.wsConfig.WSKeyPath == "" {
-		e.wsConfig.WSKeyPath = "/ws"
+	if wsConfig.WSKeyPath == "" {
+		wsConfig.WSKeyPath = "/ws"
+	}
+	e.wsconn, err = wsclient.New(ctx, wsConfig, nil, e.afterConnect)
+	if err != nil {
+		return err
 	}
 
 	cache, err := cacheManager.GetCache(
@@ -193,68 +199,29 @@ func (e *Ethereum) Init(ctx context.Context, cancelCtx context.CancelFunc, conf 
 	}
 	e.cache = cache
 
-	e.streamID = make(map[string]string)
-	e.closed = make(map[string]chan struct{})
-	e.wsconn = make(map[string]wsclient.WSClient)
 	e.streams = newStreamManager(e.client, e.cache, e.ethconnectConf.GetUint(EthconnectConfigBatchSize), uint(e.ethconnectConf.GetDuration(EthconnectConfigBatchTimeout).Milliseconds()))
 
-	return nil
-}
-
-func (e *Ethereum) getTopic(namespace string) string {
-	return fmt.Sprintf("%s/%s", e.pluginTopic, namespace)
-}
-
-func (e *Ethereum) StartNamespace(ctx context.Context, namespace string) (err error) {
-	log.L(e.ctx).Debugf("Starting namespace: %s", namespace)
-	topic := e.getTopic(namespace)
-
-	e.wsconn[namespace], err = wsclient.New(ctx, e.wsConfig, nil, func(ctx context.Context, w wsclient.WSClient) error {
-		// Send a subscribe to our topic after each connect/reconnect
-		b, _ := json.Marshal(&ethWSCommandPayload{
-			Type:  "listen",
-			Topic: topic,
-		})
-		err := w.Send(ctx, b)
-		if err == nil {
-			b, _ = json.Marshal(&ethWSCommandPayload{
-				Type: "listenreplies",
-			})
-			err = w.Send(ctx, b)
+	e.backgroundStart = e.ethconnectConf.GetBool(EthconnectBackgroundStart)
+	if e.backgroundStart {
+		e.backgroundRetry = &retry.Retry{
+			InitialDelay: e.ethconnectConf.GetDuration(EthconnectBackgroundStartInitialDelay),
+			MaximumDelay: e.ethconnectConf.GetDuration(EthconnectBackgroundStartMaxDelay),
+			Factor:       e.ethconnectConf.GetFloat64(EthconnectBackgroundStartFactor),
 		}
-		return err
-	})
-	if err != nil {
-		return err
-	}
-	// Make sure that our event stream is in place
-	stream, err := e.streams.ensureEventStream(ctx, topic, e.pluginTopic)
-	if err != nil {
-		return err
-	}
-	log.L(e.ctx).Infof("Event stream: %s (topic=%s)", stream.ID, topic)
-	e.streamID[namespace] = stream.ID
 
-	err = e.wsconn[namespace].Connect()
+		return nil
+	}
+
+	stream, err := e.streams.ensureEventStream(e.ctx, e.topic)
 	if err != nil {
 		return err
 	}
 
-	e.closed[namespace] = make(chan struct{})
+	e.streamID = stream.ID
+	log.L(e.ctx).Infof("Event stream: %s (topic=%s)", e.streamID, e.topic)
 
-	go e.eventLoop(namespace, e.wsconn[namespace], e.closed[namespace])
-
-	return nil
-}
-
-func (e *Ethereum) StopNamespace(ctx context.Context, namespace string) (err error) {
-	wsconn, ok := e.wsconn[namespace]
-	if ok {
-		wsconn.Close()
-	}
-	delete(e.wsconn, namespace)
-	delete(e.streamID, namespace)
-	delete(e.closed, namespace)
+	e.closed = make(chan struct{})
+	go e.eventLoop()
 
 	return nil
 }
@@ -265,6 +232,36 @@ func (e *Ethereum) SetHandler(namespace string, handler blockchain.Callbacks) {
 
 func (e *Ethereum) SetOperationHandler(namespace string, handler core.OperationCallbacks) {
 	e.callbacks.SetOperationalHandler(namespace, handler)
+}
+
+func (e *Ethereum) startBackgroundLoop() {
+	_ = e.backgroundRetry.Do(e.ctx, fmt.Sprintf("ethereum connector %s", e.Name()), func(attempt int) (retry bool, err error) {
+		stream, err := e.streams.ensureEventStream(e.ctx, e.topic)
+		if err != nil {
+			return true, err
+		}
+
+		e.streamID = stream.ID
+		log.L(e.ctx).Infof("Event stream: %s (topic=%s)", e.streamID, e.topic)
+		err = e.wsconn.Connect()
+		if err != nil {
+			return true, err
+		}
+
+		e.closed = make(chan struct{})
+		go e.eventLoop()
+
+		return false, nil
+	})
+}
+
+func (e *Ethereum) Start() (err error) {
+	if e.backgroundStart {
+		go e.startBackgroundLoop()
+		return nil
+	}
+
+	return e.wsconn.Connect()
 }
 
 func (e *Ethereum) Capabilities() *blockchain.Capabilities {
@@ -282,12 +279,7 @@ func (e *Ethereum) AddFireflySubscription(ctx context.Context, namespace *core.N
 		return "", err
 	}
 
-	streamID, ok := e.streamID[namespace.Name]
-	if !ok {
-		return "", i18n.NewError(ctx, coremsgs.MsgInternalServerError, "eventstream ID not found")
-	}
-	sub, err := e.streams.ensureFireFlySubscription(ctx, namespace.Name, version, ethLocation.Address, contract.FirstEvent, streamID, batchPinEventABI)
-
+	sub, err := e.streams.ensureFireFlySubscription(ctx, namespace.Name, version, ethLocation.Address, contract.FirstEvent, e.streamID, batchPinEventABI)
 	if err != nil {
 		return "", err
 	}
@@ -301,6 +293,22 @@ func (e *Ethereum) RemoveFireflySubscription(ctx context.Context, subID string) 
 	// events from the subscription (and handling that scenario cleanly could be difficult for ethconnect).
 	// TODO: can old subscriptions be somehow cleaned up later?
 	e.subs.RemoveSubscription(ctx, subID)
+}
+
+func (e *Ethereum) afterConnect(ctx context.Context, w wsclient.WSClient) error {
+	// Send a subscribe to our topic after each connect/reconnect
+	b, _ := json.Marshal(&ethWSCommandPayload{
+		Type:  "listen",
+		Topic: e.topic,
+	})
+	err := w.Send(ctx, b)
+	if err == nil {
+		b, _ = json.Marshal(&ethWSCommandPayload{
+			Type: "listenreplies",
+		})
+		err = w.Send(ctx, b)
+	}
+	return err
 }
 
 func ethHexFormatB32(b *fftypes.Bytes32) string {
@@ -452,19 +460,17 @@ func (e *Ethereum) handleMessageBatch(ctx context.Context, batchID int64, messag
 	return e.callbacks.DispatchBlockchainEvents(ctx, events)
 }
 
-func (e *Ethereum) eventLoop(namespace string, wsconn wsclient.WSClient, closed chan struct{}) {
-	topic := e.getTopic(namespace)
-	defer wsconn.Close()
-	defer close(closed)
-	l := log.L(e.ctx).WithField("role", "event-loop").WithField("namespace", namespace)
+func (e *Ethereum) eventLoop() {
+	defer e.wsconn.Close()
+	defer close(e.closed)
+	l := log.L(e.ctx).WithField("role", "event-loop")
 	ctx := log.WithLogger(e.ctx, l)
-	log.L(ctx).Debugf("Starting event loop for namespace '%s'", namespace)
 	for {
 		select {
 		case <-ctx.Done():
 			l.Debugf("Event loop exiting (context cancelled)")
 			return
-		case msgBytes, ok := <-wsconn.Receive():
+		case msgBytes, ok := <-e.wsconn.Receive():
 			if !ok {
 				l.Debugf("Event loop exiting (receive channel closed). Terminating server!")
 				e.cancelCtx()
@@ -483,9 +489,9 @@ func (e *Ethereum) eventLoop(namespace string, wsconn wsclient.WSClient, closed 
 				if err == nil {
 					ack, _ := json.Marshal(&ethWSCommandPayload{
 						Type:  "ack",
-						Topic: topic,
+						Topic: e.topic,
 					})
-					err = wsconn.Send(ctx, ack)
+					err = e.wsconn.Send(ctx, ack)
 				}
 			case map[string]interface{}:
 				isBatch := false
@@ -496,7 +502,7 @@ func (e *Ethereum) eventLoop(namespace string, wsconn wsclient.WSClient, closed 
 						err = e.handleMessageBatch(ctx, (int64)(batchNumber), events)
 						// Errors processing messages are converted into nacks
 						ackOrNack := &ethWSCommandPayload{
-							Topic:       topic,
+							Topic:       e.topic,
 							BatchNumber: int64(batchNumber),
 						}
 						if err == nil {
@@ -507,7 +513,7 @@ func (e *Ethereum) eventLoop(namespace string, wsconn wsclient.WSClient, closed 
 							ackOrNack.Message = err.Error()
 						}
 						b, _ := json.Marshal(&ackOrNack)
-						err = wsconn.Send(ctx, b)
+						err = e.wsconn.Send(ctx, b)
 					}
 				}
 				if !isBatch {
@@ -735,7 +741,7 @@ func (e *Ethereum) DeployContract(ctx context.Context, nsOpID, signingKey string
 		e.metrics.BlockchainContractDeployment()
 	}
 	headers := EthconnectMessageHeaders{
-		Type: core.DeployContract,
+		Type: "DeployContract",
 		ID:   nsOpID,
 	}
 	body := map[string]interface{}{
@@ -745,7 +751,9 @@ func (e *Ethereum) DeployContract(ctx context.Context, nsOpID, signingKey string
 		"definition": definition,
 		"contract":   contract,
 	}
-
+	if signingKey != "" {
+		body["from"] = signingKey
+	}
 	body, err = e.applyOptions(ctx, body, options)
 	if err != nil {
 		return true, err
@@ -869,7 +877,6 @@ func (e *Ethereum) encodeContractLocation(ctx context.Context, location *Locatio
 
 func (e *Ethereum) AddContractListener(ctx context.Context, listener *core.ContractListener) (err error) {
 	var location *Location
-	namespace := listener.Namespace
 	if listener.Location != nil {
 		location, err = e.parseContractLocation(ctx, listener.Location)
 		if err != nil {
@@ -886,7 +893,7 @@ func (e *Ethereum) AddContractListener(ctx context.Context, listener *core.Contr
 	if listener.Options != nil {
 		firstEvent = listener.Options.FirstEvent
 	}
-	result, err := e.streams.createSubscription(ctx, location, e.streamID[namespace], subName, firstEvent, abi)
+	result, err := e.streams.createSubscription(ctx, location, e.streamID, subName, firstEvent, abi)
 	if err != nil {
 		return err
 	}
@@ -898,10 +905,9 @@ func (e *Ethereum) DeleteContractListener(ctx context.Context, subscription *cor
 	return e.streams.deleteSubscription(ctx, subscription.BackendID, okNotFound)
 }
 
-func (e *Ethereum) GetContractListenerStatus(ctx context.Context, namespace, subID string, okNotFound bool) (found bool, status interface{}, err error) {
-	esID := e.streamID[namespace]
+func (e *Ethereum) GetContractListenerStatus(ctx context.Context, subID string, okNotFound bool) (found bool, status interface{}, err error) {
 	sub, err := e.streams.getSubscription(ctx, subID, okNotFound)
-	if err != nil || sub == nil || sub.Stream != esID {
+	if err != nil || sub == nil {
 		return false, nil, err
 	}
 
