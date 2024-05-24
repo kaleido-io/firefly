@@ -2,14 +2,41 @@ name: Latest Integration Test
 
 on:
   push:
-    branches: [scheduled-e2e]
+    branches: [enterprise, scheduled-e2e]
+  pull_request:
+    branches: [enterprise]
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch:
 
 jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.19
+
+      - name: Build Docker image
+        run: make docker
+
+      - name: Save Docker image
+        run: docker save --output firefly.tar.gz hyperledger/firefly
+
+      - name: Upload Docker image
+        uses: actions/upload-artifact@v3
+        with:
+          name: firefly-docker
+          path: firefly.tar.gz
+
   e2e-test:
-    runs-on: firefly-ubuntu-latest
+    needs: docker
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         test-suite:
@@ -59,10 +86,13 @@ jobs:
       - name: Update manifest to latest commit for every service
         run: ./manifestgen.sh head
 
-      - name: Pull latest FireFly build
-        run: |
-          docker pull ghcr.io/hyperledger/firefly:head
-          docker tag ghcr.io/hyperledger/firefly:head hyperledger/firefly
+      - name: Download Docker image
+        uses: actions/download-artifact@v3
+        with:
+          name: firefly-docker
+
+      - name: Load Docker image
+        run: docker load --input firefly.tar.gz
 
       - name: Run E2E tests
         env:
@@ -71,6 +101,7 @@ jobs:
           DATABASE_TYPE: ${{ matrix.database-type }}
           BLOCKCHAIN_NODE: ${{ matrix.blockchain-node }}
           BUILD_FIREFLY: false
+          DOWNLOAD_CLI: true
           RESTART: true
         run: ./test/e2e/run.sh
 
@@ -82,7 +113,7 @@ jobs:
           path: containerlogs/logs.txt
 
   migration-test:
-    runs-on: firefly-ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
