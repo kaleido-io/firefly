@@ -9,4 +9,5 @@ group :jekyll_plugins do
     gem "jekyll-multiple-languages-plugin"
     gem "html-proofer"
     gem "webrick"
+    gem "rexml", "~> 3.3.2"
 end
