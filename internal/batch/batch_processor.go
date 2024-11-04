@@ -556,7 +556,15 @@ func (bp *batchProcessor) dispatchBatch(payload *DispatchPayload) error {
 	// Call the dispatcher to do the heavy lifting - will only exit if we're closed
 	return operations.RunWithOperationContext(bp.ctx, func(ctx context.Context) error {
 		return bp.retry.Do(ctx, "batch dispatch", func(attempt int) (retry bool, err error) {
-			return true, bp.conf.dispatch(ctx, payload)
+			err = bp.conf.dispatch(ctx, payload)
+			if err != nil {
+				conflictErr, conflictTestOk := err.(operations.ConflictError)
+				if conflictTestOk && conflictErr.IsConflictError() {
+					// We know that the connector has received our batch, so we shouldn't need to retry
+					return true, nil
+				}
+			}
+			return true, err
 		})
 	})
 }
