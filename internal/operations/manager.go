@@ -58,6 +58,11 @@ const (
 	RemainPendingOnFailure RunOperationOption = iota
 )
 
+// ConflictError can be implemented by connectors to prevent an operation being overridden to failed
+type ConflictError interface {
+	IsConflictError() bool
+}
+
 type operationsManager struct {
 	ctx       context.Context
 	namespace string
@@ -127,14 +132,26 @@ func (om *operationsManager) RunOperation(ctx context.Context, op *core.Prepared
 	log.L(ctx).Tracef("Operation detail: %+v", op)
 	outputs, complete, err := handler.RunOperation(ctx, op)
 	if err != nil {
-		om.SubmitOperationUpdate(&core.OperationUpdate{
-			NamespacedOpID: op.NamespacedIDString(),
-			Plugin:         op.Plugin,
-			Status:         failState,
-			ErrorMessage:   err.Error(),
-			Output:         outputs,
-		})
+		conflictErr, ok := err.(ConflictError)
+		if ok && conflictErr.IsConflictError() {
+			// We are now pending - we know the connector has the action we're attempting to submit
+			//
+			// The async processing in SubmitOperationUpdate does not allow us to go back to pending, if
+			// we have progressed to failed through an async event that gets ordered before this update.
+			// So this is safe
+			failState = core.OpStatusPending
+			log.L(ctx).Infof("Setting operation %s operation %s status to %s after conflict", op.Type, op.ID, failState)
+		} else {
+			om.SubmitOperationUpdate(&core.OperationUpdate{
+				NamespacedOpID: op.NamespacedIDString(),
+				Plugin:         op.Plugin,
+				Status:         failState,
+				ErrorMessage:   err.Error(),
+				Output:         outputs,
+			})
+		}
 	} else if complete {
+
 		om.SubmitOperationUpdate(&core.OperationUpdate{
 			NamespacedOpID: op.NamespacedIDString(),
 			Plugin:         op.Plugin,

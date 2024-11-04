@@ -566,14 +566,14 @@ func (e *Ethereum) invokeContractMethod(ctx context.Context, address, signingKey
 	if err != nil {
 		return err
 	}
-	var resErr ethError
+	var resErr common.BlockchainRESTError
 	res, err := e.client.R().
 		SetContext(ctx).
 		SetBody(body).
 		SetError(&resErr).
 		Post("/")
 	if err != nil || !res.IsSuccess() {
-		return wrapError(ctx, &resErr, res, err)
+		return common.WrapRestError(ctx, &resErr, res, err, coremsgs.MsgEthConnectorRESTErr)
 	}
 	return nil
 }

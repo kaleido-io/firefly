@@ -21,8 +21,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 
+	"github.com/go-resty/resty/v2"
+	"github.com/hyperledger/firefly-common/pkg/ffresty"
 	"github.com/hyperledger/firefly-common/pkg/fftypes"
 	"github.com/hyperledger/firefly-common/pkg/i18n"
 	"github.com/hyperledger/firefly-common/pkg/log"
@@ -82,6 +85,24 @@ type BlockchainReceiptNotification struct {
 	TxHash     string `json:"transactionHash,omitempty"`
 	Message    string `json:"errorMessage,omitempty"`
 	ProtocolID string `json:"protocolId,omitempty"`
+}
+
+type BlockchainRESTError struct {
+	Error string `json:"error,omitempty"`
+	// See https://github.com/hyperledger/firefly-transaction-manager/blob/main/pkg/ffcapi/submission_error.go
+	SubmissionRejected bool `json:"submissionRejected,omitempty"`
+}
+
+type conflictError struct {
+	err error
+}
+
+func (ce *conflictError) Error() string {
+	return ce.err.Error()
+}
+
+func (ce *conflictError) IsConflictError() bool {
+	return true
 }
 
 func NewBlockchainCallbacks() BlockchainCallbacks {
@@ -319,4 +340,17 @@ func HandleReceipt(ctx context.Context, plugin core.Named, reply *BlockchainRece
 	callbacks.OperationUpdate(ctx, plugin, reply.Headers.ReceiptID, updateType, reply.TxHash, reply.Message, output)
 
 	return nil
+}
+
+func WrapRestError(ctx context.Context, errRes *BlockchainRESTError, res *resty.Response, err error, defMsgKey i18n.ErrorMessageKey) error {
+	if errRes != nil && errRes.Error != "" {
+		if res != nil && res.StatusCode() == http.StatusConflict {
+			return &conflictError{err: i18n.WrapError(ctx, err, coremsgs.MsgBlockchainConnectorRESTErrConflict, errRes.Error)}
+		}
+		return i18n.WrapError(ctx, err, defMsgKey, errRes.Error)
+	}
+	if res != nil && res.StatusCode() == http.StatusConflict {
+		return &conflictError{err: ffresty.WrapRestErr(ctx, res, err, coremsgs.MsgBlockchainConnectorRESTErrConflict)}
+	}
+	return ffresty.WrapRestErr(ctx, res, err, defMsgKey)
 }
