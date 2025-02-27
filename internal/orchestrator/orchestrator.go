@@ -451,6 +451,7 @@ func (or *orchestrator) initMultiParty(ctx context.Context) error {
 		return err
 	}
 	for _, node := range nodes {
+		log.L(ctx).Debugf("Adding node '%s', identity '%s' to data exchange: %v", node.Name, node.ID, node.Profile)
 		err = or.plugins.DataExchange.Plugin.AddNode(ctx, or.namespace.NetworkName, node.Name, node.Profile)
 		if err != nil {
 			return err
