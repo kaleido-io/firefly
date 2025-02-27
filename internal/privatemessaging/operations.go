@@ -129,6 +129,7 @@ func (pm *privateMessaging) PrepareOperation(ctx context.Context, op *core.Opera
 		if err != nil {
 			return nil, err
 		}
+		batch.Namespace = pm.namespace.NetworkName
 		transport := &core.TransportWrapper{Group: group, Batch: batch}
 		return opSendBatch(op, node, transport), nil
 
