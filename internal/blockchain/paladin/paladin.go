@@ -344,7 +344,11 @@ func (p *Paladin) DeployContract(ctx context.Context, nsOpID, signingKey string,
 		ABI:      a,
 		Bytecode: bytecode,
 	}
-	// TODO: get gas price and limit from options
+
+	err = p.setGasOptions(ctx, options, tx)
+	if err != nil {
+		return false, err
+	}
 
 	_, err = p.httpClient.PTX().SendTransaction(ctx, tx)
 
@@ -377,6 +381,39 @@ func (p *Paladin) prepareRequest(ctx context.Context, parsedMethod interface{}, 
 	return methodInfo, orderedInput, nil
 }
 
+func (p *Paladin) setGasOptions(ctx context.Context, options map[string]interface{}, tx *pldapi.TransactionInput) error {
+	var err error
+	if options["gasLimit"] != nil {
+		gasLimit, err := tktypes.ParseHexUint64(ctx, options["gasLimit"].(string))
+		if err != nil {
+			return err
+		}
+		tx.Gas = &gasLimit
+	}
+
+	if options["gasPrice"] != nil {
+		tx.GasPrice, err = tktypes.ParseHexUint256(ctx, options["gasPrice"].(string))
+		if err != nil {
+			return err
+		}
+	}
+
+	if options["maxFeePerGas"] != nil {
+		tx.MaxFeePerGas, err = tktypes.ParseHexUint256(ctx, options["maxFeePerGas"].(string))
+		if err != nil {
+			return err
+		}
+	}
+
+	if options["maxPriorityFeePerGas"] != nil {
+		tx.MaxPriorityFeePerGas, err = tktypes.ParseHexUint256(ctx, options["maxPriorityFeePerGas"].(string))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (p *Paladin) InvokeContract(ctx context.Context, nsOpID, signingKey string, location *fftypes.JSONAny, parsedMethod interface{}, input map[string]interface{}, options map[string]interface{}, batch *blockchain.BatchPin) (submissionRejected bool, err error) {
 	to, err := tktypes.ParseEthAddress(location.AsString())
 	if err != nil {
@@ -402,6 +439,11 @@ func (p *Paladin) InvokeContract(ctx context.Context, nsOpID, signingKey string,
 			Data:           tktypes.JSONString(orderedInput),
 		},
 		ABI: []*abi.Entry{methodInfo.methodABI},
+	}
+
+	err = p.setGasOptions(ctx, options, tx)
+	if err != nil {
+		return false, err
 	}
 
 	_, err = p.httpClient.PTX().SendTransaction(ctx, tx)
@@ -436,7 +478,6 @@ func (p *Paladin) QueryContract(ctx context.Context, signingKey string, location
 		},
 	}
 
-	// TODO: is it ok to just return data as is here? - {"retVal": "4"} it's different, is it ok?
 	return p.httpClient.PTX().Call(ctx, tx)
 }
 
