@@ -79,6 +79,7 @@ func (cb *callbacks) OperationUpdate(ctx context.Context, update *core.Operation
 }
 
 func (cb *callbacks) DXEvent(ctx context.Context, namespace, recipient string, event dataexchange.DXEvent) error {
+	log.L(ctx).Debugf("Finding node for DX event '%s' namespace='%s' recipient='%s'", event.EventID(), namespace, recipient)
 	node := cb.plugin.findNode(namespace, recipient)
 	if node != nil {
 		key := namespace + ":" + node.Name
@@ -88,7 +89,7 @@ func (cb *callbacks) DXEvent(ctx context.Context, namespace, recipient string, e
 		log.L(ctx).Errorf("No handler found for DX event '%s' namespace=%s node=%s", event.EventID(), namespace, node.Name)
 		event.Ack()
 	} else {
-		log.L(ctx).Errorf("Unknown local node for DX event '%s' recipient=%s", event.EventID(), recipient)
+		log.L(ctx).Errorf("Unknown local node for DX event '%s' namespace='%s'  recipient=%s", event.EventID(), namespace, recipient)
 		event.Ack()
 	}
 	return nil
@@ -333,6 +334,7 @@ func (h *FFDX) AddNode(ctx context.Context, networkNamespace, nodeName string, p
 	h.initMutex.Lock()
 	defer h.initMutex.Unlock()
 
+	log.L(ctx).Debugf("Adding DX peer namespace='%s' node='%s'", networkNamespace, h.GetPeerID(peer))
 	key := networkNamespace + ":" + h.GetPeerID(peer)
 	h.nodes[key] = &dxNode{
 		Peer: peer,
