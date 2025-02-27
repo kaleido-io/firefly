@@ -318,4 +318,5 @@ var (
 	MsgDuplicateContractListenerFilterLocation = ffe("FF10477", "Duplicate filter provided for contract listener for location", 400)
 	MsgInvalidNamespaceForOperationUpdate      = ffe("FF10478", "Received different namespace for operation update '%s' than expected for manager '%s'")
 	MsgEmptyPluginForOperationUpdate           = ffe("FF10479", "Received empty plugin for operation update '%s'")
+	MsgPaladinConnectorRESTErr                 = ffe("FF10480", "Error from Paladin connector: %s")
 )

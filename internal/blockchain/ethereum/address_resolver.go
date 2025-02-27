@@ -1,4 +1,4 @@
-// Copyright © 2023 Kaleido, Inc.
+// Copyright © 2025 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/firefly-common/pkg/ffresty"
 	"github.com/hyperledger/firefly-common/pkg/fftypes"
 	"github.com/hyperledger/firefly-common/pkg/i18n"
+	"github.com/hyperledger/firefly/internal/blockchain/common"
 	"github.com/hyperledger/firefly/internal/cache"
 	"github.com/hyperledger/firefly/internal/coreconfig"
 	"github.com/hyperledger/firefly/internal/coremsgs"
@@ -139,7 +140,7 @@ func (ar *addressResolver) ResolveSigningKey(ctx context.Context, keyDescriptor 
 		return "", i18n.NewError(ctx, coremsgs.MsgAddressResolveBadStatus, keyDescriptor, res.StatusCode(), jsonRes.String())
 	}
 
-	address, err := formatEthAddress(ctx, jsonRes.GetString(ar.responseField))
+	address, err := common.FormatEthAddress(ctx, jsonRes.GetString(ar.responseField))
 	if err != nil {
 		return "", i18n.NewError(ctx, coremsgs.MsgAddressResolveBadResData, keyDescriptor, jsonRes.String(), err)
 	}

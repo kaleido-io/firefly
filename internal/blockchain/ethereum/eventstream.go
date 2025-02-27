@@ -1,4 +1,4 @@
-// Copyright © 2024 Kaleido, Inc.
+// Copyright © 2025 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/firefly-common/pkg/i18n"
 	"github.com/hyperledger/firefly-common/pkg/log"
 	"github.com/hyperledger/firefly-signer/pkg/abi"
+	"github.com/hyperledger/firefly/internal/blockchain/common"
 	"github.com/hyperledger/firefly/internal/cache"
 	"github.com/hyperledger/firefly/internal/coremsgs"
 	"github.com/hyperledger/firefly/pkg/core"
@@ -248,7 +249,7 @@ func resolveFromBlock(ctx context.Context, firstEvent, lastProtocolID string) (s
 	return strconv.FormatUint(blockNumber, 10), nil
 }
 
-func (s *streamManager) createSubscription(ctx context.Context, stream, subName, firstEvent string, location *Location, abi *abi.Entry, filters []*filter, lastProtocolID string) (*subscription, error) {
+func (s *streamManager) createSubscription(ctx context.Context, stream, subName, firstEvent string, location *common.EthLocation, abi *abi.Entry, filters []*filter, lastProtocolID string) (*subscription, error) {
 	fromBlock, err := resolveFromBlock(ctx, firstEvent, lastProtocolID)
 	if err != nil {
 		return nil, err
@@ -331,7 +332,7 @@ func (s *streamManager) ensureFireFlySubscription(ctx context.Context, namespace
 	if version == 1 {
 		name = v1Name
 	}
-	location := &Location{Address: instancePath}
+	location := &common.EthLocation{Address: instancePath}
 	filters := []*filter{
 		{
 			Event:   abi,

@@ -2975,7 +2975,7 @@ func TestInvokeContractOK(t *testing.T) {
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
 	signingKey := ethHexFormatB32(fftypes.NewRandB32())
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "0x12345",
 	}
 	method := testFFIMethod()
@@ -3014,7 +3014,7 @@ func TestInvokeContractWithBatchOK(t *testing.T) {
 	defer httpmock.DeactivateAndReset()
 
 	signingKey := ethHexFormatB32(fftypes.NewRandB32())
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "0x12345",
 	}
 	locationBytes, err := json.Marshal(location)
@@ -3052,7 +3052,7 @@ func TestInvokeContractWithBatchUnsupported(t *testing.T) {
 	e, cancel := newTestEthereum()
 	defer cancel()
 	signingKey := ethHexFormatB32(fftypes.NewRandB32())
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "0x12345",
 	}
 	locationBytes, err := json.Marshal(location)
@@ -3073,7 +3073,7 @@ func TestInvokeContractInvalidOption(t *testing.T) {
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
 	signingKey := ethHexFormatB32(fftypes.NewRandB32())
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "0x12345",
 	}
 	method := testFFIMethod()
@@ -3111,7 +3111,7 @@ func TestInvokeContractInvalidInput(t *testing.T) {
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
 	signingKey := ethHexFormatB32(fftypes.NewRandB32())
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "0x12345",
 	}
 	method := testFFIMethod()
@@ -3147,7 +3147,7 @@ func TestInvokeContractAddressNotSet(t *testing.T) {
 	e, cancel := newTestEthereum()
 	defer cancel()
 	signingKey := ethHexFormatB32(fftypes.NewRandB32())
-	location := &Location{}
+	location := &common.EthLocation{}
 	method := testFFIMethod()
 	errors := testFFIErrors()
 	params := map[string]interface{}{
@@ -3170,7 +3170,7 @@ func TestInvokeContractEthconnectError(t *testing.T) {
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
 	signingKey := ethHexFormatB32(fftypes.NewRandB32())
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "0x12345",
 	}
 	method := testFFIMethod()
@@ -3199,7 +3199,7 @@ func TestInvokeContractEVMConnectRejectErr(t *testing.T) {
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
 	signingKey := ethHexFormatB32(fftypes.NewRandB32())
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "0x12345",
 	}
 	method := testFFIMethod()
@@ -3228,7 +3228,7 @@ func TestInvokeContractPrepareFail(t *testing.T) {
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
 	signingKey := ethHexFormatB32(fftypes.NewRandB32())
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "0x12345",
 	}
 	params := map[string]interface{}{
@@ -3290,7 +3290,7 @@ func TestQueryContractOK(t *testing.T) {
 	defer cancel()
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "0x12345",
 	}
 	method := testFFIMethod()
@@ -3326,7 +3326,7 @@ func TestQueryContractMultipleUnnamedOutputOK(t *testing.T) {
 	defer cancel()
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "0x12345",
 	}
 	method := testFFIMethod()
@@ -3377,7 +3377,7 @@ func TestQueryContractNamedOutputOK(t *testing.T) {
 	defer cancel()
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "0x12345",
 	}
 	method := testFFIMethod()
@@ -3427,7 +3427,7 @@ func TestQueryContractInvalidOption(t *testing.T) {
 	defer cancel()
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "0x12345",
 	}
 	method := testFFIMethod()
@@ -3457,7 +3457,7 @@ func TestQueryContractErrorPrepare(t *testing.T) {
 	defer cancel()
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "0x12345",
 	}
 	params := map[string]interface{}{}
@@ -3471,7 +3471,7 @@ func TestQueryContractErrorPrepare(t *testing.T) {
 func TestQueryContractAddressNotSet(t *testing.T) {
 	e, cancel := newTestEthereum()
 	defer cancel()
-	location := &Location{}
+	location := &common.EthLocation{}
 	method := testFFIMethod()
 	errors := testFFIErrors()
 	params := map[string]interface{}{
@@ -3492,7 +3492,7 @@ func TestQueryContractEthconnectError(t *testing.T) {
 	defer cancel()
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "0x12345",
 	}
 	method := testFFIMethod()
@@ -3519,7 +3519,7 @@ func TestQueryContractUnmarshalResponseError(t *testing.T) {
 	defer cancel()
 	httpmock.ActivateNonDefault(e.client.GetClient())
 	defer httpmock.DeactivateAndReset()
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "0x12345",
 	}
 	method := testFFIMethod()
@@ -3548,7 +3548,7 @@ func TestQueryContractUnmarshalResponseError(t *testing.T) {
 func TestNormalizeContractLocation(t *testing.T) {
 	e, cancel := newTestEthereum()
 	defer cancel()
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "3081D84FD367044F4ED453F2024709242470388C",
 	}
 	locationBytes, err := json.Marshal(location)
@@ -3561,7 +3561,7 @@ func TestNormalizeContractLocation(t *testing.T) {
 func TestNormalizeContractLocationInvalid(t *testing.T) {
 	e, cancel := newTestEthereum()
 	defer cancel()
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "bad",
 	}
 	locationBytes, err := json.Marshal(location)
@@ -3573,7 +3573,7 @@ func TestNormalizeContractLocationInvalid(t *testing.T) {
 func TestNormalizeContractLocationBlank(t *testing.T) {
 	e, cancel := newTestEthereum()
 	defer cancel()
-	location := &Location{}
+	location := &common.EthLocation{}
 	locationBytes, err := json.Marshal(location)
 	assert.NoError(t, err)
 	_, err = e.NormalizeContractLocation(context.Background(), blockchain.NormalizeCall, fftypes.JSONAnyPtrBytes(locationBytes))
@@ -4867,7 +4867,7 @@ func TestValidateInvokeRequest(t *testing.T) {
 func TestGenerateEventSignatureWithLocation(t *testing.T) {
 	e, cancel := newTestEthereum()
 	defer cancel()
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "3081D84FD367044F4ED453F2024709242470388C",
 	}
 
@@ -4974,7 +4974,7 @@ func TestCheckOverLappingLocationsBadLocation(t *testing.T) {
 }
 
 func TestCheckOverLappingLocationsBadLocationSecond(t *testing.T) {
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "3081D84FD367044F4ED453F2024709242470388C",
 	}
 	goodLocationBytes, err := json.Marshal(location)
@@ -4990,7 +4990,7 @@ func TestCheckOverLappingLocationsBadLocationSecond(t *testing.T) {
 }
 
 func TestCheckOverLappingLocationsSame(t *testing.T) {
-	location := &Location{
+	location := &common.EthLocation{
 		Address: "3081D84FD367044F4ED453F2024709242470388C",
 	}
 	locationBytes, err := json.Marshal(location)
