@@ -128,7 +128,7 @@ func TestBoundCallbacksStopped(t *testing.T) {
 	err = bc.DXEvent(nil, &dataexchangemocks.DXEvent{})
 	assert.Regexp(t, "FF10446", err)
 
-	err = bc.DXConnectEvent(nil)
+	err = bc.DXConnect(nil)
 	assert.Regexp(t, "FF10446", err)
 
 	err = bc.TokenPoolCreated(context.Background(), nil, &tokens.TokenPool{})

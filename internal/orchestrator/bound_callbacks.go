@@ -94,6 +94,6 @@ func (bc *boundCallbacks) TokensApproved(plugin tokens.Plugin, approval *tokens.
 	return bc.o.events.TokensApproved(plugin, approval)
 }
 
-func (bc *boundCallbacks) DXConnectEvent(plugin dataexchange.Plugin) error {
+func (bc *boundCallbacks) DXConnect(plugin dataexchange.Plugin) error {
 	return bc.o.NetworkMap().CheckNodeIdentityStatus(bc.o.ctx)
 }

@@ -12,12 +12,12 @@ type Callbacks struct {
 	mock.Mock
 }
 
-// DXConnectEvent provides a mock function with given fields: plugin
-func (_m *Callbacks) DXConnectEvent(plugin dataexchange.Plugin) error {
+// DXConnect provides a mock function with given fields: plugin
+func (_m *Callbacks) DXConnect(plugin dataexchange.Plugin) error {
 	ret := _m.Called(plugin)
 
 	if len(ret) == 0 {
-		panic("no return value specified for DXConnectEvent")
+		panic("no return value specified for DXConnect")
 	}
 
 	var r0 error

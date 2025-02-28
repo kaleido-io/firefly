@@ -297,7 +297,7 @@ func (h *FFDX) beforeConnect(ctx context.Context, w wsclient.WSClient) error {
 	}
 
 	for _, cb := range h.callbacks.handlers {
-		err := cb.DXConnectEvent(h)
+		err := cb.DXConnect(h)
 		if err != nil {
 			log.L(ctx).Errorf("error handling DX connect event: %v", err)
 		}
