@@ -18,6 +18,7 @@ package networkmap
 
 import (
 	"context"
+
 	"github.com/hyperledger/firefly/internal/metrics"
 
 	"github.com/hyperledger/firefly-common/pkg/ffapi"
