@@ -22,11 +22,12 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/hyperledger/firefly-common/pkg/i18n"
 	"github.com/hyperledger/firefly-common/pkg/log"
 	"github.com/hyperledger/firefly/internal/coremsgs"
 	"github.com/hyperledger/firefly/internal/metrics"
-	"time"
 )
 
 func (nm *networkMap) CheckNodeIdentityStatus(ctx context.Context) error {

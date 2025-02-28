@@ -20,6 +20,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/hyperledger/firefly-common/pkg/fftypes"
 	"github.com/hyperledger/firefly/internal/metrics"
 	"github.com/hyperledger/firefly/internal/multiparty"
@@ -29,9 +33,6 @@ import (
 	"github.com/hyperledger/firefly/mocks/multipartymocks"
 	"github.com/hyperledger/firefly/pkg/core"
 	"github.com/stretchr/testify/assert"
-	"strings"
-	"testing"
-	"time"
 )
 
 const (

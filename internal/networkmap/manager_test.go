@@ -18,8 +18,9 @@ package networkmap
 
 import (
 	"context"
-	"github.com/hyperledger/firefly/mocks/metricsmocks"
 	"testing"
+
+	"github.com/hyperledger/firefly/mocks/metricsmocks"
 
 	"github.com/hyperledger/firefly/internal/coreconfig"
 	"github.com/hyperledger/firefly/mocks/databasemocks"
