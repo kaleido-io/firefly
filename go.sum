@@ -109,6 +109,8 @@ github.com/kaleido-io/paladin/config v0.0.0-20250304123752-c3bc27f4324b h1:dYvK/
 github.com/kaleido-io/paladin/config v0.0.0-20250304123752-c3bc27f4324b/go.mod h1:BydE9clxVlPFcw10ShPRcsJax8Mgcid4cbPf6EXTiOA=
 github.com/kaleido-io/paladin/toolkit/go v0.0.0-20250224152621-03f96bfc443c h1:E9WcgfazPCqRCinUs2nZt7HowdD2109FEciXEZ6w4+8=
 github.com/kaleido-io/paladin/toolkit/go v0.0.0-20250224152621-03f96bfc443c/go.mod h1:4RiOkWC+gqkw1MAAOlsRXHgtmDfUDmMijPhq5jpx0Rc=
+github.com/kaleido-io/paladin/toolkit/go v0.0.0-20250304123752-c3bc27f4324b h1:VTMp/TWgagepDhLecEluS03EWOogzNS197iptsxEp1I=
+github.com/kaleido-io/paladin/toolkit/go v0.0.0-20250304123752-c3bc27f4324b/go.mod h1:4RiOkWC+gqkw1MAAOlsRXHgtmDfUDmMijPhq5jpx0Rc=
 github.com/karlseguin/ccache v2.0.3+incompatible h1:j68C9tWOROiOLWTS/kCGg9IcJG+ACqn5+0+t8Oh83UU=
 github.com/karlseguin/ccache v2.0.3+incompatible/go.mod h1:CM9tNPzT6EdRh14+jiW8mEF9mkNZuuE51qmgGYUB93w=
 github.com/karlseguin/expect v1.0.8 h1:Bb0H6IgBWQpadY25UDNkYPDB9ITqK1xnSoZfAq362fw=
