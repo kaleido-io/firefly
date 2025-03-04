@@ -18,23 +18,16 @@ package paladin
 
 import (
 	"github.com/hyperledger/firefly-common/pkg/config"
-	"github.com/hyperledger/firefly-common/pkg/ffresty"
 	"github.com/hyperledger/firefly-common/pkg/wsclient"
 )
 
 const (
 	// PaladinClientConfigKey is a sub-key in the config to contain all the connection details for RPC client
 	PaladinRPCClientConfigKey = "rpc"
-
-	// PaladinClientConfigKey is a sub-key in the config to contain all the connection details for RPC client HTTP section
-	PaladinRPCHTTPClientConfigKey = "http"
 )
 
 func (p *Paladin) InitConfig(config config.Section) {
 	rpcConf := config.SubSection(PaladinRPCClientConfigKey)
-	// this looks like websockets are at a higher level than http but wsclient config already has the ws level built in
+	// this inits ffresty too
 	wsclient.InitConfig(rpcConf)
-
-	httpRPCConf := rpcConf.SubSection(PaladinRPCHTTPClientConfigKey)
-	ffresty.InitConfig(httpRPCConf)
 }

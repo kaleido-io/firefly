@@ -45,6 +45,13 @@ func TestGetPluginFabric(t *testing.T) {
 	assert.NotNil(t, plugin)
 }
 
+func TestGetPluginPaladin(t *testing.T) {
+	ctx := context.Background()
+	plugin, err := GetPlugin(ctx, "paladin")
+	assert.NoError(t, err)
+	assert.NotNil(t, plugin)
+}
+
 func TestGetPluginTezos(t *testing.T) {
 	ctx := context.Background()
 	plugin, err := GetPlugin(ctx, "tezos")

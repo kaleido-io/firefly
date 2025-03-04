@@ -20,8 +20,8 @@ require (
 	github.com/hyperledger/firefly-common v1.4.14
 	github.com/hyperledger/firefly-signer v1.1.19
 	github.com/jarcoal/httpmock v1.2.0
-	github.com/kaleido-io/paladin/config v0.0.0-20250224152621-03f96bfc443c
-	github.com/kaleido-io/paladin/toolkit v0.0.0-20250224152621-03f96bfc443c
+	github.com/kaleido-io/paladin/config v0.0.0-20250304123752-c3bc27f4324b
+	github.com/kaleido-io/paladin/toolkit v0.0.0-20250304123752-c3bc27f4324b
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.19
 	github.com/prometheus/client_golang v1.19.1
@@ -101,4 +101,4 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-replace github.com/kaleido-io/paladin/toolkit => github.com/kaleido-io/paladin/toolkit/go v0.0.0-20250224152621-03f96bfc443c
+replace github.com/kaleido-io/paladin/toolkit => github.com/kaleido-io/paladin/toolkit/go v0.0.0-20250304123752-c3bc27f4324b

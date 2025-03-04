@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/hyperledger/firefly-common/pkg/config"
@@ -46,6 +47,17 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var addressVerify = regexp.MustCompile("^[0-9a-f]{40}$")
+
+type Location struct {
+	Address string `json:"address"`
+}
+
+type parsedFFIMethod struct {
+	methodABI *abi.Entry
+	errorsABI []*abi.Entry
+}
+
 type Paladin struct {
 	ctx              context.Context
 	cancelCtx        context.CancelFunc
@@ -54,8 +66,11 @@ type Paladin struct {
 	callbacks        common.BlockchainCallbacks
 	httpClientConfig pldconf.HTTPClientConfig
 	httpClient       pldclient.PaladinClient
-	wsClientConfig   pldconf.WSClientConfig
-	wsconn           map[string]pldclient.PaladinWSClient
+	// this looks like we have two things of the same type but it needs to be
+	// this way because the http client doesn't work for creating a working WSClient
+	pldClient      pldclient.PaladinClient
+	wsClientConfig pldconf.WSClientConfig
+	wsconn         map[string]pldclient.PaladinWSClient
 }
 
 func (p *Paladin) Name() string {
@@ -65,15 +80,6 @@ func (p *Paladin) Name() string {
 func (p *Paladin) VerifierType() core.VerifierType {
 	return core.VerifierTypeEthAddress
 }
-
-/*
-
-The receipt listener needs to be created by the operator when the namespace is created
-The name of the receipt listener should be passed into this plugin as config- need to
-figure out how to do this- until then it expects the name of the listener to be the
-namespace name
-
-*/
 
 func (p *Paladin) Init(ctx context.Context, cancelCtx context.CancelFunc, config config.Section, metrics metrics.Manager, cacheManager cache.Manager) error {
 	p.InitConfig(config)
@@ -89,7 +95,11 @@ func (p *Paladin) Init(ctx context.Context, cancelCtx context.CancelFunc, config
 	// - Then Paladin just converts back to FF Resty
 	clientConfig := config.SubSection(PaladinRPCClientConfigKey)
 
-	httpRestyConfig, err := ffresty.GenerateConfig(ctx, clientConfig.SubSection(PaladinRPCHTTPClientConfigKey))
+	httpRestyConfig, err := ffresty.GenerateConfig(ctx, clientConfig)
+	var wsRestyConfig *wsclient.WSConfig
+	if err == nil {
+		wsRestyConfig, err = wsclient.GenerateConfig(ctx, clientConfig)
+	}
 	if err != nil {
 		return err
 	}
@@ -103,18 +113,6 @@ func (p *Paladin) Init(ctx context.Context, cancelCtx context.CancelFunc, config
 		},
 	}
 
-	httpClient, err := pldclient.New().HTTP(ctx, &p.httpClientConfig)
-	if err != nil {
-		return err
-	}
-
-	p.httpClient = httpClient
-
-	wsRestyConfig, err := wsclient.GenerateConfig(ctx, clientConfig)
-	if err != nil {
-		return err
-	}
-
 	p.wsClientConfig = pldconf.WSClientConfig{
 		HTTPClientConfig: pldconf.HTTPClientConfig{
 			URL:         wsRestyConfig.WebSocketURL,
@@ -125,6 +123,12 @@ func (p *Paladin) Init(ctx context.Context, cancelCtx context.CancelFunc, config
 			},
 		},
 	}
+
+	p.httpClient, err = pldclient.New().HTTP(ctx, &p.httpClientConfig)
+	if err != nil {
+		return err
+	}
+	p.pldClient = pldclient.New()
 
 	p.wsconn = make(map[string]pldclient.PaladinWSClient)
 	return nil
@@ -138,8 +142,6 @@ func (p *Paladin) StartNamespace(ctx context.Context, namespace string) error {
 	_, err := p.httpClient.PTX().StartReceiptListener(ctx, namespace)
 	if err != nil {
 		if strings.Contains(err.Error(), "PD012238") {
-			// TODO: ideally this would be created to listen from the latest block but that's
-			// not supported in paladin yet
 			_, err = p.httpClient.PTX().CreateReceiptListener(ctx, &pldapi.TransactionReceiptListener{
 				Name: namespace,
 			})
@@ -149,7 +151,7 @@ func (p *Paladin) StartNamespace(ctx context.Context, namespace string) error {
 		}
 	}
 
-	p.wsconn[namespace], err = pldclient.New().WebSocket(ctx, &p.wsClientConfig)
+	p.wsconn[namespace], err = p.pldClient.WebSocket(ctx, &p.wsClientConfig)
 	if err != nil {
 		return err
 	}
@@ -183,7 +185,7 @@ func (p *Paladin) batchEventLoop(namespace string, sub rpcclient.Subscription) {
 
 			// Handle websocket event
 			var batch pldapi.TransactionReceiptBatch
-			err := json.Unmarshal(subNotification.Result, &batch)
+			err := json.Unmarshal(subNotification.GetResult(), &batch)
 			if err != nil {
 				p.exitLoopWithError(l, err, "Unable to unmarshall subscription")
 				return
@@ -229,11 +231,8 @@ func (p *Paladin) batchEventLoop(namespace string, sub rpcclient.Subscription) {
 
 				// Slightly ugly conversion from Receipt -> JSONObject which the generic OperationUpdate() function requires
 				var output fftypes.JSONObject
-				obj, err := json.Marshal(receipt)
-				if err != nil {
-					p.exitLoopWithError(l, err, "Failed to ack batch receipt")
-					return
-				}
+				// there will not be an error as we only just unmarshalled receipt
+				obj, _ := json.Marshal(receipt)
 				_ = json.Unmarshal(obj, &output)
 				updates = append(updates, &core.OperationUpdate{
 					Plugin:         p.Name(),
@@ -250,6 +249,7 @@ func (p *Paladin) batchEventLoop(namespace string, sub rpcclient.Subscription) {
 				err := p.callbacks.BulkOperationUpdates(ctx, namespace, updates)
 				if err != nil {
 					p.exitLoopWithError(l, err, fmt.Sprintf("Failed to commit batch updates: %s", err.Error()))
+					return
 				}
 			}
 
@@ -303,6 +303,7 @@ func (p *Paladin) Capabilities() *blockchain.Capabilities {
 }
 
 func (p *Paladin) ResolveSigningKey(ctx context.Context, keyRef string, intent blockchain.ResolveKeyIntent) (string, error) {
+	// TODO how will the intent get passed through to the paladin signing module?
 	return p.httpClient.PTX().ResolveVerifier(ctx, keyRef, "ecdsa:secp256k1", verifiers.ETH_ADDRESS)
 }
 
@@ -322,7 +323,6 @@ func (p *Paladin) DeployContract(ctx context.Context, nsOpID, signingKey string,
 	}
 
 	bytecode, err := tktypes.ParseHexBytes(ctx, contract.AsString())
-
 	if err != nil {
 		return true, err
 	}
@@ -340,14 +340,15 @@ func (p *Paladin) DeployContract(ctx context.Context, nsOpID, signingKey string,
 			IdempotencyKey: nsOpID,
 			Type:           pldapi.TransactionTypePublic.Enum(),
 			From:           signingKey,
+			Data:           tktypes.JSONString(input),
 		},
 		ABI:      a,
 		Bytecode: bytecode,
 	}
 
-	err = p.setGasOptions(ctx, options, tx)
+	err = p.setOptions(ctx, options, tx)
 	if err != nil {
-		return false, err
+		return true, err
 	}
 
 	_, err = p.httpClient.PTX().SendTransaction(ctx, tx)
@@ -356,32 +357,19 @@ func (p *Paladin) DeployContract(ctx context.Context, nsOpID, signingKey string,
 }
 
 func (p *Paladin) ValidateInvokeRequest(ctx context.Context, parsedMethod interface{}, input map[string]interface{}, hasMessage bool) error {
-	_, _, err := p.prepareRequest(ctx, parsedMethod, input)
+	_, err := p.prepareRequest(ctx, parsedMethod)
 	return err
 }
 
-type Location struct {
-	Address string `json:"address"`
-}
-type parsedFFIMethod struct {
-	methodABI *abi.Entry
-	errorsABI []*abi.Entry
-}
-
-func (p *Paladin) prepareRequest(ctx context.Context, parsedMethod interface{}, input map[string]interface{}) (*parsedFFIMethod, []interface{}, error) {
+func (p *Paladin) prepareRequest(ctx context.Context, parsedMethod interface{}) (*parsedFFIMethod, error) {
 	methodInfo, ok := parsedMethod.(*parsedFFIMethod)
 	if !ok || methodInfo.methodABI == nil {
-		return nil, nil, i18n.NewError(ctx, coremsgs.MsgUnexpectedInterfaceType, parsedMethod)
+		return nil, i18n.NewError(ctx, coremsgs.MsgUnexpectedInterfaceType, parsedMethod)
 	}
-	inputs := methodInfo.methodABI.Inputs
-	orderedInput := make([]interface{}, len(inputs))
-	for i, param := range inputs {
-		orderedInput[i] = input[param.Name]
-	}
-	return methodInfo, orderedInput, nil
+	return methodInfo, nil
 }
 
-func (p *Paladin) setGasOptions(ctx context.Context, options map[string]interface{}, tx *pldapi.TransactionInput) error {
+func (p *Paladin) setOptions(ctx context.Context, options map[string]interface{}, tx *pldapi.TransactionInput) error {
 	var err error
 	if options["gasLimit"] != nil {
 		gasLimit, err := tktypes.ParseHexUint64(ctx, options["gasLimit"].(string))
@@ -411,6 +399,13 @@ func (p *Paladin) setGasOptions(ctx context.Context, options map[string]interfac
 			return err
 		}
 	}
+
+	if options["value"] != nil {
+		tx.Value, err = tktypes.ParseHexUint256(ctx, options["value"].(string))
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -420,7 +415,7 @@ func (p *Paladin) InvokeContract(ctx context.Context, nsOpID, signingKey string,
 		return true, err
 	}
 
-	methodInfo, orderedInput, err := p.prepareRequest(ctx, parsedMethod, input)
+	methodInfo, err := p.prepareRequest(ctx, parsedMethod)
 	if err != nil {
 		return true, err
 	}
@@ -428,7 +423,6 @@ func (p *Paladin) InvokeContract(ctx context.Context, nsOpID, signingKey string,
 	if p.metrics.IsMetricsEnabled() {
 		p.metrics.BlockchainTransaction(to.String(), methodInfo.methodABI.Name)
 	}
-	// need to normalise the data
 
 	tx := &pldapi.TransactionInput{
 		TransactionBase: pldapi.TransactionBase{
@@ -436,14 +430,15 @@ func (p *Paladin) InvokeContract(ctx context.Context, nsOpID, signingKey string,
 			Type:           pldapi.TransactionTypePublic.Enum(),
 			From:           signingKey,
 			To:             to,
-			Data:           tktypes.JSONString(orderedInput),
+			Data:           tktypes.JSONString(input),
+			Function:       methodInfo.methodABI.Name,
 		},
 		ABI: []*abi.Entry{methodInfo.methodABI},
 	}
 
-	err = p.setGasOptions(ctx, options, tx)
+	err = p.setOptions(ctx, options, tx)
 	if err != nil {
-		return false, err
+		return true, err
 	}
 
 	_, err = p.httpClient.PTX().SendTransaction(ctx, tx)
@@ -454,12 +449,12 @@ func (p *Paladin) InvokeContract(ctx context.Context, nsOpID, signingKey string,
 func (p *Paladin) QueryContract(ctx context.Context, signingKey string, location *fftypes.JSONAny, parsedMethod interface{}, input map[string]interface{}, options map[string]interface{}) (interface{}, error) {
 	to, err := tktypes.ParseEthAddress(location.AsString())
 	if err != nil {
-		return true, err
+		return nil, err
 	}
 
-	methodInfo, orderedInput, err := p.prepareRequest(ctx, parsedMethod, input)
+	methodInfo, err := p.prepareRequest(ctx, parsedMethod)
 	if err != nil {
-		return true, err
+		return nil, err
 	}
 
 	if p.metrics.IsMetricsEnabled() {
@@ -469,30 +464,36 @@ func (p *Paladin) QueryContract(ctx context.Context, signingKey string, location
 	tx := &pldapi.TransactionCall{
 		TransactionInput: pldapi.TransactionInput{
 			TransactionBase: pldapi.TransactionBase{
-				Type: pldapi.TransactionTypePublic.Enum(),
-				From: signingKey,
-				To:   to,
-				Data: tktypes.JSONString(orderedInput),
+				Type:     pldapi.TransactionTypePublic.Enum(),
+				From:     signingKey,
+				To:       to,
+				Data:     tktypes.JSONString(input),
+				Function: methodInfo.methodABI.Name,
 			},
 			ABI: []*abi.Entry{methodInfo.methodABI},
 		},
+	}
+
+	err = p.setOptions(ctx, options, &tx.TransactionInput)
+	if err != nil {
+		return nil, err
 	}
 
 	return p.httpClient.PTX().Call(ctx, tx)
 }
 
 func (p *Paladin) AddContractListener(ctx context.Context, subscription *core.ContractListener, lastProtocolID string) error {
-	// Not support for now
+	// Not supported for now
 	return nil
 }
 
 func (p *Paladin) DeleteContractListener(ctx context.Context, subscription *core.ContractListener, okNotFound bool) error {
-	// Not support for now
+	// Not supported for now
 	return nil
 }
 
 func (p *Paladin) GetContractListenerStatus(ctx context.Context, namespace, subID string, okNotFound bool) (bool, interface{}, core.ContractListenerStatus, error) {
-	// Not support for now
+	// Not supported for now
 	return false, nil, "", nil
 }
 
@@ -517,11 +518,43 @@ func (p *Paladin) GenerateFFI(ctx context.Context, generationRequest *fftypes.FF
 }
 
 func (p *Paladin) NormalizeContractLocation(ctx context.Context, ntype blockchain.NormalizeType, location *fftypes.JSONAny) (*fftypes.JSONAny, error) {
-	parsed, err := common.ParseEthContractLocation(ctx, location)
+	parsed, err := p.parseContractLocation(ctx, location)
 	if err != nil {
 		return nil, err
 	}
-	return parsed.Encode(ctx)
+	return p.encodeContractLocation(ctx, parsed)
+}
+
+func (p *Paladin) parseContractLocation(ctx context.Context, location *fftypes.JSONAny) (*Location, error) {
+	ethLocation := Location{}
+	if err := json.Unmarshal(location.Bytes(), &ethLocation); err != nil {
+		return nil, i18n.NewError(ctx, coremsgs.MsgContractLocationInvalid, err)
+	}
+	if ethLocation.Address == "" {
+		return nil, i18n.NewError(ctx, coremsgs.MsgContractLocationInvalid, "'address' not set")
+	}
+	return &ethLocation, nil
+}
+
+func (p *Paladin) encodeContractLocation(ctx context.Context, location *Location) (result *fftypes.JSONAny, err error) {
+	location.Address, err = formatEthAddress(ctx, location.Address)
+	if err != nil {
+		return nil, err
+	}
+	normalized, err := json.Marshal(location)
+	if err == nil {
+		result = fftypes.JSONAnyPtrBytes(normalized)
+	}
+	return result, err
+}
+
+func formatEthAddress(ctx context.Context, key string) (string, error) {
+	keyLower := strings.ToLower(key)
+	keyNoHexPrefix := strings.TrimPrefix(keyLower, "0x")
+	if addressVerify.MatchString(keyNoHexPrefix) {
+		return "0x" + keyNoHexPrefix, nil
+	}
+	return "", i18n.NewError(ctx, coremsgs.MsgInvalidEthAddress)
 }
 
 func (p *Paladin) GenerateEventSignature(ctx context.Context, event *fftypes.FFIEventDefinition) (string, error) {

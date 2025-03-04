@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -93,6 +94,10 @@ type ethWSCommandPayload struct {
 	Message     string `json:"message,omitempty"`
 }
 
+type Location struct {
+	Address string `json:"address"`
+}
+
 type ListenerCheckpoint struct {
 	Block            int64 `json:"block"`
 	TransactionIndex int64 `json:"transactionIndex"`
@@ -120,6 +125,8 @@ type EthconnectMessageHeaders struct {
 type FFIGenerationInput struct {
 	ABI *abi.ABI `json:"abi,omitempty"`
 }
+
+var addressVerify = regexp.MustCompile("^[0-9a-f]{40}$")
 
 func (e *Ethereum) Name() string {
 	return "ethereum"
@@ -360,7 +367,7 @@ func (e *Ethereum) processBatchPinEvent(ctx context.Context, events common.Event
 
 	// Validate the ethereum address - it must already be a valid address, we do not
 	// engage the address resolve on this blockchain-driven path.
-	authorAddress, err := common.FormatEthAddress(ctx, authorAddress)
+	authorAddress, err := formatEthAddress(ctx, authorAddress)
 	if err != nil {
 		log.L(ctx).Errorf("BatchPin event is not valid - bad from address (%s): %+v", err, msgJSON)
 		return // move on
@@ -415,10 +422,9 @@ func (e *Ethereum) handleMessageBatch(ctx context.Context, batchID int64, messag
 
 		// Matches one of the active FireFly BatchPin subscriptions
 		if subInfo := e.subs.GetSubscription(sub); subInfo != nil {
-			l := &common.EthLocation{
+			location, err := e.encodeContractLocation(ctx, &Location{
 				Address: msgJSON.GetString("address"),
-			}
-			location, err := l.Encode(ctx)
+			})
 			if err != nil {
 				return err
 			}
@@ -526,6 +532,15 @@ func (e *Ethereum) eventLoop(namespace string, wsconn wsclient.WSClient, closed 
 	}
 }
 
+func formatEthAddress(ctx context.Context, key string) (string, error) {
+	keyLower := strings.ToLower(key)
+	keyNoHexPrefix := strings.TrimPrefix(keyLower, "0x")
+	if addressVerify.MatchString(keyNoHexPrefix) {
+		return "0x" + keyNoHexPrefix, nil
+	}
+	return "", i18n.NewError(ctx, coremsgs.MsgInvalidEthAddress)
+}
+
 func (e *Ethereum) ResolveSigningKey(ctx context.Context, key string, intent blockchain.ResolveKeyIntent) (resolved string, err error) {
 	// Key may be unset for query intent only
 	if key == "" {
@@ -537,7 +552,7 @@ func (e *Ethereum) ResolveSigningKey(ctx context.Context, key string, intent blo
 	if !e.addressResolveAlways {
 		// If there's no address resolver plugin, or addressResolveAlways is false,
 		// we check if it's already an ethereum address - in which case we can just return it.
-		resolved, err = common.FormatEthAddress(ctx, key)
+		resolved, err = formatEthAddress(ctx, key)
 	}
 	if e.addressResolveAlways || (err != nil && e.addressResolver != nil) {
 		// Either it's not a valid ethereum address,
@@ -853,11 +868,11 @@ func (e *Ethereum) NormalizeContractLocation(ctx context.Context, ntype blockcha
 	if err != nil {
 		return nil, err
 	}
-	return parsed.Encode(ctx)
+	return e.encodeContractLocation(ctx, parsed)
 }
 
-func (e *Ethereum) parseContractLocation(ctx context.Context, location *fftypes.JSONAny) (*common.EthLocation, error) {
-	ethLocation := common.EthLocation{}
+func (e *Ethereum) parseContractLocation(ctx context.Context, location *fftypes.JSONAny) (*Location, error) {
+	ethLocation := Location{}
 	if err := json.Unmarshal(location.Bytes(), &ethLocation); err != nil {
 		return nil, i18n.NewError(ctx, coremsgs.MsgContractLocationInvalid, err)
 	}
@@ -866,6 +881,19 @@ func (e *Ethereum) parseContractLocation(ctx context.Context, location *fftypes.
 	}
 	return &ethLocation, nil
 }
+
+func (e *Ethereum) encodeContractLocation(ctx context.Context, location *Location) (result *fftypes.JSONAny, err error) {
+	location.Address, err = formatEthAddress(ctx, location.Address)
+	if err != nil {
+		return nil, err
+	}
+	normalized, err := json.Marshal(location)
+	if err == nil {
+		result = fftypes.JSONAnyPtrBytes(normalized)
+	}
+	return result, err
+}
+
 func (e *Ethereum) AddContractListener(ctx context.Context, listener *core.ContractListener, lastProtocolID string) (err error) {
 	namespace := listener.Namespace
 	filters := make([]*filter, 0)
@@ -885,7 +913,7 @@ func (e *Ethereum) AddContractListener(ctx context.Context, listener *core.Contr
 	}
 
 	// First filter location is copied over to the root
-	var location *common.EthLocation
+	var location *Location
 	if listener.Filters[0].Location != nil {
 		location, err = e.parseContractLocation(ctx, listener.Filters[0].Location)
 		if err != nil {
@@ -1149,10 +1177,10 @@ func (e *Ethereum) GetAndConvertDeprecatedContractConfig(ctx context.Context) (l
 	} else if strings.HasPrefix(address, "/instances/") {
 		address = strings.Replace(address, "/instances/", "", 1)
 	}
-	l := &common.EthLocation{
+
+	location, err = e.encodeContractLocation(ctx, &Location{
 		Address: address,
-	}
-	location, err = l.Encode(ctx)
+	})
 	return location, fromBlock, err
 }
 
