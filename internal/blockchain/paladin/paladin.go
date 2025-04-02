@@ -410,7 +410,12 @@ func (p *Paladin) setOptions(ctx context.Context, options map[string]interface{}
 }
 
 func (p *Paladin) InvokeContract(ctx context.Context, nsOpID, signingKey string, location *fftypes.JSONAny, parsedMethod interface{}, input map[string]interface{}, options map[string]interface{}, batch *blockchain.BatchPin) (submissionRejected bool, err error) {
-	to, err := tktypes.ParseEthAddress(location.AsString())
+	ethereumLocation, err := p.parseContractLocation(ctx, location)
+	if err != nil {
+		return true, err
+	}
+
+	to, err := tktypes.ParseEthAddress(ethereumLocation.Address)
 	if err != nil {
 		return true, err
 	}
@@ -447,7 +452,12 @@ func (p *Paladin) InvokeContract(ctx context.Context, nsOpID, signingKey string,
 }
 
 func (p *Paladin) QueryContract(ctx context.Context, signingKey string, location *fftypes.JSONAny, parsedMethod interface{}, input map[string]interface{}, options map[string]interface{}) (interface{}, error) {
-	to, err := tktypes.ParseEthAddress(location.AsString())
+	ethereumLocation, err := p.parseContractLocation(ctx, location)
+	if err != nil {
+		return true, err
+	}
+
+	to, err := tktypes.ParseEthAddress(ethereumLocation.Address)
 	if err != nil {
 		return nil, err
 	}

@@ -188,6 +188,8 @@ var (
 	ConfigPluginBlockchainEthereumFFTMURL      = ffc("config.plugins.blockchain[].ethereum.fftm.url", "The URL of the FireFly Transaction Manager runtime, if enabled", i18n.StringType)
 	ConfigPluginBlockchainEthereumFFTMProxyURL = ffc("config.plugins.blockchain[].ethereum.fftm.proxy.url", "Optional HTTP proxy server to use when connecting to the Transaction Manager", i18n.StringType)
 
+	ConfigPluginBlockchainPaladinRPCURL = ffc("config.plugins.blockchain[].paladin.rpc.url", "The URL of the RPC endpoint for the paladin blockchain plugin Resolver", i18n.StringType)
+
 	ConfigPluginBlockchainTezosAddressResolverAlwaysResolve = ffc("config.plugins.blockchain[].tezos.addressResolver.alwaysResolve", "Causes the address resolver to be invoked on every API call that submits a signing key. Also disables any result caching", i18n.BooleanType)
 
 	ConfigPluginBlockchainTezosAddressResolverResponseField  = ffc("config.plugins.blockchain[].tezos.addressResolver.responseField", "The name of a JSON field that is provided in the response, that contains the tezos address (default `address`)", i18n.StringType)

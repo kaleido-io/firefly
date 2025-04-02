@@ -548,7 +548,10 @@ func TestInvokeContract(t *testing.T) {
 	nsOpID := "ns1:9493d93e-9f88-4dd2-9173-ac42fdb6f748"
 	signingKey := tktypes.MustEthAddress(tktypes.RandHex(20)).String()
 	contractAddress := tktypes.MustEthAddress(tktypes.RandHex(20)).String()
-	location := fftypes.JSONAnyPtr(fmt.Sprintf("\"%s\"", contractAddress))
+	//location := fftypes.JSONAnyPtr(fmt.Sprintf("\"%s\"", contractAddress))
+	location := fftypes.JSONAnyPtr(fftypes.JSONObject{
+		"address": contractAddress,
+	}.String())
 	parsedMethod := &parsedFFIMethod{
 		methodABI: set,
 	}
@@ -601,7 +604,10 @@ func TestQueryContract(t *testing.T) {
 
 	signingKey := tktypes.MustEthAddress(tktypes.RandHex(20)).String()
 	contractAddress := tktypes.MustEthAddress(tktypes.RandHex(20)).String()
-	location := fftypes.JSONAnyPtr(fmt.Sprintf("\"%s\"", contractAddress))
+	//location := fftypes.JSONAnyPtr(fmt.Sprintf("\"%s\"", contractAddress))
+	location := fftypes.JSONAnyPtr(fftypes.JSONObject{
+		"address": contractAddress,
+	}.String())
 	parsedMethod := &parsedFFIMethod{
 		methodABI: get,
 	}
@@ -657,7 +663,7 @@ func TestGetTransactionStatus(t *testing.T) {
 	// paladin error
 	mockPTX.On("QueryTransactionsFull", mock.Anything, mock.Anything).Return(nil, errors.New("paladin error")).Once()
 	_, err := p.GetTransactionStatus(ctx, op)
-	assert.Regexp(t, "FF10480.*paladin error", err)
+	assert.Regexp(t, "FF10483.*paladin error", err)
 
 	// no match
 	mockPTX.On("QueryTransactionsFull", mock.Anything, mock.Anything).Return([]*pldapi.TransactionFull{}, nil).Once()

@@ -2563,11 +2563,12 @@ paths:
                       description: The FireFly transaction associated with this batch
                       properties:
                         id:
-                          description: The UUID of the FireFly transaction
+                          description: Server-generated UUID for this transaction
+                            (query only)
                           format: uuid
                           type: string
                         type:
-                          description: The type of the FireFly transaction
+                          description: Type of transaction (public or private)
                           type: string
                       type: object
                     type:
@@ -2647,11 +2648,12 @@ paths:
                     description: The FireFly transaction associated with this batch
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -2849,11 +2851,12 @@ paths:
                             Not all FireFly transactions include a blockchain
                           type: string
                         id:
-                          description: The UUID of the FireFly transaction
+                          description: Server-generated UUID for this transaction
+                            (query only)
                           format: uuid
                           type: string
                         type:
-                          description: The type of the FireFly transaction
+                          description: Type of transaction (public or private)
                           type: string
                       type: object
                   type: object
@@ -2942,11 +2945,12 @@ paths:
                           Not all FireFly transactions include a blockchain
                         type: string
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                 type: object
@@ -7953,11 +7957,12 @@ paths:
                           this message
                         properties:
                           id:
-                            description: The UUID of the FireFly transaction
+                            description: Server-generated UUID for this transaction
+                              (query only)
                             format: uuid
                             type: string
                           type:
-                            description: The type of the FireFly transaction
+                            description: Type of transaction (public or private)
                             type: string
                         type: object
                       txtype:
@@ -10369,11 +10374,12 @@ paths:
                             this message
                           properties:
                             id:
-                              description: The UUID of the FireFly transaction
+                              description: Server-generated UUID for this transaction
+                                (query only)
                               format: uuid
                               type: string
                             type:
-                              description: The type of the FireFly transaction
+                              description: Type of transaction (public or private)
                               type: string
                           type: object
                         txtype:
@@ -10649,11 +10655,12 @@ paths:
                           this message
                         properties:
                           id:
-                            description: The UUID of the FireFly transaction
+                            description: Server-generated UUID for this transaction
+                              (query only)
                             format: uuid
                             type: string
                           type:
-                            description: The type of the FireFly transaction
+                            description: Type of transaction (public or private)
                             type: string
                         type: object
                       txtype:
@@ -11044,25 +11051,24 @@ paths:
                       type: string
                     type: array
                   created:
-                    description: The time the transaction was created on this node.
-                      Note the transaction is individually created with the same UUID
-                      on each participant in the FireFly transaction
+                    description: Server-generated creation timestamp for this transaction
+                      (query only)
                     format: date-time
                     type: string
                   id:
-                    description: The UUID of the FireFly transaction
+                    description: Server-generated UUID for this transaction (query
+                      only)
                     format: uuid
                     type: string
                   idempotencyKey:
-                    description: An optional unique identifier for a transaction.
-                      Cannot be duplicated within a namespace, thus allowing idempotent
-                      submission of transactions to the API
+                    description: Externally supplied unique identifier for this transaction.
+                      409 Conflict will be returned on attempt to re-submit
                     type: string
                   namespace:
                     description: The namespace of the FireFly transaction
                     type: string
                   type:
-                    description: The type of the FireFly transaction
+                    description: Type of transaction (public or private)
                     enum:
                     - none
                     - unpinned
@@ -11290,11 +11296,12 @@ paths:
                           this message
                         properties:
                           id:
-                            description: The UUID of the FireFly transaction
+                            description: Server-generated UUID for this transaction
+                              (query only)
                             format: uuid
                             type: string
                           type:
-                            description: The type of the FireFly transaction
+                            description: Type of transaction (public or private)
                             type: string
                         type: object
                       txtype:
@@ -11450,11 +11457,12 @@ paths:
                           this message
                         properties:
                           id:
-                            description: The UUID of the FireFly transaction
+                            description: Server-generated UUID for this transaction
+                              (query only)
                             format: uuid
                             type: string
                           type:
-                            description: The type of the FireFly transaction
+                            description: Type of transaction (public or private)
                             type: string
                         type: object
                       txtype:
@@ -11781,11 +11789,12 @@ paths:
                           this message
                         properties:
                           id:
-                            description: The UUID of the FireFly transaction
+                            description: Server-generated UUID for this transaction
+                              (query only)
                             format: uuid
                             type: string
                           type:
-                            description: The type of the FireFly transaction
+                            description: Type of transaction (public or private)
                             type: string
                         type: object
                       txtype:
@@ -11947,11 +11956,12 @@ paths:
                           this message
                         properties:
                           id:
-                            description: The UUID of the FireFly transaction
+                            description: Server-generated UUID for this transaction
+                              (query only)
                             format: uuid
                             type: string
                           type:
-                            description: The type of the FireFly transaction
+                            description: Type of transaction (public or private)
                             type: string
                         type: object
                       txtype:
@@ -12359,11 +12369,12 @@ paths:
                           this message
                         properties:
                           id:
-                            description: The UUID of the FireFly transaction
+                            description: Server-generated UUID for this transaction
+                              (query only)
                             format: uuid
                             type: string
                           type:
-                            description: The type of the FireFly transaction
+                            description: Type of transaction (public or private)
                             type: string
                         type: object
                       txtype:
@@ -15614,11 +15625,12 @@ paths:
                       description: The FireFly transaction associated with this batch
                       properties:
                         id:
-                          description: The UUID of the FireFly transaction
+                          description: Server-generated UUID for this transaction
+                            (query only)
                           format: uuid
                           type: string
                         type:
-                          description: The type of the FireFly transaction
+                          description: Type of transaction (public or private)
                           type: string
                       type: object
                     type:
@@ -15705,11 +15717,12 @@ paths:
                     description: The FireFly transaction associated with this batch
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -15921,11 +15934,12 @@ paths:
                             Not all FireFly transactions include a blockchain
                           type: string
                         id:
-                          description: The UUID of the FireFly transaction
+                          description: Server-generated UUID for this transaction
+                            (query only)
                           format: uuid
                           type: string
                         type:
-                          description: The type of the FireFly transaction
+                          description: Type of transaction (public or private)
                           type: string
                       type: object
                   type: object
@@ -16021,11 +16035,12 @@ paths:
                           Not all FireFly transactions include a blockchain
                         type: string
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                 type: object
@@ -21339,11 +21354,12 @@ paths:
                           this message
                         properties:
                           id:
-                            description: The UUID of the FireFly transaction
+                            description: Server-generated UUID for this transaction
+                              (query only)
                             format: uuid
                             type: string
                           type:
-                            description: The type of the FireFly transaction
+                            description: Type of transaction (public or private)
                             type: string
                         type: object
                       txtype:
@@ -23874,11 +23890,12 @@ paths:
                             this message
                           properties:
                             id:
-                              description: The UUID of the FireFly transaction
+                              description: Server-generated UUID for this transaction
+                                (query only)
                               format: uuid
                               type: string
                             type:
-                              description: The type of the FireFly transaction
+                              description: Type of transaction (public or private)
                               type: string
                           type: object
                         txtype:
@@ -24161,11 +24178,12 @@ paths:
                           this message
                         properties:
                           id:
-                            description: The UUID of the FireFly transaction
+                            description: Server-generated UUID for this transaction
+                              (query only)
                             format: uuid
                             type: string
                           type:
-                            description: The type of the FireFly transaction
+                            description: Type of transaction (public or private)
                             type: string
                         type: object
                       txtype:
@@ -24577,25 +24595,24 @@ paths:
                       type: string
                     type: array
                   created:
-                    description: The time the transaction was created on this node.
-                      Note the transaction is individually created with the same UUID
-                      on each participant in the FireFly transaction
+                    description: Server-generated creation timestamp for this transaction
+                      (query only)
                     format: date-time
                     type: string
                   id:
-                    description: The UUID of the FireFly transaction
+                    description: Server-generated UUID for this transaction (query
+                      only)
                     format: uuid
                     type: string
                   idempotencyKey:
-                    description: An optional unique identifier for a transaction.
-                      Cannot be duplicated within a namespace, thus allowing idempotent
-                      submission of transactions to the API
+                    description: Externally supplied unique identifier for this transaction.
+                      409 Conflict will be returned on attempt to re-submit
                     type: string
                   namespace:
                     description: The namespace of the FireFly transaction
                     type: string
                   type:
-                    description: The type of the FireFly transaction
+                    description: Type of transaction (public or private)
                     enum:
                     - none
                     - unpinned
@@ -24874,11 +24891,12 @@ paths:
                           this message
                         properties:
                           id:
-                            description: The UUID of the FireFly transaction
+                            description: Server-generated UUID for this transaction
+                              (query only)
                             format: uuid
                             type: string
                           type:
-                            description: The type of the FireFly transaction
+                            description: Type of transaction (public or private)
                             type: string
                         type: object
                       txtype:
@@ -25040,11 +25058,12 @@ paths:
                           this message
                         properties:
                           id:
-                            description: The UUID of the FireFly transaction
+                            description: Server-generated UUID for this transaction
+                              (query only)
                             format: uuid
                             type: string
                           type:
-                            description: The type of the FireFly transaction
+                            description: Type of transaction (public or private)
                             type: string
                         type: object
                       txtype:
@@ -25378,11 +25397,12 @@ paths:
                           this message
                         properties:
                           id:
-                            description: The UUID of the FireFly transaction
+                            description: Server-generated UUID for this transaction
+                              (query only)
                             format: uuid
                             type: string
                           type:
-                            description: The type of the FireFly transaction
+                            description: Type of transaction (public or private)
                             type: string
                         type: object
                       txtype:
@@ -25544,11 +25564,12 @@ paths:
                           this message
                         properties:
                           id:
-                            description: The UUID of the FireFly transaction
+                            description: Server-generated UUID for this transaction
+                              (query only)
                             format: uuid
                             type: string
                           type:
-                            description: The type of the FireFly transaction
+                            description: Type of transaction (public or private)
                             type: string
                         type: object
                       txtype:
@@ -25963,11 +25984,12 @@ paths:
                           this message
                         properties:
                           id:
-                            description: The UUID of the FireFly transaction
+                            description: Server-generated UUID for this transaction
+                              (query only)
                             format: uuid
                             type: string
                           type:
-                            description: The type of the FireFly transaction
+                            description: Type of transaction (public or private)
                             type: string
                         type: object
                       txtype:
@@ -31394,11 +31416,12 @@ paths:
                         use supports attaching data)
                       properties:
                         id:
-                          description: The UUID of the FireFly transaction
+                          description: Server-generated UUID for this transaction
+                            (query only)
                           format: uuid
                           type: string
                         type:
-                          description: The type of the FireFly transaction
+                          description: Type of transaction (public or private)
                           type: string
                       type: object
                   type: object
@@ -31699,11 +31722,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                 type: object
@@ -31793,11 +31817,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                 type: object
@@ -32242,11 +32267,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -32338,11 +32364,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -32695,11 +32722,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -32791,11 +32819,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -33056,11 +33085,12 @@ paths:
                         and broadcast this pool to the network
                       properties:
                         id:
-                          description: The UUID of the FireFly transaction
+                          description: Server-generated UUID for this transaction
+                            (query only)
                           format: uuid
                           type: string
                         type:
-                          description: The type of the FireFly transaction
+                          description: Type of transaction (public or private)
                           type: string
                       type: object
                     type:
@@ -33272,11 +33302,12 @@ paths:
                       and broadcast this pool to the network
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -33388,11 +33419,12 @@ paths:
                       and broadcast this pool to the network
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -33567,11 +33599,12 @@ paths:
                       and broadcast this pool to the network
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -33728,11 +33761,12 @@ paths:
                       and broadcast this pool to the network
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -33844,11 +33878,12 @@ paths:
                       and broadcast this pool to the network
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -34085,11 +34120,12 @@ paths:
                         use supports attaching data)
                       properties:
                         id:
-                          description: The UUID of the FireFly transaction
+                          description: Server-generated UUID for this transaction
+                            (query only)
                           format: uuid
                           type: string
                         type:
-                          description: The type of the FireFly transaction
+                          description: Type of transaction (public or private)
                           type: string
                       type: object
                     type:
@@ -34405,11 +34441,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -34501,11 +34538,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -34627,11 +34665,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -34749,25 +34788,24 @@ paths:
                         type: string
                       type: array
                     created:
-                      description: The time the transaction was created on this node.
-                        Note the transaction is individually created with the same
-                        UUID on each participant in the FireFly transaction
+                      description: Server-generated creation timestamp for this transaction
+                        (query only)
                       format: date-time
                       type: string
                     id:
-                      description: The UUID of the FireFly transaction
+                      description: Server-generated UUID for this transaction (query
+                        only)
                       format: uuid
                       type: string
                     idempotencyKey:
-                      description: An optional unique identifier for a transaction.
-                        Cannot be duplicated within a namespace, thus allowing idempotent
-                        submission of transactions to the API
+                      description: Externally supplied unique identifier for this
+                        transaction. 409 Conflict will be returned on attempt to re-submit
                       type: string
                     namespace:
                       description: The namespace of the FireFly transaction
                       type: string
                     type:
-                      description: The type of the FireFly transaction
+                      description: Type of transaction (public or private)
                       enum:
                       - none
                       - unpinned
@@ -34891,25 +34929,24 @@ paths:
                       type: string
                     type: array
                   created:
-                    description: The time the transaction was created on this node.
-                      Note the transaction is individually created with the same UUID
-                      on each participant in the FireFly transaction
+                    description: Server-generated creation timestamp for this transaction
+                      (query only)
                     format: date-time
                     type: string
                   id:
-                    description: The UUID of the FireFly transaction
+                    description: Server-generated UUID for this transaction (query
+                      only)
                     format: uuid
                     type: string
                   idempotencyKey:
-                    description: An optional unique identifier for a transaction.
-                      Cannot be duplicated within a namespace, thus allowing idempotent
-                      submission of transactions to the API
+                    description: Externally supplied unique identifier for this transaction.
+                      409 Conflict will be returned on attempt to re-submit
                     type: string
                   namespace:
                     description: The namespace of the FireFly transaction
                     type: string
                   type:
-                    description: The type of the FireFly transaction
+                    description: Type of transaction (public or private)
                     enum:
                     - none
                     - unpinned
@@ -35016,11 +35053,12 @@ paths:
                             Not all FireFly transactions include a blockchain
                           type: string
                         id:
-                          description: The UUID of the FireFly transaction
+                          description: Server-generated UUID for this transaction
+                            (query only)
                           format: uuid
                           type: string
                         type:
-                          description: The type of the FireFly transaction
+                          description: Type of transaction (public or private)
                           type: string
                       type: object
                   type: object
@@ -40619,11 +40657,12 @@ paths:
                         use supports attaching data)
                       properties:
                         id:
-                          description: The UUID of the FireFly transaction
+                          description: Server-generated UUID for this transaction
+                            (query only)
                           format: uuid
                           type: string
                         type:
-                          description: The type of the FireFly transaction
+                          description: Type of transaction (public or private)
                           type: string
                       type: object
                   type: object
@@ -40917,11 +40956,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                 type: object
@@ -41011,11 +41051,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                 type: object
@@ -41442,11 +41483,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -41538,11 +41580,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -41877,11 +41920,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -41973,11 +42017,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -42231,11 +42276,12 @@ paths:
                         and broadcast this pool to the network
                       properties:
                         id:
-                          description: The UUID of the FireFly transaction
+                          description: Server-generated UUID for this transaction
+                            (query only)
                           format: uuid
                           type: string
                         type:
-                          description: The type of the FireFly transaction
+                          description: Type of transaction (public or private)
                           type: string
                       type: object
                     type:
@@ -42440,11 +42486,12 @@ paths:
                       and broadcast this pool to the network
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -42556,11 +42603,12 @@ paths:
                       and broadcast this pool to the network
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -42721,11 +42769,12 @@ paths:
                       and broadcast this pool to the network
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -42875,11 +42924,12 @@ paths:
                       and broadcast this pool to the network
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -42991,11 +43041,12 @@ paths:
                       and broadcast this pool to the network
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -43225,11 +43276,12 @@ paths:
                         use supports attaching data)
                       properties:
                         id:
-                          description: The UUID of the FireFly transaction
+                          description: Server-generated UUID for this transaction
+                            (query only)
                           format: uuid
                           type: string
                         type:
-                          description: The type of the FireFly transaction
+                          description: Type of transaction (public or private)
                           type: string
                       type: object
                     type:
@@ -43538,11 +43590,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -43634,11 +43687,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -43753,11 +43807,12 @@ paths:
                       supports attaching data)
                     properties:
                       id:
-                        description: The UUID of the FireFly transaction
+                        description: Server-generated UUID for this transaction (query
+                          only)
                         format: uuid
                         type: string
                       type:
-                        description: The type of the FireFly transaction
+                        description: Type of transaction (public or private)
                         type: string
                     type: object
                   type:
@@ -43868,25 +43923,24 @@ paths:
                         type: string
                       type: array
                     created:
-                      description: The time the transaction was created on this node.
-                        Note the transaction is individually created with the same
-                        UUID on each participant in the FireFly transaction
+                      description: Server-generated creation timestamp for this transaction
+                        (query only)
                       format: date-time
                       type: string
                     id:
-                      description: The UUID of the FireFly transaction
+                      description: Server-generated UUID for this transaction (query
+                        only)
                       format: uuid
                       type: string
                     idempotencyKey:
-                      description: An optional unique identifier for a transaction.
-                        Cannot be duplicated within a namespace, thus allowing idempotent
-                        submission of transactions to the API
+                      description: Externally supplied unique identifier for this
+                        transaction. 409 Conflict will be returned on attempt to re-submit
                       type: string
                     namespace:
                       description: The namespace of the FireFly transaction
                       type: string
                     type:
-                      description: The type of the FireFly transaction
+                      description: Type of transaction (public or private)
                       enum:
                       - none
                       - unpinned
@@ -44003,25 +44057,24 @@ paths:
                       type: string
                     type: array
                   created:
-                    description: The time the transaction was created on this node.
-                      Note the transaction is individually created with the same UUID
-                      on each participant in the FireFly transaction
+                    description: Server-generated creation timestamp for this transaction
+                      (query only)
                     format: date-time
                     type: string
                   id:
-                    description: The UUID of the FireFly transaction
+                    description: Server-generated UUID for this transaction (query
+                      only)
                     format: uuid
                     type: string
                   idempotencyKey:
-                    description: An optional unique identifier for a transaction.
-                      Cannot be duplicated within a namespace, thus allowing idempotent
-                      submission of transactions to the API
+                    description: Externally supplied unique identifier for this transaction.
+                      409 Conflict will be returned on attempt to re-submit
                     type: string
                   namespace:
                     description: The namespace of the FireFly transaction
                     type: string
                   type:
-                    description: The type of the FireFly transaction
+                    description: Type of transaction (public or private)
                     enum:
                     - none
                     - unpinned
@@ -44121,11 +44174,12 @@ paths:
                             Not all FireFly transactions include a blockchain
                           type: string
                         id:
-                          description: The UUID of the FireFly transaction
+                          description: Server-generated UUID for this transaction
+                            (query only)
                           format: uuid
                           type: string
                         type:
-                          description: The type of the FireFly transaction
+                          description: Type of transaction (public or private)
                           type: string
                       type: object
                   type: object
