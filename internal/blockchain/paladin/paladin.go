@@ -277,7 +277,7 @@ func (p *Paladin) exitLoopWithError(l *logrus.Entry, err error, message string) 
 func (p *Paladin) StopNamespace(ctx context.Context, namespace string) error {
 	_, err := p.httpClient.PTX().StopReceiptListener(ctx, namespace)
 	if err != nil {
-		// just log the error- it doesn't stop anything from working if we don't manage to stop the listener
+		// just log the error - it doesn't stop anything from working if we don't manage to stop the listener
 		log.L(p.ctx).Warnf("Failed to stop paladin receipt listener for namespace: %s", namespace)
 	}
 

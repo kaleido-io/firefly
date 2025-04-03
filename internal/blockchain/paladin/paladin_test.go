@@ -548,7 +548,6 @@ func TestInvokeContract(t *testing.T) {
 	nsOpID := "ns1:9493d93e-9f88-4dd2-9173-ac42fdb6f748"
 	signingKey := tktypes.MustEthAddress(tktypes.RandHex(20)).String()
 	contractAddress := tktypes.MustEthAddress(tktypes.RandHex(20)).String()
-	//location := fftypes.JSONAnyPtr(fmt.Sprintf("\"%s\"", contractAddress))
 	location := fftypes.JSONAnyPtr(fftypes.JSONObject{
 		"address": contractAddress,
 	}.String())
@@ -566,6 +565,13 @@ func TestInvokeContract(t *testing.T) {
 	submissionRejected, err := p.InvokeContract(ctx, nsOpID, signingKey, fftypes.JSONAnyPtr("notanethaddress"), parsedMethod, input, options, nil)
 	assert.Error(t, err)
 	assert.True(t, submissionRejected)
+
+	// invalid address
+	badAddress := fftypes.JSONAnyPtr(fftypes.JSONObject{
+		"address": "thisIsNotAnAddress",
+	}.String())
+	_, err = p.InvokeContract(ctx, nsOpID, signingKey, badAddress, parsedMethod, input, options, nil)
+	assert.Error(t, err)
 
 	// prepare fails
 	invalidMethod := struct{}{}
@@ -604,7 +610,6 @@ func TestQueryContract(t *testing.T) {
 
 	signingKey := tktypes.MustEthAddress(tktypes.RandHex(20)).String()
 	contractAddress := tktypes.MustEthAddress(tktypes.RandHex(20)).String()
-	//location := fftypes.JSONAnyPtr(fmt.Sprintf("\"%s\"", contractAddress))
 	location := fftypes.JSONAnyPtr(fftypes.JSONObject{
 		"address": contractAddress,
 	}.String())
@@ -620,6 +625,13 @@ func TestQueryContract(t *testing.T) {
 
 	// invalid location
 	_, err := p.QueryContract(ctx, signingKey, fftypes.JSONAnyPtr("notanethaddress"), parsedMethod, input, options)
+	assert.Error(t, err)
+
+	// invalid address
+	badAddress := fftypes.JSONAnyPtr(fftypes.JSONObject{
+		"address": "thisIsNotAnAddress",
+	}.String())
+	_, err = p.QueryContract(ctx, signingKey, badAddress, parsedMethod, input, options)
 	assert.Error(t, err)
 
 	// prepare fails

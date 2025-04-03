@@ -957,7 +957,7 @@ title: Configuration Reference
 |passthroughHeadersEnabled|Enable passing through the set of allowed HTTP request headers|`boolean`|`false`
 |requestTimeout|The maximum amount of time that a request is allowed to remain open|[`time.Duration`](https://pkg.go.dev/time#Duration)|`30s`
 |tlsHandshakeTimeout|The maximum amount of time to wait for a successful TLS handshake|[`time.Duration`](https://pkg.go.dev/time#Duration)|`10s`
-|url|The URL of the RPC endpoint for the paladin blockchain plugin Resolver|`string`|`<nil>`
+|url|The URL of the JSON/RPC endpoint for the Paladin instance|`string`|`<nil>`
 
 ## plugins.blockchain[].paladin.rpc.auth
 
