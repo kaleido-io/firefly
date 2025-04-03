@@ -1,5 +1,5 @@
 # ARG Definitions
-# Consider adding default values for the ARGs based on this warning: 
+# Consider adding default values for the ARGs based on this warning:
 # https://github.com/hyperledger/firefly/actions/runs/10795366695/job/29941873807#step:4:171
 ARG FIREFLY_BUILDER_TAG
 ARG FABRIC_BUILDER_TAG
@@ -22,10 +22,10 @@ RUN apt update -y \
 
 WORKDIR /firefly
 RUN chgrp -R 0 /firefly \
-    && chmod -R g+rwX /firefly \
-    && mkdir /.cache \
-    && chgrp -R 0 /.cache \
-    && chmod -R g+rwX /.cache
+  && chmod -R g+rwX /firefly \
+  && mkdir /.cache \
+  && chgrp -R 0 /.cache \
+  && chmod -R g+rwX /.cache
 USER 1001
 ADD --chown=1001:0 go.mod go.sum ./
 RUN go mod download
@@ -36,10 +36,10 @@ RUN make build
 FROM --platform=$FABRIC_BUILDER_PLATFORM $FABRIC_BUILDER_TAG AS fabric-builder
 WORKDIR /firefly/smart_contracts/fabric/firefly-go
 RUN chgrp -R 0 /firefly \
-    && chmod -R g+rwX /firefly \
-    && mkdir /.cache \
-    && chgrp -R 0 /.cache \
-    && chmod -R g+rwX /.cache
+  && chmod -R g+rwX /firefly \
+  && mkdir /.cache \
+  && chgrp -R 0 /.cache \
+  && chmod -R g+rwX /.cache
 USER 1001
 ADD --chown=1001:0 smart_contracts/fabric/firefly-go .
 RUN GO111MODULE=on go mod vendor
@@ -56,19 +56,19 @@ RUN chgrp -R 0 /firefly && chmod -R g+rwX /firefly
 ADD --chown=1001:0 smart_contracts/ethereum/solidity_firefly/ .
 USER 1001
 RUN mkdir -p build/contracts \
-    && cd contracts \
-    && solc --combined-json abi,bin,devdoc -o ../build/contracts Firefly.sol \
-    && cd ../build/contracts \
-    && mv combined.json Firefly.json
+  && cd contracts \
+  && solc --combined-json abi,bin,devdoc -o ../build/contracts Firefly.sol \
+  && cd ../build/contracts \
+  && mv combined.json Firefly.json
 
 # SBOM
 FROM alpine:3.19 AS sbom
 WORKDIR /
 ADD . /SBOM
-RUN apk add --no-cache curl 
+RUN apk add --no-cache curl
 RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.48.3
 RUN trivy fs --format spdx-json --output /sbom.spdx.json /SBOM
-RUN trivy sbom /sbom.spdx.json --severity UNKNOWN,HIGH,CRITICAL --exit-code 1
+RUN trivy sbom /sbom.spdx.json --severity UNKNOWN,HIGH,CRITICAL --db-repository public.ecr.aws/aquasecurity/trivy-db --exit-code 1
 
 FROM ${BASE_TAG}
 ARG UI_TAG
@@ -91,7 +91,7 @@ COPY --from=solidity-builder --chown=1001:0 /firefly/solidity_firefly/build/cont
 COPY --from=fabric-builder --chown=1001:0 /firefly/smart_contracts/fabric/firefly-go/firefly_fabric.tar.gz ./contracts/firefly_fabric.tar.gz
 ENV UI_RELEASE=https://github.com/hyperledger/firefly-ui/releases/download/$UI_TAG/$UI_RELEASE.tgz
 RUN mkdir /firefly/frontend \
-    && curl -sLo - $UI_RELEASE | tar -C /firefly/frontend -zxvf -
+  && curl -sLo - $UI_RELEASE | tar -C /firefly/frontend -zxvf -
 COPY --from=sbom /sbom.spdx.json /sbom.spdx.json
 RUN ln -s /firefly/firefly /usr/bin/firefly
 USER 1001

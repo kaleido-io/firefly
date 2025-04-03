@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -540,7 +541,7 @@ func (f *Fabric) eventLoop(namespace string, wsconn wsclient.WSClient, closed ch
 				var receipt common.BlockchainReceiptNotification
 				_ = json.Unmarshal(msgBytes, &receipt)
 
-				err := common.HandleReceipt(ctx, f, &receipt, f.callbacks)
+				err := common.HandleReceipt(ctx, namespace, f, &receipt, f.callbacks)
 				if err != nil {
 					l.Errorf("Failed to process receipt: %+v", msgTyped)
 				}
@@ -1118,7 +1119,7 @@ func (f *Fabric) GetTransactionStatus(ctx context.Context, operation *core.Opera
 		SetQueryParam("fly-signer", defaultSigner).
 		Get(transactionRequestPath)
 	if err != nil || !res.IsSuccess() {
-		if res.StatusCode() == 404 {
+		if res.StatusCode() == http.StatusNotFound {
 			return nil, nil
 		}
 		return nil, common.WrapRESTError(ctx, &resErr, res, err, coremsgs.MsgFabconnectRESTErr)

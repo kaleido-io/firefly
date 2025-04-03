@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"regexp"
 
 	"blockwatch.cc/tzgo/micheline"
@@ -564,7 +565,7 @@ func (t *Tezos) GetTransactionStatus(ctx context.Context, operation *core.Operat
 		SetResult(&statusResponse).
 		Get(transactionRequestPath)
 	if err != nil || !res.IsSuccess() {
-		if res.StatusCode() == 404 {
+		if res.StatusCode() == http.StatusNotFound {
 			return nil, nil
 		}
 		return nil, common.WrapRESTError(ctx, &resErr, res, err, coremsgs.MsgTezosconnectRESTErr)
@@ -591,7 +592,7 @@ func (t *Tezos) GetTransactionStatus(ctx context.Context, operation *core.Operat
 				TxHash:     statusResponse.GetString("transactionHash"),
 				Message:    statusResponse.GetString("errorMessage"),
 				ProtocolID: receiptInfo.GetString("protocolId")}
-			err := common.HandleReceipt(ctx, t, receipt, t.callbacks)
+			err := common.HandleReceipt(ctx, operation.Namespace, t, receipt, t.callbacks)
 			if err != nil {
 				log.L(ctx).Warnf("Failed to handle receipt")
 			}
@@ -822,7 +823,7 @@ func (t *Tezos) eventLoop() {
 				var receipt common.BlockchainReceiptNotification
 				_ = json.Unmarshal(msgBytes, &receipt)
 
-				err := common.HandleReceipt(ctx, t, &receipt, t.callbacks)
+				err := common.HandleReceipt(ctx, "", t, &receipt, t.callbacks) // TODO: should be specific to a namespace
 				if err != nil {
 					l.Errorf("Failed to process receipt: %+v", msgTyped)
 				}

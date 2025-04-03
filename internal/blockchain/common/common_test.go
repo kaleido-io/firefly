@@ -1,4 +1,4 @@
-// Copyright © 2022 Kaleido, Inc.
+// Copyright © 2024 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -44,7 +44,7 @@ func TestCallbackOperationUpdate(t *testing.T) {
 	cb.SetOperationalHandler("ns1", mcb)
 
 	mbi.On("Name").Return("utblockchain")
-	mcb.On("OperationUpdate", mock.MatchedBy(func(update *core.OperationUpdate) bool {
+	mcb.On("OperationUpdate", mock.MatchedBy(func(update *core.OperationUpdateAsync) bool {
 		return update.NamespacedOpID == nsOpID &&
 			update.Status == core.OpStatusSucceeded &&
 			update.BlockchainTXID == "tx1" &&
@@ -342,15 +342,15 @@ func TestGoodSuccessReceipt(t *testing.T) {
 	cb.SetHandler("ns1", mcb)
 	mcb.On("OperationUpdate", "ns1", mock.Anything).Return()
 
-	err := HandleReceipt(context.Background(), nil, &reply, cb)
+	err := HandleReceipt(context.Background(), "", nil, &reply, cb)
 	assert.NoError(t, err)
 
 	reply.Headers.ReplyType = "TransactionUpdate"
-	err = HandleReceipt(context.Background(), nil, &reply, cb)
+	err = HandleReceipt(context.Background(), "", nil, &reply, cb)
 	assert.NoError(t, err)
 
 	reply.Headers.ReplyType = "TransactionFailed"
-	err = HandleReceipt(context.Background(), nil, &reply, cb)
+	err = HandleReceipt(context.Background(), "", nil, &reply, cb)
 	assert.NoError(t, err)
 }
 
@@ -365,7 +365,7 @@ func TestReceiptMarshallingError(t *testing.T) {
 	cb.SetHandler("ns1", mcb)
 	mcb.On("OperationUpdate", "ns1", mock.Anything).Return()
 
-	err := HandleReceipt(context.Background(), nil, &reply, cb)
+	err := HandleReceipt(context.Background(), "", nil, &reply, cb)
 	assert.Error(t, err)
 	assert.Regexp(t, ".*[^n]marshalling error.*", err)
 }
@@ -384,8 +384,17 @@ func TestBadReceipt(t *testing.T) {
 	data := fftypes.JSONAnyPtr(`{}`)
 	err := json.Unmarshal(data.Bytes(), &reply)
 	assert.NoError(t, err)
-	err = HandleReceipt(context.Background(), nil, &reply, nil)
+	err = HandleReceipt(context.Background(), "", nil, &reply, nil)
 	assert.Error(t, err)
+}
+
+func TestWrongNamespaceReceipt(t *testing.T) {
+	var reply BlockchainReceiptNotification
+	data := fftypes.JSONAnyPtr(`{}`)
+	err := json.Unmarshal(data.Bytes(), &reply)
+	assert.NoError(t, err)
+	err = HandleReceipt(context.Background(), "wrong", nil, &reply, nil)
+	assert.NoError(t, err)
 }
 
 func TestErrorWrappingConflict(t *testing.T) {
@@ -445,4 +454,55 @@ func TestErrorWrappingNonConflict(t *testing.T) {
 
 	_, conforms := err.(operations.ConflictError)
 	assert.False(t, conforms)
+}
+
+func TestCallbackBulkOperationUpdate(t *testing.T) {
+	nsOpID := "ns1:" + fftypes.NewUUID().String()
+	nsOpID2 := "ns1:" + fftypes.NewUUID().String()
+
+	mbi := &blockchainmocks.Plugin{}
+	mcb := &coremocks.OperationCallbacks{}
+	cb := NewBlockchainCallbacks()
+	cb.SetOperationalHandler("ns1", mcb)
+
+	mbi.On("Name").Return("utblockchain")
+	mcb.On("BulkOperationUpdates", mock.Anything, mock.MatchedBy(func(updates []*core.OperationUpdate) bool {
+		assert.True(t, updates[0].NamespacedOpID == nsOpID &&
+			updates[0].Status == core.OpStatusSucceeded &&
+			updates[0].BlockchainTXID == "tx1" &&
+			updates[0].ErrorMessage == "err" &&
+			updates[0].Plugin == "utblockchain")
+
+		assert.True(t, updates[1].NamespacedOpID == nsOpID2 &&
+			updates[1].Status == core.OpStatusSucceeded &&
+			updates[1].BlockchainTXID == "tx2" &&
+			updates[1].ErrorMessage == "err" &&
+			updates[1].Plugin == "utblockchain")
+
+		return true
+	})).Return(nil).Once()
+
+	cb.BulkOperationUpdates(context.Background(), "ns1", []*core.OperationUpdate{
+		{
+			NamespacedOpID: nsOpID,
+			Status:         core.OpStatusSucceeded,
+			BlockchainTXID: "tx1",
+			ErrorMessage:   "err",
+			Output:         fftypes.JSONObject{},
+			Plugin:         "utblockchain",
+		},
+		{
+			NamespacedOpID: nsOpID2,
+			Status:         core.OpStatusSucceeded,
+			BlockchainTXID: "tx2",
+			ErrorMessage:   "err",
+			Output:         fftypes.JSONObject{},
+			Plugin:         "utblockchain",
+		},
+	})
+
+	// No Handler
+	cb.BulkOperationUpdates(context.Background(), "ns2", []*core.OperationUpdate{})
+
+	mcb.AssertExpectations(t)
 }

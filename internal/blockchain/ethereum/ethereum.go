@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -513,7 +514,7 @@ func (e *Ethereum) eventLoop(namespace string, wsconn wsclient.WSClient, closed 
 				if !isBatch {
 					var receipt common.BlockchainReceiptNotification
 					_ = json.Unmarshal(msgBytes, &receipt)
-					err := common.HandleReceipt(ctx, e, &receipt, e.callbacks)
+					err := common.HandleReceipt(ctx, namespace, e, &receipt, e.callbacks)
 					if err != nil {
 						l.Errorf("Failed to process receipt: %+v", msgTyped)
 					}
@@ -1197,7 +1198,7 @@ func (e *Ethereum) GetTransactionStatus(ctx context.Context, operation *core.Ope
 		SetResult(&statusResponse).
 		Get(transactionRequestPath)
 	if err != nil || !res.IsSuccess() {
-		if res.StatusCode() == 404 {
+		if res.StatusCode() == http.StatusNotFound {
 			return nil, nil
 		}
 		return nil, common.WrapRESTError(ctx, &resErr, res, err, coremsgs.MsgEthConnectorRESTErr)
@@ -1223,7 +1224,7 @@ func (e *Ethereum) GetTransactionStatus(ctx context.Context, operation *core.Ope
 				TxHash:     statusResponse.GetString("transactionHash"),
 				Message:    statusResponse.GetString("errorMessage"),
 				ProtocolID: receiptInfo.GetString("protocolId")}
-			err := common.HandleReceipt(ctx, e, receipt, e.callbacks)
+			err := common.HandleReceipt(ctx, operation.Namespace, e, receipt, e.callbacks)
 			if err != nil {
 				log.L(ctx).Warnf("Failed to handle receipt")
 			}
