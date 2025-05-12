@@ -155,11 +155,6 @@ func NewContractManager(ctx context.Context, ns string, di database.Plugin, bi b
 		core.OpTypeBlockchainContractDeploy,
 	})
 
-	// Validate all our listeners exist on startup - consistent with the multi-party manager.
-	// This means if EVMConnect is cleared, simply a restart of the namespace on core will
-	// cause recreation of all the listeners (noting that listeners that were specified to start
-	// from latest, will start from the new latest rather than replaying from the block they
-	// started from before they were deleted).
 	err = cm.verifyListeners(ctx)
 	if err != nil {
 		return nil, err

@@ -321,4 +321,5 @@ var (
 	MsgInvalidIdentityPatch                    = ffe("FF10480", "A profile must be provided when updating an identity", 400)
 	MsgNodeNotProvidedForCheck                 = ffe("FF10481", "Node not provided for check", 500)
 	MsgNodeMissingProfile                      = ffe("FF10482", "Node provided for check does not have a profile", 500)
+	MsgPaladinConnectorRESTErr                 = ffe("FF10483", "Error from Paladin connector: %s")
 )

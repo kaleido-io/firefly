@@ -382,6 +382,7 @@ func (e *Ethereum) processBatchPinEvent(ctx context.Context, events common.Event
 }
 
 func (e *Ethereum) processContractEvent(ctx context.Context, events common.EventsToDispatch, msgJSON fftypes.JSONObject) error {
+	// TODO AM: this is the processing needed when getting events back on the subscription
 	subID := msgJSON.GetString("subId")
 	subName, err := e.streams.getSubscriptionName(ctx, subID)
 	if err != nil {
