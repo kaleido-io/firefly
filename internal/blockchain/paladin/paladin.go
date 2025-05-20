@@ -145,7 +145,7 @@ func (p *Paladin) Init(ctx context.Context, cancelCtx context.CancelFunc, config
 	p.cache = cache
 
 	addressResolverConf := config.SubSection(AddressResolverConfigKey)
-	if addressResolverConf.GetBool(AddressResolverEnable) {
+	if addressResolverConf.GetBool(AddressResolverEnabled) {
 		p.addressResolveAlways = addressResolverConf.GetBool(AddressResolverAlwaysResolve)
 		p.addressResolver, err = newAddressResolver(ctx, addressResolverConf, cacheManager, !p.addressResolveAlways)
 		if err != nil {

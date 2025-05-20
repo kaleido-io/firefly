@@ -224,6 +224,17 @@ var (
 	ConfigPluginBlockchainFabricFabconnectChaincode                   = ffc("config.plugins.blockchain[].fabric.fabconnect.chaincode", "The name of the Fabric chaincode that FireFly will use for BatchPin transactions (deprecated - use fireflyContract[].chaincode)", i18n.StringType)
 	ConfigPluginBlockchainFabricFabconnectChannel                     = ffc("config.plugins.blockchain[].fabric.fabconnect.channel", "The Fabric channel that FireFly will use for BatchPin transactions", i18n.StringType)
 
+	ConfigPluginBlockchainPaladinAddressResolverAlwaysResolve = ffc("config.plugins.blockchain[].paladin.addressResolver.alwaysResolve", "Causes the address resolver to be invoked on every API call that submits a signing key. Also disables any result caching", i18n.BooleanType)
+	ConfigPluginBlockchainPaladinAddressResolverBodyTemplate  = ffc("config.plugins.blockchain[].paladin.addressResolver.bodyTemplate", "The body go template string to use when making HTTP requests", i18n.GoTemplateType)
+	ConfigPluginBlockchainPaladinAddressResolverEnabled       = ffc("config.plugins.blockchain[].paladin.addressResolver.enabled", "The body go template string to use when making HTTP requests", i18n.BooleanType)
+	ConfigPluginBlockchainPaladinAddressResolverMethod        = ffc("config.plugins.blockchain[].paladin.addressResolver.method", "The HTTP method to use when making requests to the Address Resolver", i18n.StringType)
+	ConfigPluginBlockchainPaladinAddressResolverResponseField = ffc("config.plugins.blockchain[].paladin.addressResolver.responseField", "The name of a JSON field that is provided in the response, that contains the tezos address (default `address`)", i18n.StringType)
+	ConfigPluginBlockchainPaladinAddressResolverURL           = ffc("config.plugins.blockchain[].paladin.addressResolver.url", "The URL of the Address Resolver", i18n.StringType)
+	ConfigPluginBlockchainPaladinAddressResolverURLTemplate   = ffc("config.plugins.blockchain[].paladin.addressResolver.urlTemplate", "The URL Go template string to use when calling the Address Resolver. The template input contains '.Key' and '.Intent' string variables.", i18n.GoTemplateType)
+
+	// Not sure
+	ConfigPluginBlockchainPaladinRPCURL = ffc("config.plugins.blockchain[].paladin.rpc.url", "The URL of the RPC URL", i18n.StringType)
+
 	ConfigBroadcastBatchAgentTimeout = ffc("config.broadcast.batch.agentTimeout", "How long to keep around a batching agent for a sending identity before disposal", i18n.StringType)
 	ConfigBroadcastBatchPayloadLimit = ffc("config.broadcast.batch.payloadLimit", "The maximum payload size of a batch for broadcast messages", i18n.ByteSizeType)
 	ConfigBroadcastBatchSize         = ffc("config.broadcast.batch.size", "The maximum number of messages that can be packed into a batch", i18n.IntType)

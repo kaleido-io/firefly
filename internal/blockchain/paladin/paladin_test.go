@@ -192,7 +192,7 @@ func TestInitAddressResolverFail(t *testing.T) {
 	mm := &metricsmocks.Manager{}
 	cm := &cachemocks.Manager{}
 	cm.On("GetCache", mock.Anything).Return(cache.NewUmanagedCache(p.ctx, 100, 5*time.Minute), nil)
-	utAddressResolverConf.Set(AddressResolverEnable, true)
+	utAddressResolverConf.Set(AddressResolverEnabled, true)
 	utAddressResolverConf.Set(AddressResolverURLTemplate, "{{unclosed}")
 
 	err := p.Init(ctx, cancel, utConfig, mm, cm)

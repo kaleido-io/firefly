@@ -28,8 +28,8 @@ const (
 
 	// AddressResolverConfigKey is a sub-key in the config to contain an address resolver config.
 	AddressResolverConfigKey = "addressResolver"
-	// AddressResolverEnable whether a config defined address resolver should be used instead of making resolve calls to the RPC endpoint
-	AddressResolverEnable = "addressResolver"
+	// AddressResolverEnabled whether a config defined address resolver should be used instead of making resolve calls to the RPC endpoint
+	AddressResolverEnabled = "enabled"
 	// AddressResolverAlwaysResolve causes the address resolve to be invoked on every API call that resolves an address, regardless of whether the input conforms to an 0x address, and disables any caching
 	AddressResolverAlwaysResolve = "alwaysResolve"
 	// AddressResolverMethod the HTTP method to use to call the address resolver (default GET)
@@ -49,10 +49,10 @@ func (p *Paladin) InitConfig(config config.Section) {
 
 	addressResolverConf := config.SubSection(AddressResolverConfigKey)
 	ffresty.InitConfig(addressResolverConf)
-	addressResolverConf.AddKnownKey(AddressResolverEnable, false)
 	addressResolverConf.AddKnownKey(AddressResolverAlwaysResolve)
-	addressResolverConf.AddKnownKey(AddressResolverMethod)
-	addressResolverConf.AddKnownKey(AddressResolverURLTemplate)
 	addressResolverConf.AddKnownKey(AddressResolverBodyTemplate)
+	addressResolverConf.AddKnownKey(AddressResolverEnabled, false)
+	addressResolverConf.AddKnownKey(AddressResolverMethod)
 	addressResolverConf.AddKnownKey(AddressResolverResponseField)
+	addressResolverConf.AddKnownKey(AddressResolverURLTemplate)
 }

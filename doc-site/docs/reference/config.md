@@ -943,6 +943,146 @@ title: Configuration Reference
 |url|URL to use for WebSocket - overrides url one level up (in the HTTP config)|`string`|`<nil>`
 |writeBufferSize|The size in bytes of the write buffer for the WebSocket connection|[`BytesSize`](https://pkg.go.dev/github.com/docker/go-units#BytesSize)|`16Kb`
 
+## plugins.blockchain[].paladin.addressResolver
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|alwaysResolve|Causes the address resolver to be invoked on every API call that submits a signing key. Also disables any result caching|`boolean`|`<nil>`
+|bodyTemplate|The body go template string to use when making HTTP requests|[Go Template](https://pkg.go.dev/text/template) `string`|`<nil>`
+|connectionTimeout|The maximum amount of time that a connection is allowed to remain with no data transmitted|[`time.Duration`](https://pkg.go.dev/time#Duration)|`30s`
+|enabled|The body go template string to use when making HTTP requests|`boolean`|`false`
+|expectContinueTimeout|See [ExpectContinueTimeout in the Go docs](https://pkg.go.dev/net/http#Transport)|[`time.Duration`](https://pkg.go.dev/time#Duration)|`1s`
+|headers|Adds custom headers to HTTP requests|`map[string]string`|`<nil>`
+|idleTimeout|The max duration to hold a HTTP keepalive connection between calls|[`time.Duration`](https://pkg.go.dev/time#Duration)|`475ms`
+|maxConnsPerHost|The max number of connections, per unique hostname. Zero means no limit|`int`|`0`
+|maxIdleConns|The max number of idle connections to hold pooled|`int`|`100`
+|maxIdleConnsPerHost|The max number of idle connections, per unique hostname. Zero means net/http uses the default of only 2.|`int`|`100`
+|method|The HTTP method to use when making requests to the Address Resolver|`string`|`<nil>`
+|passthroughHeadersEnabled|Enable passing through the set of allowed HTTP request headers|`boolean`|`false`
+|requestTimeout|The maximum amount of time that a request is allowed to remain open|[`time.Duration`](https://pkg.go.dev/time#Duration)|`30s`
+|responseField|The name of a JSON field that is provided in the response, that contains the tezos address (default `address`)|`string`|`<nil>`
+|tlsHandshakeTimeout|The maximum amount of time to wait for a successful TLS handshake|[`time.Duration`](https://pkg.go.dev/time#Duration)|`10s`
+|url|The URL of the Address Resolver|`string`|`<nil>`
+|urlTemplate|The URL Go template string to use when calling the Address Resolver. The template input contains '.Key' and '.Intent' string variables.|[Go Template](https://pkg.go.dev/text/template) `string`|`<nil>`
+
+## plugins.blockchain[].paladin.addressResolver.auth
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|password|Password|`string`|`<nil>`
+|username|Username|`string`|`<nil>`
+
+## plugins.blockchain[].paladin.addressResolver.proxy
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|url|Optional HTTP proxy server to connect through|`string`|`<nil>`
+
+## plugins.blockchain[].paladin.addressResolver.retry
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|count|The maximum number of times to retry|`int`|`5`
+|enabled|Enables retries|`boolean`|`false`
+|errorStatusCodeRegex|The regex that the error response status code must match to trigger retry|`string`|`<nil>`
+|initWaitTime|The initial retry delay|[`time.Duration`](https://pkg.go.dev/time#Duration)|`250ms`
+|maxWaitTime|The maximum retry delay|[`time.Duration`](https://pkg.go.dev/time#Duration)|`30s`
+
+## plugins.blockchain[].paladin.addressResolver.throttle
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|burst|The maximum number of requests that can be made in a short period of time before the throttling kicks in.|`int`|`<nil>`
+|requestsPerSecond|The average rate at which requests are allowed to pass through over time.|`int`|`<nil>`
+
+## plugins.blockchain[].paladin.addressResolver.tls
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|ca|The TLS certificate authority in PEM format (this option is ignored if caFile is also set)|`string`|`<nil>`
+|caFile|The path to the CA file for TLS on this API|`string`|`<nil>`
+|cert|The TLS certificate in PEM format (this option is ignored if certFile is also set)|`string`|`<nil>`
+|certFile|The path to the certificate file for TLS on this API|`string`|`<nil>`
+|clientAuth|Enables or disables client auth for TLS on this API|`string`|`<nil>`
+|enabled|Enables or disables TLS on this API|`boolean`|`false`
+|insecureSkipHostVerify|When to true in unit test development environments to disable TLS verification. Use with extreme caution|`boolean`|`<nil>`
+|key|The TLS certificate key in PEM format (this option is ignored if keyFile is also set)|`string`|`<nil>`
+|keyFile|The path to the private key file for TLS on this API|`string`|`<nil>`
+|requiredDNAttributes|A set of required subject DN attributes. Each entry is a regular expression, and the subject certificate must have a matching attribute of the specified type (CN, C, O, OU, ST, L, STREET, POSTALCODE, SERIALNUMBER are valid attributes)|`map[string]string`|`<nil>`
+
+## plugins.blockchain[].paladin.rpc
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|connectionTimeout|The maximum amount of time that a connection is allowed to remain with no data transmitted|[`time.Duration`](https://pkg.go.dev/time#Duration)|`30s`
+|expectContinueTimeout|See [ExpectContinueTimeout in the Go docs](https://pkg.go.dev/net/http#Transport)|[`time.Duration`](https://pkg.go.dev/time#Duration)|`1s`
+|headers|Adds custom headers to HTTP requests|`map[string]string`|`<nil>`
+|idleTimeout|The max duration to hold a HTTP keepalive connection between calls|[`time.Duration`](https://pkg.go.dev/time#Duration)|`475ms`
+|maxConnsPerHost|The max number of connections, per unique hostname. Zero means no limit|`int`|`0`
+|maxIdleConns|The max number of idle connections to hold pooled|`int`|`100`
+|maxIdleConnsPerHost|The max number of idle connections, per unique hostname. Zero means net/http uses the default of only 2.|`int`|`100`
+|passthroughHeadersEnabled|Enable passing through the set of allowed HTTP request headers|`boolean`|`false`
+|requestTimeout|The maximum amount of time that a request is allowed to remain open|[`time.Duration`](https://pkg.go.dev/time#Duration)|`30s`
+|tlsHandshakeTimeout|The maximum amount of time to wait for a successful TLS handshake|[`time.Duration`](https://pkg.go.dev/time#Duration)|`10s`
+|url|The URL of the RPC URL|`string`|`<nil>`
+
+## plugins.blockchain[].paladin.rpc.auth
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|password|Password|`string`|`<nil>`
+|username|Username|`string`|`<nil>`
+
+## plugins.blockchain[].paladin.rpc.proxy
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|url|Optional HTTP proxy server to connect through|`string`|`<nil>`
+
+## plugins.blockchain[].paladin.rpc.retry
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|count|The maximum number of times to retry|`int`|`5`
+|enabled|Enables retries|`boolean`|`false`
+|errorStatusCodeRegex|The regex that the error response status code must match to trigger retry|`string`|`<nil>`
+|initWaitTime|The initial retry delay|[`time.Duration`](https://pkg.go.dev/time#Duration)|`250ms`
+|maxWaitTime|The maximum retry delay|[`time.Duration`](https://pkg.go.dev/time#Duration)|`30s`
+
+## plugins.blockchain[].paladin.rpc.throttle
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|burst|The maximum number of requests that can be made in a short period of time before the throttling kicks in.|`int`|`<nil>`
+|requestsPerSecond|The average rate at which requests are allowed to pass through over time.|`int`|`<nil>`
+
+## plugins.blockchain[].paladin.rpc.tls
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|ca|The TLS certificate authority in PEM format (this option is ignored if caFile is also set)|`string`|`<nil>`
+|caFile|The path to the CA file for TLS on this API|`string`|`<nil>`
+|cert|The TLS certificate in PEM format (this option is ignored if certFile is also set)|`string`|`<nil>`
+|certFile|The path to the certificate file for TLS on this API|`string`|`<nil>`
+|clientAuth|Enables or disables client auth for TLS on this API|`string`|`<nil>`
+|enabled|Enables or disables TLS on this API|`boolean`|`false`
+|insecureSkipHostVerify|When to true in unit test development environments to disable TLS verification. Use with extreme caution|`boolean`|`<nil>`
+|key|The TLS certificate key in PEM format (this option is ignored if keyFile is also set)|`string`|`<nil>`
+|keyFile|The path to the private key file for TLS on this API|`string`|`<nil>`
+|requiredDNAttributes|A set of required subject DN attributes. Each entry is a regular expression, and the subject certificate must have a matching attribute of the specified type (CN, C, O, OU, ST, L, STREET, POSTALCODE, SERIALNUMBER are valid attributes)|`map[string]string`|`<nil>`
+
+## plugins.blockchain[].paladin.rpc.ws
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|connectionTimeout|The amount of time to wait while establishing a connection (or auto-reconnection)|[`time.Duration`](https://pkg.go.dev/time#Duration)|`45s`
+|heartbeatInterval|The amount of time to wait between heartbeat signals on the WebSocket connection|[`time.Duration`](https://pkg.go.dev/time#Duration)|`30s`
+|initialConnectAttempts|The number of attempts FireFly will make to connect to the WebSocket when starting up, before failing|`int`|`5`
+|path|The WebSocket sever URL to which FireFly should connect|WebSocket URL `string`|`<nil>`
+|readBufferSize|The size in bytes of the read buffer for the WebSocket connection|[`BytesSize`](https://pkg.go.dev/github.com/docker/go-units#BytesSize)|`16Kb`
+|url|URL to use for WebSocket - overrides url one level up (in the HTTP config)|`string`|`<nil>`
+|writeBufferSize|The size in bytes of the write buffer for the WebSocket connection|[`BytesSize`](https://pkg.go.dev/github.com/docker/go-units#BytesSize)|`16Kb`
+
 ## plugins.blockchain[].tezos.addressResolver
 
 |Key|Description|Type|Default Value|
