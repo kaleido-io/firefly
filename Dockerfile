@@ -66,9 +66,33 @@ FROM alpine:3.21 AS sbom
 WORKDIR /
 ADD . /SBOM
 RUN apk add --no-cache curl
-RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.68.1
-RUN trivy fs --format spdx-json --output /sbom.spdx.json /SBOM
-RUN trivy sbom /sbom.spdx.json --severity UNKNOWN,HIGH,CRITICAL --db-repository public.ecr.aws/aquasecurity/trivy-db --exit-code 1
+RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.68.2
+RUN trivy fs \
+  --db-repository public.ecr.aws/aquasecurity/trivy-db \
+  --java-db-repository public.ecr.aws/aquasecurity/trivy-java-db \
+  --scanners vuln,license \
+  --vuln-severity-source nvd,ubuntu,amazon,govulndb,ghsa,nodejs-security-wg,azure,redhat,k8s,debian \
+  --sbom-sources oci,rekor \
+  --format spdx-json \
+  --output /sbom.spdx.json \
+  /SBOM
+
+RUN trivy sbom /sbom.spdx.json \
+  --db-repository public.ecr.aws/aquasecurity/trivy-db \
+  --java-db-repository public.ecr.aws/aquasecurity/trivy-java-db \
+  --scanners vuln \
+  --vuln-severity-source nvd,ubuntu,amazon,govulndb,ghsa,nodejs-security-wg,azure,redhat,k8s,debian \
+  --sbom-sources oci,rekor \
+  --severity UNKNOWN,HIGH,CRITICAL \
+  --exit-code 1
+
+  RUN trivy sbom /sbom.spdx.json \
+  --db-repository public.ecr.aws/aquasecurity/trivy-db \
+  --java-db-repository public.ecr.aws/aquasecurity/trivy-java-db \
+  --scanners license \
+  --sbom-sources oci,rekor \
+  --severity HIGH,CRITICAL \
+  --exit-code 1
 
 # UI
 FROM alpine:3.21 AS uidownloader
