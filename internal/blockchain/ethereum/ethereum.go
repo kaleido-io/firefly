@@ -627,7 +627,7 @@ func (e *Ethereum) invokeContractMethod(ctx context.Context, address, signingKey
 	if err != nil || !res.IsSuccess() {
 		// 409 is a conflict error, so that means the transaction was already submitted / exists
 		// so we can return a success w/o error
-		if res.StatusCode() == 409 && !resErr.SubmissionRejected {
+		if res != nil && res.StatusCode() == 409 && !resErr.SubmissionRejected {
 			return false, nil
 		}
 
@@ -774,7 +774,7 @@ func (e *Ethereum) DeployContract(ctx context.Context, nsOpID, signingKey string
 	if err != nil || !res.IsSuccess() {
 		// 409 is a conflict error, so that means the transaction was already submitted / exists
 		// so we can return a success w/o error
-		if res.StatusCode() == 409 && !resErr.SubmissionRejected {
+		if res != nil && res.StatusCode() == 409 && !resErr.SubmissionRejected {
 			return false, nil
 		}
 		if strings.Contains(string(res.Body()), "FFEC100130") {
