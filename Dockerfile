@@ -66,7 +66,7 @@ FROM alpine:3.21 AS sbom
 WORKDIR /
 ADD . /SBOM
 RUN apk add --no-cache curl
-RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.68.2
+RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.69.2
 RUN trivy fs \
   --db-repository public.ecr.aws/aquasecurity/trivy-db \
   --java-db-repository public.ecr.aws/aquasecurity/trivy-java-db \
