@@ -18,7 +18,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.1
 	github.com/hyperledger/firefly-common v1.5.6
-	github.com/hyperledger/firefly-signer v1.1.21
+	github.com/hyperledger/firefly-signer v1.1.23-0.20260414131220-8bfd443d115f // fork replace below (davecrighton @ 8bfd443)
 	github.com/jarcoal/httpmock v1.2.0
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.19
@@ -97,3 +97,5 @@ require (
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/hyperledger/firefly-signer => github.com/davecrighton/firefly-signer v1.1.23-0.20260414131220-8bfd443d115f
