@@ -106,7 +106,7 @@ RUN mkdir /firefly/frontend \
 
 # Final executable build
 FROM $BASE_TAG
-# Makes an assumption that that base image is ubuntu based 
+# Makes an assumption that that base image is ubuntu based
 # so it uses apt
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y \
