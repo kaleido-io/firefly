@@ -65,6 +65,7 @@ RUN mkdir -p build/contracts \
 FROM alpine:3.21 AS sbom
 WORKDIR /
 ADD . /SBOM
+ADD .trivyignore /.trivyignore
 RUN apk add --no-cache curl
 RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin 
 RUN trivy fs \
