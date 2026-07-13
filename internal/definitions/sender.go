@@ -159,15 +159,13 @@ func (ds *definitionSender) getSenderResolved(ctx context.Context, def core.Defi
 		return wrapSendError(i18n.WrapError(ctx, err, coremsgs.MsgSerializationFailed))
 	}
 	topics := fftypes.FFStringArray{def.Topic()}
-
-	var filtered []string
-	for _, t := range customTopics {
-		if t != "" {
-			filtered = append(filtered, t)
+	if len(customTopics) > 0 {
+		for i, t := range customTopics {
+			if t == "" {
+				return wrapSendError(i18n.NewError(ctx, coremsgs.MsgEmptyCustomTopic, i))
+			}
 		}
-	}
-	if len(filtered) > 0 {
-		topics = fftypes.FFStringArray(filtered)
+		topics = fftypes.FFStringArray(customTopics)
 	}
 	dataValue := fftypes.JSONAnyPtrBytes(b)
 	message := &core.MessageInOut{

@@ -171,7 +171,9 @@ paths:
         name: publish
         schema:
           type: string
-      - description: Custom topics for ordering definition broadcast messages
+      - description: Custom topics to use for ordering of the definition broadcast
+          message, instead of the default system topic. Each topic must be a non-empty
+          string. Only used when the definition is published to the multiparty network
         in: query
         name: topics
         schema:
@@ -507,7 +509,9 @@ paths:
         schema:
           example: "true"
           type: string
-      - description: Custom topics for ordering definition broadcast messages
+      - description: Custom topics to use for ordering of the definition broadcast
+          message, instead of the default system topic. Each topic must be a non-empty
+          string. Only used when the definition is published to the multiparty network
         in: query
         name: topics
         schema:
@@ -2015,7 +2019,9 @@ paths:
         name: confirm
         schema:
           type: string
-      - description: Custom topics for ordering definition broadcast messages
+      - description: Custom topics to use for ordering of the definition broadcast
+          message, instead of the default system topic. Each topic must be a non-empty
+          string. Only used when the definition is published to the multiparty network
         in: query
         name: topics
         schema:
@@ -3842,7 +3848,9 @@ paths:
         name: publish
         schema:
           type: string
-      - description: Custom topics for ordering definition broadcast messages
+      - description: Custom topics to use for ordering of the definition broadcast
+          message, instead of the default system topic. Each topic must be a non-empty
+          string. Only used when the definition is published to the multiparty network
         in: query
         name: topics
         schema:
@@ -4888,7 +4896,9 @@ paths:
         name: confirm
         schema:
           type: string
-      - description: Custom topics for ordering definition broadcast messages
+      - description: Custom topics to use for ordering of the definition broadcast
+          message, instead of the default system topic. Each topic must be a non-empty
+          string. Only used when the definition is published to the multiparty network
         in: query
         name: topics
         schema:
@@ -13621,7 +13631,9 @@ paths:
         name: publish
         schema:
           type: string
-      - description: Custom topics for ordering definition broadcast messages
+      - description: Custom topics to use for ordering of the definition broadcast
+          message, instead of the default system topic. Each topic must be a non-empty
+          string. Only used when the definition is published to the multiparty network
         in: query
         name: topics
         schema:
@@ -13978,7 +13990,9 @@ paths:
         schema:
           example: "true"
           type: string
-      - description: Custom topics for ordering definition broadcast messages
+      - description: Custom topics to use for ordering of the definition broadcast
+          message, instead of the default system topic. Each topic must be a non-empty
+          string. Only used when the definition is published to the multiparty network
         in: query
         name: topics
         schema:
@@ -15733,7 +15747,9 @@ paths:
         name: confirm
         schema:
           type: string
-      - description: Custom topics for ordering definition broadcast messages
+      - description: Custom topics to use for ordering of the definition broadcast
+          message, instead of the default system topic. Each topic must be a non-empty
+          string. Only used when the definition is published to the multiparty network
         in: query
         name: topics
         schema:
@@ -17897,7 +17913,9 @@ paths:
         name: publish
         schema:
           type: string
-      - description: Custom topics for ordering definition broadcast messages
+      - description: Custom topics to use for ordering of the definition broadcast
+          message, instead of the default system topic. Each topic must be a non-empty
+          string. Only used when the definition is published to the multiparty network
         in: query
         name: topics
         schema:
@@ -18971,7 +18989,9 @@ paths:
         name: confirm
         schema:
           type: string
-      - description: Custom topics for ordering definition broadcast messages
+      - description: Custom topics to use for ordering of the definition broadcast
+          message, instead of the default system topic. Each topic must be a non-empty
+          string. Only used when the definition is published to the multiparty network
         in: query
         name: topics
         schema:

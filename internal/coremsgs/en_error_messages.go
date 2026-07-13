@@ -321,4 +321,5 @@ var (
 	MsgInvalidIdentityPatch                    = ffe("FF10480", "A profile must be provided when updating an identity", 400)
 	MsgNodeNotProvidedForCheck                 = ffe("FF10481", "Node not provided for check", 500)
 	MsgNodeMissingProfile                      = ffe("FF10482", "Node provided for check does not have a profile", 500)
+	MsgEmptyCustomTopic                        = ffe("FF10483", "Custom topic at index %d is empty. Each custom topic for the definition broadcast message must be a non-empty string", 400)
 )

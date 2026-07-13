@@ -34,7 +34,7 @@ var postNewContractAPI = &ffapi.Route{
 	QueryParams: []*ffapi.QueryParam{
 		{Name: "confirm", Description: coremsgs.APIConfirmMsgQueryParam, IsBool: true, Example: "true"},
 		{Name: "publish", Description: coremsgs.APIPublishQueryParam, IsBool: true},
-		{Name: "topics", Description: coremsgs.APICustomTopicsQueryParam, IsArray: true},
+		{Name: "topics", Description: coremsgs.APICustomTopicsParam, IsArray: true},
 	},
 	Description:     coremsgs.APIEndpointsPostNewContractAPI,
 	JSONInputValue:  func() interface{} { return &core.ContractAPI{} },

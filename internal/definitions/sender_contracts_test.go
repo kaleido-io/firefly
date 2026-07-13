@@ -258,6 +258,31 @@ func TestDefineFFICustomTopics(t *testing.T) {
 	mms.AssertExpectations(t)
 }
 
+// test that an empty custom topic is rejected with a descriptive validation error
+func TestDefineFFIEmptyCustomTopic(t *testing.T) {
+	ds := newTestDefinitionSender(t)
+	defer ds.cleanup(t)
+	ds.multiparty = true
+
+	ffi := &fftypes.FFI{
+		Name:      "ffi1",
+		Version:   "1.0",
+		Published: true,
+	}
+
+	ds.mdi.On("GetFFIByNetworkName", context.Background(), "ns1", "ffi1", "1.0").Return(nil, nil)
+	ds.mcm.On("ResolveFFI", context.Background(), ffi).Return(nil)
+	ds.mim.On("GetRootOrg", context.Background()).Return(&core.Identity{
+		IdentityBase: core.IdentityBase{
+			DID: "firefly:org1",
+		},
+	}, nil)
+	ds.mim.On("ResolveInputSigningIdentity", context.Background(), mock.Anything).Return(nil)
+
+	err := ds.DefineFFI(context.Background(), ffi, false, []string{"my-custom-topic", ""})
+	assert.Regexp(t, "FF10483.*index 1", err)
+}
+
 func TestDefineContractAPIResolveFail(t *testing.T) {
 	ds := newTestDefinitionSender(t)
 	defer ds.cleanup(t)
