@@ -25,25 +25,25 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/firefly-common/pkg/config"
-	"github.com/hyperledger/firefly-common/pkg/fftypes"
-	"github.com/hyperledger/firefly-common/pkg/i18n"
-	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly-common/pkg/retry"
-	"github.com/hyperledger/firefly/internal/coreconfig"
-	"github.com/hyperledger/firefly/internal/coremsgs"
-	"github.com/hyperledger/firefly/internal/data"
-	"github.com/hyperledger/firefly/internal/identity"
-	"github.com/hyperledger/firefly/internal/txcommon"
-	"github.com/hyperledger/firefly/pkg/core"
-	"github.com/hyperledger/firefly/pkg/database"
+	"github.com/hyperledger-firefly/common/pkg/config"
+	"github.com/hyperledger-firefly/common/pkg/fftypes"
+	"github.com/hyperledger-firefly/common/pkg/i18n"
+	"github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/common/pkg/retry"
+	"github.com/hyperledger-firefly/firefly/internal/coreconfig"
+	"github.com/hyperledger-firefly/firefly/internal/coremsgs"
+	"github.com/hyperledger-firefly/firefly/internal/data"
+	"github.com/hyperledger-firefly/firefly/internal/identity"
+	"github.com/hyperledger-firefly/firefly/internal/txcommon"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
+	"github.com/hyperledger-firefly/firefly/pkg/database"
 )
 
 func NewBatchManager(ctx context.Context, ns string, di database.Plugin, dm data.Manager, im identity.Manager, txHelper txcommon.Helper) (Manager, error) {
 	if di == nil || dm == nil || im == nil {
 		return nil, i18n.NewError(ctx, coremsgs.MsgInitializationNilDepError, "BatchManager")
 	}
-	pCtx, cancelCtx := context.WithCancel(log.WithLogField(ctx, "role", "batchmgr"))
+	pCtx, cancelCtx := context.WithCancel(log.WithLogFields(ctx, "role", "batchmgr"))
 	readPageSize := uint16(1)
 	confReadPageSize := config.GetUint64(coreconfig.BatchManagerReadPageSize)
 	if confReadPageSize > 0 && confReadPageSize <= 65535 {

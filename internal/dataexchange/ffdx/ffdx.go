@@ -28,19 +28,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/firefly/internal/metrics"
+	"github.com/hyperledger-firefly/firefly/internal/metrics"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/hyperledger/firefly-common/pkg/config"
-	"github.com/hyperledger/firefly-common/pkg/ffresty"
-	"github.com/hyperledger/firefly-common/pkg/fftypes"
-	"github.com/hyperledger/firefly-common/pkg/i18n"
-	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly-common/pkg/retry"
-	"github.com/hyperledger/firefly-common/pkg/wsclient"
-	"github.com/hyperledger/firefly/internal/coremsgs"
-	"github.com/hyperledger/firefly/pkg/core"
-	"github.com/hyperledger/firefly/pkg/dataexchange"
+	"github.com/hyperledger-firefly/common/pkg/config"
+	"github.com/hyperledger-firefly/common/pkg/ffresty"
+	"github.com/hyperledger-firefly/common/pkg/fftypes"
+	"github.com/hyperledger-firefly/common/pkg/i18n"
+	"github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/common/pkg/retry"
+	"github.com/hyperledger-firefly/common/pkg/wsclient"
+	"github.com/hyperledger-firefly/firefly/internal/coremsgs"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
+	"github.com/hyperledger-firefly/firefly/pkg/dataexchange"
 )
 
 const DXIDSeparator = "/"
@@ -177,7 +177,7 @@ func (h *FFDX) Name() string {
 }
 
 func (h *FFDX) Init(ctx context.Context, cancelCtx context.CancelFunc, config config.Section, metrics metrics.Manager) (err error) {
-	h.ctx = log.WithLogField(ctx, "dx", "https")
+	h.ctx = log.WithLogFields(ctx, "dx", "https")
 	h.cancelCtx = cancelCtx
 	h.ackChannel = make(chan *ack)
 	h.callbacks = callbacks{

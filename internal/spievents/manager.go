@@ -23,10 +23,10 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/hyperledger/firefly-common/pkg/config"
-	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly/internal/coreconfig"
-	"github.com/hyperledger/firefly/pkg/core"
+	"github.com/hyperledger-firefly/common/pkg/config"
+	"github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/firefly/internal/coreconfig"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
 )
 
 type Manager interface {
@@ -62,7 +62,7 @@ func NewAdminEventManager(ctx context.Context) Manager {
 		blockedWarnInterval: config.GetDuration(coreconfig.SPIWebSocketBlockedWarnInterval),
 	}
 	ae.ctx, ae.cancelCtx = context.WithCancel(
-		log.WithLogField(ctx, "role", "change-event-manager"),
+		log.WithLogFields(ctx, "role", "change-event-manager"),
 	)
 	return ae
 }

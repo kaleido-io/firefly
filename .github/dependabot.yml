@@ -1,0 +1,88 @@
+# Dependabot configuration
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# Ecosystems in this repo:
+#   - gomod: root module, fabric smart-contract samples, and a test contract
+#   - npm: ethereum smart-contract samples (all current open alerts are here)
+#   - pip: doc-site/requirements.txt
+#   - docker: root Dockerfile
+#   - github-actions: .github/workflows
+#
+# Each ecosystem groups ALL of its updates into a single PR per run. Both regular
+# version updates and security fixes are grouped, so Dependabot opens at most one
+# PR per ecosystem per directory (security updates are otherwise opened
+# individually and ungrouped by default).
+
+version: 2
+
+updates:
+  - package-ecosystem: gomod
+    directories:
+      - "/"
+      - "/smart_contracts/fabric/firefly-go"
+      - "/smart_contracts/fabric/custompin-sample"
+      - "/test/data/contracts/assetcreator"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 4
+    groups:
+      gomod:
+        applies-to: version-updates
+        patterns: ["*"]
+      gomod-security:
+        applies-to: security-updates
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directories:
+      - "/smart_contracts/ethereum/custompin_sample"
+      - "/smart_contracts/ethereum/solidity_firefly"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      npm:
+        applies-to: version-updates
+        patterns: ["*"]
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: "/doc-site"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 1
+    groups:
+      pip:
+        applies-to: version-updates
+        patterns: ["*"]
+      pip-security:
+        applies-to: security-updates
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 1
+    groups:
+      docker:
+        applies-to: version-updates
+        patterns: ["*"]
+      docker-security:
+        applies-to: security-updates
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 1
+    groups:
+      github-actions:
+        applies-to: version-updates
+        patterns: ["*"]
+      github-actions-security:
+        applies-to: security-updates
+        patterns: ["*"]

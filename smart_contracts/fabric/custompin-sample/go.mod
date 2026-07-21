@@ -1,4 +1,4 @@
-module github.com/hyperledger/firefly/custompin_sample
+module github.com/hyperledger-firefly/firefly/custompin_sample
 
 go 1.26.0
 

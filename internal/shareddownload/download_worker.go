@@ -20,8 +20,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly/pkg/core"
+	"github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
 )
 
 type downloadWorker struct {
@@ -32,7 +32,7 @@ type downloadWorker struct {
 
 func newDownloadWorker(dm *downloadManager, idx int) *downloadWorker {
 	dw := &downloadWorker{
-		ctx:  log.WithLogField(dm.ctx, "downloadworker", fmt.Sprintf("dw_%.3d", idx)),
+		ctx:  log.WithLogFields(dm.ctx, "downloadworker", fmt.Sprintf("dw_%.3d", idx)),
 		done: make(chan struct{}),
 		dm:   dm,
 	}
@@ -56,12 +56,11 @@ func (dw *downloadWorker) downloadWorkerLoop() {
 }
 
 func (dw *downloadWorker) attemptWork(work *downloadWork) {
-
-	work.attempts++
-	isLastAttempt := work.attempts >= dw.dm.retryMaxAttempts
+	attempts := int(work.attempts.Add(1))
+	isLastAttempt := attempts >= dw.dm.retryMaxAttempts
 	_, err := dw.dm.operations.RunOperation(dw.ctx, work.preparedOp, work.idempotentSubmit)
 	if err != nil {
-		log.L(dw.ctx).Errorf("Download operation %s/%s attempt=%d/%d failed: %s", work.preparedOp.Type, work.preparedOp.ID, work.attempts, dw.dm.retryMaxAttempts, err)
+		log.L(dw.ctx).Errorf("Download operation %s/%s attempt=%d/%d failed: %s", work.preparedOp.Type, work.preparedOp.ID, attempts, dw.dm.retryMaxAttempts, err)
 		if isLastAttempt {
 			dw.dm.operations.SubmitOperationUpdate(&core.OperationUpdateAsync{
 				OperationUpdate: core.OperationUpdate{

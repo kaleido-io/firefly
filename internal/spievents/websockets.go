@@ -25,9 +25,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/hyperledger/firefly-common/pkg/fftypes"
-	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly/pkg/core"
+	"github.com/hyperledger-firefly/common/pkg/fftypes"
+	"github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
 )
 
 type webSocket struct {
@@ -49,7 +49,7 @@ type webSocket struct {
 
 func newWebSocket(ae *adminEventManager, wsConn *websocket.Conn) *webSocket {
 	connID := fftypes.NewUUID().String()
-	ctx := log.WithLogField(ae.ctx, "admin.ws", connID)
+	ctx := log.WithLogFields(ae.ctx, "admin.ws", connID)
 	ctx, cancelCtx := context.WithCancel(ctx)
 	wc := &webSocket{
 		ctx:          ctx,

@@ -37,15 +37,15 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/hyperledger/firefly-common/pkg/config"
-	"github.com/hyperledger/firefly-common/pkg/ffresty"
-	"github.com/hyperledger/firefly-common/pkg/fftls"
-	"github.com/hyperledger/firefly-common/pkg/fftypes"
-	fflog "github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly/internal/coreconfig"
-	"github.com/hyperledger/firefly/mocks/eventsmocks"
-	"github.com/hyperledger/firefly/pkg/core"
-	"github.com/hyperledger/firefly/pkg/events"
+	"github.com/hyperledger-firefly/common/pkg/config"
+	"github.com/hyperledger-firefly/common/pkg/ffresty"
+	"github.com/hyperledger-firefly/common/pkg/fftls"
+	"github.com/hyperledger-firefly/common/pkg/fftypes"
+	fflog "github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/firefly/internal/coreconfig"
+	"github.com/hyperledger-firefly/firefly/mocks/eventsmocks"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
+	"github.com/hyperledger-firefly/firefly/pkg/events"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -1582,7 +1582,7 @@ func TestLoggingContextPreserved(t *testing.T) {
 		Subscription:  core.SubscriptionRef{ID: subID},
 	}
 
-	parentCtx := fflog.WithLogField(context.Background(), "httpReq", "req-123")
+	parentCtx := fflog.WithLogFields(context.Background(), "httpReq", "req-123")
 
 	mcb := wh.callbacks.handlers["ns1"].(*eventsmocks.Callbacks)
 	mcb.On("DeliveryResponse", mock.Anything, mock.MatchedBy(func(resp *core.EventDeliveryResponse) bool {

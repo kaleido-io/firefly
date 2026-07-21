@@ -27,11 +27,11 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/hyperledger/firefly-common/pkg/fftypes"
-	"github.com/hyperledger/firefly-common/pkg/i18n"
-	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly/internal/coremsgs"
-	"github.com/hyperledger/firefly/pkg/core"
+	"github.com/hyperledger-firefly/common/pkg/fftypes"
+	"github.com/hyperledger-firefly/common/pkg/i18n"
+	"github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/firefly/internal/coremsgs"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
 )
 
 type websocketStartedSub struct {
@@ -64,7 +64,7 @@ type websocketConnection struct {
 
 func newConnection(pCtx context.Context, ws *WebSockets, wsConn *websocket.Conn, req *http.Request, auth core.Authorizer) *websocketConnection {
 	connID := fftypes.NewUUID().String()
-	ctx := log.WithLogField(pCtx, "websocket", connID)
+	ctx := log.WithLogFields(pCtx, "websocket", connID)
 	ctx, cancelCtx := context.WithCancel(ctx)
 	wc := &websocketConnection{
 		ctx:          ctx,

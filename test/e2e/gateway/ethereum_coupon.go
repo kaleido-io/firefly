@@ -24,10 +24,10 @@ import (
 
 	"github.com/aidarkhanov/nanoid"
 	"github.com/go-resty/resty/v2"
-	"github.com/hyperledger/firefly-common/pkg/fftypes"
-	"github.com/hyperledger/firefly/pkg/core"
-	"github.com/hyperledger/firefly/test/e2e"
-	"github.com/hyperledger/firefly/test/e2e/client"
+	"github.com/hyperledger-firefly/common/pkg/fftypes"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
+	"github.com/hyperledger-firefly/firefly/test/e2e"
+	"github.com/hyperledger-firefly/firefly/test/e2e/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -297,9 +297,9 @@ func (suite *EthereumCouponTestSuite) TestDirectInvokeMethod() {
 		Location: fftypes.JSONAnyPtrBytes(locationBytes),
 		Method:   couponFFIGetAllCouponIDs(),
 	}
-	res, err = suite.testState.client1.QueryContractMethod(suite.T(), queryContractRequest)
+	queryRes, err := suite.testState.client1.QueryContractMethod(suite.T(), queryContractRequest)
 	assert.NoError(suite.T(), err)
-	resJSON, err := json.Marshal(res)
+	resJSON, err := json.Marshal(queryRes)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), `{"allCreatedIds":["1"]}`, string(resJSON))
 	suite.testState.client1.DeleteContractListener(suite.T(), listener.ID)

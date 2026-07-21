@@ -1,11 +1,11 @@
 # Hyperledger FireFly
 
-[![codecov](https://codecov.io/gh/hyperledger/firefly/branch/main/graph/badge.svg?token=QdEnpMqB1G)](https://codecov.io/gh/hyperledger/firefly)
-[![Go Report Card](https://goreportcard.com/badge/github.com/hyperledger/firefly)](https://goreportcard.com/report/github.com/hyperledger/firefly)
-[![FireFy Documentation](https://img.shields.io/static/v1?label=FireFly&message=documentation&color=informational)](https://hyperledger.github.io/firefly//)
-![build](https://github.com/hyperledger/firefly/actions/workflows/docker_main.yml/badge.svg?branch=main)
+[![codecov](https://codecov.io/gh/hyperledger-firefly/firefly/branch/main/graph/badge.svg?token=QdEnpMqB1G)](https://codecov.io/gh/hyperledger-firefly/firefly)
+[![Go Report Card](https://goreportcard.com/badge/github.com/hyperledger-firefly/firefly)](https://goreportcard.com/report/github.com/hyperledger-firefly/firefly)
+[![FireFy Documentation](https://img.shields.io/static/v1?label=FireFly&message=documentation&color=informational)](https://hyperledger-firefly.github.io/firefly//)
+![build](https://github.com/hyperledger-firefly/firefly/actions/workflows/docker_main.yml/badge.svg?branch=main)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/7826/badge)](https://www.bestpractices.dev/projects/7826)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/hyperledger/firefly/badge)](https://scorecard.dev/viewer/?uri=github.com/hyperledger/firefly)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/hyperledger-firefly/firefly/badge)](https://scorecard.dev/viewer/?uri=github.com/hyperledger-firefly/firefly)
 
 ![Hyperledger FireFly](./images/hyperledger_firefly_logo.png)
 
@@ -17,16 +17,16 @@ FireFly 提供的数字资产、数据流和区块链交易API，使企业能够
 
 ## 开始使用 Hyperledger FireFly
 
-了解FireFly的最佳方式请参照[文档](https://hyperledger.github.io/firefly)。
+了解FireFly的最佳方式请参照[文档](https://hyperledger-firefly.github.io/firefly)。
 
-您可以在这里找到我们的[入门指南](https://hyperledger.github.io/firefly/latest/gettingstarted/),
+您可以在这里找到我们的[入门指南](https://hyperledger-firefly.github.io/firefly/latest/gettingstarted/),
 通过该指南将帮助您在几分钟内在本地机器上运行起来一个FireFly超级节点网络的开发环境。
 
 您的开发环境将包括:
 
 FireFly CLI                   |  FireFly Explorer UI                | FireFly Sandbox  |
 :----------------------------:|:-----------------------------------:|:----------------:|
-[![CLI](./images/firefly_cli.png)](https://hyperledger.github.io/firefly/latest/gettingstarted/firefly_cli/#install-the-firefly-cli) | [![UI](./images/firefly_explorer.png)](https://github.com/hyperledger/firefly-ui) | [![Sandbox](./images/firefly_sandbox.png)](https://hyperledger.github.io/firefly/latest/gettingstarted/sandbox/#use-the-sandbox) |
+[![CLI](./images/firefly_cli.png)](https://hyperledger-firefly.github.io/firefly/latest/gettingstarted/firefly_cli/#install-the-firefly-cli) | [![UI](./images/firefly_explorer.png)](https://github.com/hyperledger-firefly/ui) | [![Sandbox](./images/firefly_sandbox.png)](https://hyperledger-firefly.github.io/firefly/latest/gettingstarted/sandbox/#use-the-sandbox) |
 
 ## 加入社区
 
@@ -44,7 +44,7 @@ Hyperledger FireFly 拥有可插拔的微服务架构。无论是区块链协议
 
 无论您是前端、后端，还是全栈开发者，这里都有适合您的贡献机会。
 
-请查看我们的[贡献者指南](https://hyperledger.github.io/firefly/latest/contributors/)，**欢迎加入**！
+请查看我们的[贡献者指南](https://hyperledger-firefly.github.io/firefly/latest/contributors/)，**欢迎加入**！
 
 ## 其他存储库
 
@@ -56,35 +56,35 @@ Hyperledger FireFly 拥有可插拔的微服务架构。无论是区块链协议
 
 ### 区块链连接
 
-- Transaction Manager（区块链交易管理组件）- https://github.com/hyperledger/firefly-transaction-manager
-- RLP & ABI 编码, Keystore V3实用工具 和 secp256k1 签名运行时 -  https://github.com/hyperledger/firefly-signer
-- 通用型以太坊区块链的参考连接器 - https://github.com/hyperledger/firefly-evmconnect
-  - EVM兼容公链: 请参见[文档](https://hyperledger.github.io/firefly)
-- 针对许可制以太坊区块链的连接器 - https://github.com/hyperledger/firefly-ethconnect
+- Transaction Manager（区块链交易管理组件）- https://github.com/hyperledger-firefly/transaction-manager
+- RLP & ABI 编码, Keystore V3实用工具 和 secp256k1 签名运行时 -  https://github.com/hyperledger-firefly/signer
+- 通用型以太坊区块链的参考连接器 - https://github.com/hyperledger-firefly/evmconnect
+  - EVM兼容公链: 请参见[文档](https://hyperledger-firefly.github.io/firefly)
+- 针对许可制以太坊区块链的连接器 - https://github.com/hyperledger-firefly/ethconnect
   - 私有/许可制区块链: Hyperledger Besu / Quorum
-- Hyperledger Fabric连接器 - https://github.com/hyperledger/firefly-fabconnect
-- Tezos连接器 - https://github.com/hyperledger/firefly-tezosconnect
-- Corda连接器示例: https://github.com/hyperledger/firefly-cordaconnect
+- Hyperledger Fabric连接器 - https://github.com/hyperledger-firefly/fabconnect
+- Tezos连接器 - https://github.com/hyperledger-firefly/tezosconnect
+- Corda连接器示例: https://github.com/hyperledger-firefly/cordaconnect
   - 使用该连接器，需要对 CorDapp 进行定制化开发
 
 ### 代币标准
 
-- ERC20/ERC721 代币 - https://github.com/hyperledger/firefly-tokens-erc20-erc721
-- ERC1155 代币 - https://github.com/hyperledger/firefly-tokens-erc1155
+- ERC20/ERC721 代币 - https://github.com/hyperledger-firefly/tokens-erc20-erc721
+- ERC1155 代币 - https://github.com/hyperledger-firefly/tokens-erc1155
 
 ### 私有数据总线连接
 
-- HTTPS 数据交换组件 - https://github.com/hyperledger/firefly-dataexchange-https
+- HTTPS 数据交换组件 - https://github.com/hyperledger-firefly/dataexchange-https
 
 ### 开发者生态系统
 
-- 命令行界面 (CLI) - https://github.com/hyperledger/firefly-cli
-- 图形用户界面 - https://github.com/hyperledger/firefly-ui
-- Node.js SDK - https://github.com/hyperledger/firefly-sdk-nodejs
-- 沙盒/测试工具 - https://github.com/hyperledger/firefly-sandbox
-- 示例 - https://github.com/hyperledger/firefly-samples
-- FireFly 性能测试 CLI: https://github.com/hyperledger/firefly-perf-cli
-- 部署到Kubernetes的示例Helm Charts: https://github.com/hyperledger/firefly-helm-charts
+- 命令行界面 (CLI) - https://github.com/hyperledger-firefly/cli
+- 图形用户界面 - https://github.com/hyperledger-firefly/ui
+- Node.js SDK - https://github.com/hyperledger-firefly/sdk-nodejs
+- 沙盒/测试工具 - https://github.com/hyperledger-firefly/sandbox
+- 示例 - https://github.com/hyperledger-firefly/samples
+- FireFly 性能测试 CLI: https://github.com/hyperledger-firefly/perf-cli
+- 部署到Kubernetes的示例Helm Charts: https://github.com/hyperledger-firefly/helm-charts
 
 ## FireFly 核心代码层级结构
 

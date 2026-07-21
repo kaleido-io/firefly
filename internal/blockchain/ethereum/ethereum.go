@@ -27,21 +27,21 @@ import (
 	"strings"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/hyperledger/firefly-common/pkg/config"
-	"github.com/hyperledger/firefly-common/pkg/ffresty"
-	"github.com/hyperledger/firefly-common/pkg/fftypes"
-	"github.com/hyperledger/firefly-common/pkg/i18n"
-	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly-common/pkg/wsclient"
-	"github.com/hyperledger/firefly-signer/pkg/abi"
-	"github.com/hyperledger/firefly-signer/pkg/ffi2abi"
-	"github.com/hyperledger/firefly/internal/blockchain/common"
-	"github.com/hyperledger/firefly/internal/cache"
-	"github.com/hyperledger/firefly/internal/coreconfig"
-	"github.com/hyperledger/firefly/internal/coremsgs"
-	"github.com/hyperledger/firefly/internal/metrics"
-	"github.com/hyperledger/firefly/pkg/blockchain"
-	"github.com/hyperledger/firefly/pkg/core"
+	"github.com/hyperledger-firefly/common/pkg/config"
+	"github.com/hyperledger-firefly/common/pkg/ffresty"
+	"github.com/hyperledger-firefly/common/pkg/fftypes"
+	"github.com/hyperledger-firefly/common/pkg/i18n"
+	"github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/common/pkg/wsclient"
+	"github.com/hyperledger-firefly/firefly/internal/blockchain/common"
+	"github.com/hyperledger-firefly/firefly/internal/cache"
+	"github.com/hyperledger-firefly/firefly/internal/coreconfig"
+	"github.com/hyperledger-firefly/firefly/internal/coremsgs"
+	"github.com/hyperledger-firefly/firefly/internal/metrics"
+	"github.com/hyperledger-firefly/firefly/pkg/blockchain"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
+	"github.com/hyperledger-firefly/signer/pkg/abi"
+	"github.com/hyperledger-firefly/signer/pkg/ffi2abi"
 	"github.com/sirupsen/logrus"
 )
 
@@ -137,7 +137,7 @@ func (e *Ethereum) Init(ctx context.Context, cancelCtx context.CancelFunc, conf 
 	ethconnectConf := e.ethconnectConf
 	addressResolverConf := conf.SubSection(AddressResolverConfigKey)
 
-	e.ctx = log.WithLogField(ctx, "proto", "ethereum")
+	e.ctx = log.WithLogFields(ctx, "proto", "ethereum")
 	e.cancelCtx = cancelCtx
 	e.metrics = metrics
 	e.capabilities = &blockchain.Capabilities{}
@@ -620,6 +620,12 @@ func (e *Ethereum) invokeContractMethod(ctx context.Context, address, signingKey
 		SetError(&resErr).
 		Post("/")
 	if err != nil || !res.IsSuccess() {
+		// 409 is a conflict error, so that means the transaction was already submitted / exists
+		// so we can return a success w/o error
+		if res != nil && res.StatusCode() == 409 && !resErr.SubmissionRejected {
+			return false, nil
+		}
+
 		return resErr.SubmissionRejected, common.WrapRESTError(ctx, &resErr, res, err, coremsgs.MsgEthConnectorRESTErr)
 	}
 	return false, nil
@@ -761,6 +767,11 @@ func (e *Ethereum) DeployContract(ctx context.Context, nsOpID, signingKey string
 		SetError(&resErr).
 		Post("/")
 	if err != nil || !res.IsSuccess() {
+		// 409 is a conflict error, so that means the transaction was already submitted / exists
+		// so we can return a success w/o error
+		if res != nil && res.StatusCode() == 409 && !resErr.SubmissionRejected {
+			return false, nil
+		}
 		if strings.Contains(string(res.Body()), "FFEC100130") {
 			// This error is returned by ethconnect because it does not support deploying contracts with this syntax
 			// Return a more helpful and clear error message

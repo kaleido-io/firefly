@@ -25,10 +25,10 @@ import (
 
 	"github.com/aidarkhanov/nanoid"
 	"github.com/go-resty/resty/v2"
-	"github.com/hyperledger/firefly-common/pkg/fftypes"
-	"github.com/hyperledger/firefly/pkg/core"
-	"github.com/hyperledger/firefly/test/e2e"
-	"github.com/hyperledger/firefly/test/e2e/client"
+	"github.com/hyperledger-firefly/common/pkg/fftypes"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
+	"github.com/hyperledger-firefly/firefly/test/e2e"
+	"github.com/hyperledger-firefly/firefly/test/e2e/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -159,10 +159,10 @@ func (suite *FabricContractTestSuite) TestE2EContractEvents() {
 		},
 	}
 
-	res, err = suite.testState.client1.QueryContractMethod(suite.testState.t, queryContractRequest)
+	queryRes, err := suite.testState.client1.QueryContractMethod(suite.testState.t, queryContractRequest)
 	suite.T().Log(res)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), assetName, res.(map[string]interface{})["name"])
+	assert.Equal(suite.T(), assetName, queryRes.(map[string]interface{})["name"])
 
 	suite.testState.client1.DeleteContractListener(suite.T(), subs[0].ID)
 	subs = suite.testState.client1.GetContractListeners(suite.T(), suite.testState.startTime)

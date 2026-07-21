@@ -24,12 +24,12 @@ import (
 	"io"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/hyperledger/firefly-common/pkg/config"
-	"github.com/hyperledger/firefly-common/pkg/ffresty"
-	"github.com/hyperledger/firefly-common/pkg/i18n"
-	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly/internal/coremsgs"
-	"github.com/hyperledger/firefly/pkg/sharedstorage"
+	"github.com/hyperledger-firefly/common/pkg/config"
+	"github.com/hyperledger-firefly/common/pkg/ffresty"
+	"github.com/hyperledger-firefly/common/pkg/i18n"
+	"github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/firefly/internal/coremsgs"
+	"github.com/hyperledger-firefly/firefly/pkg/sharedstorage"
 )
 
 type IPFS struct {
@@ -51,7 +51,7 @@ func (i *IPFS) Name() string {
 
 func (i *IPFS) Init(ctx context.Context, config config.Section) (err error) {
 
-	i.ctx = log.WithLogField(ctx, "sharedstorage", "ipfs")
+	i.ctx = log.WithLogFields(ctx, "sharedstorage", "ipfs")
 
 	apiConfig := config.SubSection(IPFSConfAPISubconf)
 	if apiConfig.GetString(ffresty.HTTPConfigURL) == "" {

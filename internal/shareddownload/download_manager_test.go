@@ -24,17 +24,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/firefly-common/pkg/config"
-	"github.com/hyperledger/firefly-common/pkg/ffapi"
-	"github.com/hyperledger/firefly-common/pkg/fftypes"
-	"github.com/hyperledger/firefly/internal/coreconfig"
-	"github.com/hyperledger/firefly/mocks/databasemocks"
-	"github.com/hyperledger/firefly/mocks/dataexchangemocks"
-	"github.com/hyperledger/firefly/mocks/operationmocks"
-	"github.com/hyperledger/firefly/mocks/shareddownloadmocks"
-	"github.com/hyperledger/firefly/mocks/sharedstoragemocks"
-	"github.com/hyperledger/firefly/pkg/core"
-	"github.com/hyperledger/firefly/pkg/database"
+	"github.com/hyperledger-firefly/common/pkg/config"
+	"github.com/hyperledger-firefly/common/pkg/ffapi"
+	"github.com/hyperledger-firefly/common/pkg/fftypes"
+	"github.com/hyperledger-firefly/firefly/internal/coreconfig"
+	"github.com/hyperledger-firefly/firefly/mocks/databasemocks"
+	"github.com/hyperledger-firefly/firefly/mocks/dataexchangemocks"
+	"github.com/hyperledger-firefly/firefly/mocks/operationmocks"
+	"github.com/hyperledger-firefly/firefly/mocks/shareddownloadmocks"
+	"github.com/hyperledger-firefly/firefly/mocks/sharedstoragemocks"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
+	"github.com/hyperledger-firefly/firefly/pkg/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -296,7 +296,10 @@ func TestDownloadManagerStartupRecoveryCombinations(t *testing.T) {
 		assert.Equal(t, core.OpPhaseComplete, phase)
 		called <- true
 	})
-	mom.On("SubmitOperationUpdate", mock.Anything).Return(nil)
+	updateCalled := make(chan bool)
+	mom.On("SubmitOperationUpdate", mock.Anything).Return(nil).Run(func(args mock.Arguments) {
+		updateCalled <- true
+	})
 
 	mci := dm.callbacks.(*shareddownloadmocks.Callbacks)
 	mci.On("SharedStorageBatchDownloaded", "ref2", []byte("some batch data")).Return(batchID, nil)
@@ -307,12 +310,12 @@ func TestDownloadManagerStartupRecoveryCombinations(t *testing.T) {
 	<-called
 	<-called
 	<-dm.recoveryComplete
+	<-updateCalled
 
 	mss.AssertExpectations(t)
 	mdi.AssertExpectations(t)
 	mci.AssertExpectations(t)
 	mom.AssertExpectations(t)
-
 }
 
 func TestPrepareOperationUnknown(t *testing.T) {

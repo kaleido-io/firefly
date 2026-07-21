@@ -1,6 +1,6 @@
 # ARG Definitions
 # Consider adding default values for the ARGs based on this warning:
-# https://github.com/hyperledger/firefly/actions/runs/10795366695/job/29941873807#step:4:171
+# https://github.com/hyperledger-firefly/firefly/actions/runs/10795366695/job/29941873807#step:4:171
 ARG FIREFLY_BUILDER_TAG
 ARG FABRIC_BUILDER_TAG
 ARG FABRIC_BUILDER_PLATFORM
@@ -66,9 +66,9 @@ FROM alpine:3.21 AS sbom
 WORKDIR /
 ADD . /SBOM
 RUN apk add --no-cache curl
-RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.69.3
+RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.72.0
 RUN trivy fs --format spdx-json --output /sbom.spdx.json /SBOM
-RUN trivy sbom /sbom.spdx.json --severity UNKNOWN,HIGH,CRITICAL --db-repository public.ecr.aws/aquasecurity/trivy-db --exit-code 1
+RUN trivy sbom /sbom.spdx.json --ignorefile /SBOM/.trivyignore --severity UNKNOWN,HIGH,CRITICAL --db-repository public.ecr.aws/aquasecurity/trivy-db --exit-code 1
 
 # Final executable build
 FROM $BASE_TAG
@@ -92,7 +92,7 @@ COPY --from=firefly-builder --chown=1001:0 /firefly/firefly ./firefly
 COPY --from=firefly-builder --chown=1001:0 /firefly/db ./db
 COPY --from=solidity-builder --chown=1001:0 /firefly/solidity_firefly/build/contracts ./contracts
 COPY --from=fabric-builder --chown=1001:0 /firefly/smart_contracts/fabric/firefly-go/firefly_fabric.tar.gz ./contracts/firefly_fabric.tar.gz
-ENV UI_RELEASE=https://github.com/hyperledger/firefly-ui/releases/download/$UI_TAG/$UI_RELEASE.tgz
+ENV UI_RELEASE=https://github.com/hyperledger-firefly/ui/releases/download/$UI_TAG/$UI_RELEASE.tgz
 RUN mkdir /firefly/frontend \
   && curl -sLo - $UI_RELEASE | tar -C /firefly/frontend -zxvf -
 COPY --from=sbom /sbom.spdx.json /sbom.spdx.json

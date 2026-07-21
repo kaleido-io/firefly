@@ -22,13 +22,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hyperledger/firefly-common/pkg/config"
-	"github.com/hyperledger/firefly-common/pkg/fftypes"
-	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly-common/pkg/retry"
-	"github.com/hyperledger/firefly/internal/coreconfig"
-	"github.com/hyperledger/firefly/pkg/core"
-	"github.com/hyperledger/firefly/pkg/database"
+	"github.com/hyperledger-firefly/common/pkg/config"
+	"github.com/hyperledger-firefly/common/pkg/fftypes"
+	"github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/common/pkg/retry"
+	"github.com/hyperledger-firefly/firefly/internal/coreconfig"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
+	"github.com/hyperledger-firefly/firefly/pkg/database"
 )
 
 type blobNotification struct {
@@ -129,7 +129,7 @@ func (br *blobReceiver) stop() {
 func (br *blobReceiver) blobReceiverLoop(index int) {
 	defer close(br.workersDone[index])
 
-	ctx := log.WithLogField(br.ctx, "blobreceiver", fmt.Sprintf("brcvr_%.3d", index))
+	ctx := log.WithLogFields(br.ctx, "blobreceiver", fmt.Sprintf("brcvr_%.3d", index))
 
 	var batch *blobReceiverBatch
 	for !br.closed {

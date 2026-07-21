@@ -21,15 +21,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hyperledger/firefly-common/pkg/config"
-	"github.com/hyperledger/firefly-common/pkg/i18n"
-	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly/internal/coreconfig"
-	"github.com/hyperledger/firefly/internal/coremsgs"
-	"github.com/hyperledger/firefly/internal/operations"
-	"github.com/hyperledger/firefly/internal/txcommon"
-	"github.com/hyperledger/firefly/pkg/core"
-	"github.com/hyperledger/firefly/pkg/database"
+	"github.com/hyperledger-firefly/common/pkg/config"
+	"github.com/hyperledger-firefly/common/pkg/i18n"
+	"github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/firefly/internal/coreconfig"
+	"github.com/hyperledger-firefly/firefly/internal/coremsgs"
+	"github.com/hyperledger-firefly/firefly/internal/operations"
+	"github.com/hyperledger-firefly/firefly/internal/txcommon"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
+	"github.com/hyperledger-firefly/firefly/pkg/database"
 )
 
 type Writer interface {
@@ -140,7 +140,7 @@ func (tw *txWriter) Start() {
 func (tw *txWriter) writerLoop(writerIndex int) {
 	defer close(tw.workersDone[writerIndex])
 
-	ctx := log.WithLogField(tw.bgContext, "job", fmt.Sprintf("txwriter_%.3d", writerIndex))
+	ctx := log.WithLogFields(tw.bgContext, "job", fmt.Sprintf("txwriter_%.3d", writerIndex))
 	var batchNumber int
 	var batch *txWriterBatch
 	for !tw.closed {
@@ -173,7 +173,7 @@ func (tw *txWriter) writerLoop(writerIndex int) {
 }
 
 func (tw *txWriter) executeBatch(ctx context.Context, batch *txWriterBatch) {
-	ctx = log.WithLogField(ctx, "batch", batch.id)
+	ctx = log.WithLogFields(ctx, "batch", batch.id)
 	err := tw.database.RunAsGroup(ctx, func(ctx context.Context) error {
 		return tw.processBatch(ctx, batch)
 	})

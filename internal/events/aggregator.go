@@ -23,23 +23,23 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hyperledger/firefly-common/pkg/config"
-	"github.com/hyperledger/firefly-common/pkg/ffapi"
-	"github.com/hyperledger/firefly-common/pkg/fftypes"
-	"github.com/hyperledger/firefly-common/pkg/i18n"
-	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly-common/pkg/retry"
-	"github.com/hyperledger/firefly/internal/cache"
-	"github.com/hyperledger/firefly/internal/coreconfig"
-	"github.com/hyperledger/firefly/internal/coremsgs"
-	"github.com/hyperledger/firefly/internal/data"
-	"github.com/hyperledger/firefly/internal/definitions"
-	"github.com/hyperledger/firefly/internal/identity"
-	"github.com/hyperledger/firefly/internal/metrics"
-	"github.com/hyperledger/firefly/internal/privatemessaging"
-	"github.com/hyperledger/firefly/pkg/blockchain"
-	"github.com/hyperledger/firefly/pkg/core"
-	"github.com/hyperledger/firefly/pkg/database"
+	"github.com/hyperledger-firefly/common/pkg/config"
+	"github.com/hyperledger-firefly/common/pkg/ffapi"
+	"github.com/hyperledger-firefly/common/pkg/fftypes"
+	"github.com/hyperledger-firefly/common/pkg/i18n"
+	"github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/common/pkg/retry"
+	"github.com/hyperledger-firefly/firefly/internal/cache"
+	"github.com/hyperledger-firefly/firefly/internal/coreconfig"
+	"github.com/hyperledger-firefly/firefly/internal/coremsgs"
+	"github.com/hyperledger-firefly/firefly/internal/data"
+	"github.com/hyperledger-firefly/firefly/internal/definitions"
+	"github.com/hyperledger-firefly/firefly/internal/identity"
+	"github.com/hyperledger-firefly/firefly/internal/metrics"
+	"github.com/hyperledger-firefly/firefly/internal/privatemessaging"
+	"github.com/hyperledger-firefly/firefly/pkg/blockchain"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
+	"github.com/hyperledger-firefly/firefly/pkg/database"
 )
 
 const (
@@ -98,7 +98,7 @@ func privatePinHash(topic string, group *fftypes.Bytes32, identity string, nonce
 func newAggregator(ctx context.Context, ns string, di database.Plugin, bi blockchain.Plugin, pm privatemessaging.Manager, sh definitions.Handler, im identity.Manager, dm data.Manager, en *eventNotifier, mm metrics.Manager, cacheManager cache.Manager) (*aggregator, error) {
 	batchSize := config.GetUint64(coreconfig.EventAggregatorBatchSize)
 	ag := &aggregator{
-		ctx:          log.WithLogField(ctx, "role", "aggregator"),
+		ctx:          log.WithLogFields(ctx, "role", "aggregator"),
 		namespace:    ns,
 		database:     di,
 		messaging:    pm,

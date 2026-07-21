@@ -17,9 +17,9 @@
 package ethereum
 
 import (
-	"github.com/hyperledger/firefly-common/pkg/config"
-	"github.com/hyperledger/firefly-common/pkg/ffresty"
-	"github.com/hyperledger/firefly-common/pkg/wsclient"
+	"github.com/hyperledger-firefly/common/pkg/config"
+	"github.com/hyperledger-firefly/common/pkg/ffresty"
+	"github.com/hyperledger-firefly/common/pkg/wsclient"
 )
 
 const (
@@ -87,6 +87,7 @@ func (e *Ethereum) InitConfig(config config.Section) {
 	e.ethconnectConf = config.SubSection(EthconnectConfigKey)
 	wsclient.InitConfig(e.ethconnectConf)
 
+	e.ethconnectConf.SetDefault(ffresty.HTTPConfigRetryErrorStatusCodeRegex, "^5|^429$") // 5xx and 429s, but not 409s / 404s
 	e.ethconnectConf.AddKnownKey(EthconnectConfigTopic)
 	e.ethconnectConf.AddKnownKey(EthconnectBackgroundStart)
 	e.ethconnectConf.AddKnownKey(EthconnectBackgroundStartInitialDelay, defaultBackgroundInitialDelay)
@@ -99,6 +100,7 @@ func (e *Ethereum) InitConfig(config config.Section) {
 	e.ethconnectConf.AddKnownKey(EthconnectConfigInstanceDeprecated)
 	e.ethconnectConf.AddKnownKey(EthconnectConfigFromBlockDeprecated, defaultFromBlock)
 
+	// this is unused in reality
 	fftmConf := config.SubSection(FFTMConfigKey)
 	ffresty.InitConfig(fftmConf)
 

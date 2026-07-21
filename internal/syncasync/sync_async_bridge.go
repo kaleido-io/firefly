@@ -23,15 +23,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/firefly-common/pkg/fftypes"
-	"github.com/hyperledger/firefly-common/pkg/i18n"
-	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly/internal/coremsgs"
-	"github.com/hyperledger/firefly/internal/data"
-	"github.com/hyperledger/firefly/internal/events/system"
-	"github.com/hyperledger/firefly/internal/operations"
-	"github.com/hyperledger/firefly/pkg/core"
-	"github.com/hyperledger/firefly/pkg/database"
+	"github.com/hyperledger-firefly/common/pkg/fftypes"
+	"github.com/hyperledger-firefly/common/pkg/i18n"
+	"github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/firefly/internal/coremsgs"
+	"github.com/hyperledger-firefly/firefly/internal/data"
+	"github.com/hyperledger-firefly/firefly/internal/events/system"
+	"github.com/hyperledger-firefly/firefly/internal/operations"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
+	"github.com/hyperledger-firefly/firefly/pkg/database"
 )
 
 // Bridge translates synchronous (HTTP API) calls, into asynchronously sending a
@@ -111,7 +111,7 @@ type syncAsyncBridge struct {
 
 func NewSyncAsyncBridge(ctx context.Context, ns string, di database.Plugin, dm data.Manager, om operations.Manager) Bridge {
 	sa := &syncAsyncBridge{
-		ctx:        log.WithLogField(ctx, "role", "sync-async-bridge"),
+		ctx:        log.WithLogFields(ctx, "role", "sync-async-bridge"),
 		namespace:  ns,
 		database:   di,
 		data:       dm,

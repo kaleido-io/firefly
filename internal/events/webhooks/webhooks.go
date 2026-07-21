@@ -29,14 +29,14 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/hyperledger/firefly-common/pkg/config"
-	"github.com/hyperledger/firefly-common/pkg/ffresty"
-	"github.com/hyperledger/firefly-common/pkg/fftypes"
-	"github.com/hyperledger/firefly-common/pkg/i18n"
-	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly/internal/coremsgs"
-	"github.com/hyperledger/firefly/pkg/core"
-	"github.com/hyperledger/firefly/pkg/events"
+	"github.com/hyperledger-firefly/common/pkg/config"
+	"github.com/hyperledger-firefly/common/pkg/ffresty"
+	"github.com/hyperledger-firefly/common/pkg/fftypes"
+	"github.com/hyperledger-firefly/common/pkg/i18n"
+	"github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/firefly/internal/coremsgs"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
+	"github.com/hyperledger-firefly/firefly/pkg/events"
 )
 
 type WebHooks struct {
@@ -87,7 +87,7 @@ func (wh *WebHooks) Init(ctx context.Context, config config.Section) (err error)
 	client := ffresty.NewWithConfig(ctx, *ffrestyConfig)
 
 	*wh = WebHooks{
-		ctx: log.WithLogField(ctx, "webhook", connID),
+		ctx: log.WithLogFields(ctx, "webhook", connID),
 		capabilities: &events.Capabilities{
 			BatchDelivery: true,
 		},
@@ -503,7 +503,7 @@ func (wh *WebHooks) doDelivery(ctx context.Context, connID string, reply bool, s
 }
 
 func (wh *WebHooks) DeliveryRequest(ctx context.Context, connID string, sub *core.Subscription, event *core.EventDelivery, data core.DataArray) error {
-	ctx = log.WithLogField(log.WithLogField(ctx, "webhook", wh.connID), "sub", sub.ID.String())
+	ctx = log.WithLogFields(log.WithLogFields(ctx, "webhook", wh.connID), "sub", sub.ID.String())
 	reply := sub.Options.TransportOptions().GetBool("reply")
 	if reply && event.Message != nil && event.Message.Header.CID != nil {
 		// We cowardly refuse to dispatch a message that is itself a reply, as it's hard for users to
@@ -543,7 +543,7 @@ func (wh *WebHooks) DeliveryRequest(ctx context.Context, connID string, sub *cor
 }
 
 func (wh *WebHooks) BatchDeliveryRequest(ctx context.Context, connID string, sub *core.Subscription, events []*core.CombinedEventDataDelivery) error {
-	ctx = log.WithLogField(log.WithLogField(ctx, "webhook", wh.connID), "sub", sub.ID.String())
+	ctx = log.WithLogFields(log.WithLogFields(ctx, "webhook", wh.connID), "sub", sub.ID.String())
 	reply := sub.Options.TransportOptions().GetBool("reply")
 	if reply {
 		nonReplyEvents := []*core.CombinedEventDataDelivery{}

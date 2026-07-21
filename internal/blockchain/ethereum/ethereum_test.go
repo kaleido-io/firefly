@@ -27,23 +27,23 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/hyperledger/firefly-common/pkg/config"
-	"github.com/hyperledger/firefly-common/pkg/ffresty"
-	"github.com/hyperledger/firefly-common/pkg/fftls"
-	"github.com/hyperledger/firefly-common/pkg/fftypes"
-	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly-common/pkg/wsclient"
-	"github.com/hyperledger/firefly/internal/blockchain/common"
-	"github.com/hyperledger/firefly/internal/cache"
-	"github.com/hyperledger/firefly/internal/coreconfig"
-	"github.com/hyperledger/firefly/mocks/blockchaincommonmocks"
-	"github.com/hyperledger/firefly/mocks/blockchainmocks"
-	"github.com/hyperledger/firefly/mocks/cachemocks"
-	"github.com/hyperledger/firefly/mocks/coremocks"
-	"github.com/hyperledger/firefly/mocks/metricsmocks"
-	"github.com/hyperledger/firefly/mocks/wsmocks"
-	"github.com/hyperledger/firefly/pkg/blockchain"
-	"github.com/hyperledger/firefly/pkg/core"
+	"github.com/hyperledger-firefly/common/pkg/config"
+	"github.com/hyperledger-firefly/common/pkg/ffresty"
+	"github.com/hyperledger-firefly/common/pkg/fftls"
+	"github.com/hyperledger-firefly/common/pkg/fftypes"
+	"github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/common/pkg/wsclient"
+	"github.com/hyperledger-firefly/firefly/internal/blockchain/common"
+	"github.com/hyperledger-firefly/firefly/internal/cache"
+	"github.com/hyperledger-firefly/firefly/internal/coreconfig"
+	"github.com/hyperledger-firefly/firefly/mocks/blockchaincommonmocks"
+	"github.com/hyperledger-firefly/firefly/mocks/blockchainmocks"
+	"github.com/hyperledger-firefly/firefly/mocks/cachemocks"
+	"github.com/hyperledger-firefly/firefly/mocks/coremocks"
+	"github.com/hyperledger-firefly/firefly/mocks/metricsmocks"
+	"github.com/hyperledger-firefly/firefly/mocks/wsmocks"
+	"github.com/hyperledger-firefly/firefly/pkg/blockchain"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
 	"github.com/jarcoal/httpmock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -115,6 +115,17 @@ func testFFIErrors() []*fftypes.FFIError {
 func resetConf(e *Ethereum) {
 	coreconfig.Reset()
 	e.InitConfig(utConfig)
+}
+
+func newTestRestyClientWithRetry() *resty.Client {
+	return resty.New().SetBaseURL("http://localhost:12345").
+		SetRetryCount(2).
+		AddRetryCondition(func(r *resty.Response, err error) bool {
+			return r.StatusCode() > 499 || r.StatusCode() == 429
+		}).
+		SetRetryAfter(func(c *resty.Client, r *resty.Response) (time.Duration, error) {
+			return 10 * time.Millisecond, nil
+		})
 }
 
 func newTestEthereum() (*Ethereum, func()) {
@@ -3220,6 +3231,41 @@ func TestInvokeContractEVMConnectRejectErr(t *testing.T) {
 	submissionRejected, err := e.InvokeContract(context.Background(), "", signingKey, fftypes.JSONAnyPtrBytes(locationBytes), parsedMethod, params, options, nil)
 	assert.Regexp(t, "FF10111", err)
 	assert.True(t, submissionRejected)
+}
+
+func TestInvokeContract409ConflictNotRejectedOnRetry(t *testing.T) {
+	e, cancel := newTestEthereum()
+	e.client = newTestRestyClientWithRetry()
+	defer cancel()
+	httpmock.ActivateNonDefault(e.client.GetClient())
+	defer httpmock.DeactivateAndReset()
+	signingKey := ethHexFormatB32(fftypes.NewRandB32())
+	location := &Location{
+		Address: "0x12345",
+	}
+	method := testFFIMethod()
+	testErrors := testFFIErrors()
+	params := map[string]interface{}{
+		"x": float64(1),
+		"y": float64(2),
+	}
+	options := map[string]interface{}{}
+	locationBytes, err := json.Marshal(location)
+	assert.NoError(t, err)
+	numCalls := 0
+	httpmock.RegisterResponder("POST", `http://localhost:12345/`,
+		func(req *http.Request) (*http.Response, error) {
+			defer func() { numCalls++ }()
+			if numCalls < 1 {
+				return httpmock.NewJsonResponderOrPanic(500, fftypes.JSONAnyPtr(`{"error":"something went wrong, but connector is successfully processing the transaction"}`))(req)
+			}
+			return httpmock.NewJsonResponderOrPanic(409, fftypes.JSONAnyPtr(`{"error":"FF21065: ID 'an-id' is not unique", "submissionRejected": false}`))(req)
+		})
+	parsedMethod, err := e.ParseInterface(context.Background(), method, testErrors)
+	assert.NoError(t, err)
+	submissionRejected, err := e.InvokeContract(context.Background(), "an-id", signingKey, fftypes.JSONAnyPtrBytes(locationBytes), parsedMethod, params, options, nil)
+	assert.NoError(t, err)
+	assert.False(t, submissionRejected)
 }
 
 func TestInvokeContractPrepareFail(t *testing.T) {

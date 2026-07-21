@@ -63,7 +63,7 @@ by all popular application development frameworks, and are very firewall friendl
 for connecting applications into your FireFly server.
 
 > Check out the [@hyperledger/firefly-sdk](https://www.npmjs.com/package/@hyperledger/firefly-sdk)
-> SDK for Node.js applications, and the [hyperledger/firefly-common](https://github.com/hyperledger/firefly-common)
+> SDK for Node.js applications, and the [hyperledger-firefly/common](https://github.com/hyperledger-firefly/common)
 > module for Golang applications. These both contain reliable WebSocket clients for your event listeners.
 >
 > A Java SDK is a roadmap item for the community.

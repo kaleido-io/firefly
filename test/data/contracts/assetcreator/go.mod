@@ -1,4 +1,4 @@
-module github.com/hyperledger/firefly/test/data/assetcreator
+module github.com/hyperledger-firefly/firefly/test/data/assetcreator
 
 go 1.26.0
 

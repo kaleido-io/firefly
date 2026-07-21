@@ -276,6 +276,19 @@ title: Configuration Reference
 |password|Password|`string`|`<nil>`
 |username|Username|`string`|`<nil>`
 
+## events.webhooks.dns
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|servers|An optional list of DNS server addresses (host or host:port, port defaults to 53) to use instead of the system resolver. Setting this forces use of Go's built-in DNS resolver.|`[]string`|`<nil>`
+|timeout|The dial timeout when contacting a configured DNS server|[`time.Duration`](https://pkg.go.dev/time#Duration)|`<nil>`
+
+## events.webhooks.net
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|cidrDenylist|A list of CIDR ranges to which outbound connections are blocked, as a core SSRF mitigation. Empty by default.|`[]string`|`<nil>`
+
 ## events.webhooks.proxy
 
 |Key|Description|Type|Default Value|
@@ -662,6 +675,19 @@ title: Configuration Reference
 |password|Password|`string`|`<nil>`
 |username|Username|`string`|`<nil>`
 
+## plugins.blockchain[].cardano.cardanoconnect.dns
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|servers|An optional list of DNS server addresses (host or host:port, port defaults to 53) to use instead of the system resolver. Setting this forces use of Go's built-in DNS resolver.|`[]string`|`<nil>`
+|timeout|The dial timeout when contacting a configured DNS server|[`time.Duration`](https://pkg.go.dev/time#Duration)|`<nil>`
+
+## plugins.blockchain[].cardano.cardanoconnect.net
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|cidrDenylist|A list of CIDR ranges to which outbound connections are blocked, as a core SSRF mitigation. Empty by default.|`[]string`|`<nil>`
+
 ## plugins.blockchain[].cardano.cardanoconnect.proxy
 
 |Key|Description|Type|Default Value|
@@ -743,6 +769,19 @@ title: Configuration Reference
 |password|Password|`string`|`<nil>`
 |username|Username|`string`|`<nil>`
 
+## plugins.blockchain[].ethereum.addressResolver.dns
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|servers|An optional list of DNS server addresses (host or host:port, port defaults to 53) to use instead of the system resolver. Setting this forces use of Go's built-in DNS resolver.|`[]string`|`<nil>`
+|timeout|The dial timeout when contacting a configured DNS server|[`time.Duration`](https://pkg.go.dev/time#Duration)|`<nil>`
+
+## plugins.blockchain[].ethereum.addressResolver.net
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|cidrDenylist|A list of CIDR ranges to which outbound connections are blocked, as a core SSRF mitigation. Empty by default.|`[]string`|`<nil>`
+
 ## plugins.blockchain[].ethereum.addressResolver.proxy
 
 |Key|Description|Type|Default Value|
@@ -820,6 +859,19 @@ title: Configuration Reference
 |initialDelay|Delay between restarts in the case where we retry to restart the ethereum plugin|[`time.Duration`](https://pkg.go.dev/time#Duration)|`5s`
 |maxDelay|Max delay between restarts in the case where we retry to restart the ethereum plugin|[`time.Duration`](https://pkg.go.dev/time#Duration)|`1m`
 
+## plugins.blockchain[].ethereum.ethconnect.dns
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|servers|An optional list of DNS server addresses (host or host:port, port defaults to 53) to use instead of the system resolver. Setting this forces use of Go's built-in DNS resolver.|`[]string`|`<nil>`
+|timeout|The dial timeout when contacting a configured DNS server|[`time.Duration`](https://pkg.go.dev/time#Duration)|`<nil>`
+
+## plugins.blockchain[].ethereum.ethconnect.net
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|cidrDenylist|A list of CIDR ranges to which outbound connections are blocked, as a core SSRF mitigation. Empty by default.|`[]string`|`<nil>`
+
 ## plugins.blockchain[].ethereum.ethconnect.proxy
 
 |Key|Description|Type|Default Value|
@@ -832,7 +884,7 @@ title: Configuration Reference
 |---|-----------|----|-------------|
 |count|The maximum number of times to retry|`int`|`5`
 |enabled|Enables retries|`boolean`|`false`
-|errorStatusCodeRegex|The regex that the error response status code must match to trigger retry|`string`|`<nil>`
+|errorStatusCodeRegex|The regex that the error response status code must match to trigger retry|`string`|`^5|^429$`
 |factor|The retry backoff factor|`float32`|`2`
 |initWaitTime|The initial retry delay|[`time.Duration`](https://pkg.go.dev/time#Duration)|`250ms`
 |maxWaitTime|The maximum retry delay|[`time.Duration`](https://pkg.go.dev/time#Duration)|`30s`
@@ -894,6 +946,19 @@ title: Configuration Reference
 |---|-----------|----|-------------|
 |password|Password|`string`|`<nil>`
 |username|Username|`string`|`<nil>`
+
+## plugins.blockchain[].ethereum.fftm.dns
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|servers|An optional list of DNS server addresses (host or host:port, port defaults to 53) to use instead of the system resolver. Setting this forces use of Go's built-in DNS resolver.|`[]string`|`<nil>`
+|timeout|The dial timeout when contacting a configured DNS server|[`time.Duration`](https://pkg.go.dev/time#Duration)|`<nil>`
+
+## plugins.blockchain[].ethereum.fftm.net
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|cidrDenylist|A list of CIDR ranges to which outbound connections are blocked, as a core SSRF mitigation. Empty by default.|`[]string`|`<nil>`
 
 ## plugins.blockchain[].ethereum.fftm.proxy
 
@@ -972,6 +1037,19 @@ title: Configuration Reference
 |factor|Set the factor by which the delay increases when retrying|`float32`|`2`
 |initialDelay|Delay between restarts in the case where we retry to restart the fabric plugin|[`time.Duration`](https://pkg.go.dev/time#Duration)|`5s`
 |maxDelay|Max delay between restarts in the case where we retry to restart the fabric plugin|[`time.Duration`](https://pkg.go.dev/time#Duration)|`1m`
+
+## plugins.blockchain[].fabric.fabconnect.dns
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|servers|An optional list of DNS server addresses (host or host:port, port defaults to 53) to use instead of the system resolver. Setting this forces use of Go's built-in DNS resolver.|`[]string`|`<nil>`
+|timeout|The dial timeout when contacting a configured DNS server|[`time.Duration`](https://pkg.go.dev/time#Duration)|`<nil>`
+
+## plugins.blockchain[].fabric.fabconnect.net
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|cidrDenylist|A list of CIDR ranges to which outbound connections are blocked, as a core SSRF mitigation. Empty by default.|`[]string`|`<nil>`
 
 ## plugins.blockchain[].fabric.fabconnect.proxy
 
@@ -1054,6 +1132,19 @@ title: Configuration Reference
 |password|Password|`string`|`<nil>`
 |username|Username|`string`|`<nil>`
 
+## plugins.blockchain[].tezos.addressResolver.dns
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|servers|An optional list of DNS server addresses (host or host:port, port defaults to 53) to use instead of the system resolver. Setting this forces use of Go's built-in DNS resolver.|`[]string`|`<nil>`
+|timeout|The dial timeout when contacting a configured DNS server|[`time.Duration`](https://pkg.go.dev/time#Duration)|`<nil>`
+
+## plugins.blockchain[].tezos.addressResolver.net
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|cidrDenylist|A list of CIDR ranges to which outbound connections are blocked, as a core SSRF mitigation. Empty by default.|`[]string`|`<nil>`
+
 ## plugins.blockchain[].tezos.addressResolver.proxy
 
 |Key|Description|Type|Default Value|
@@ -1128,6 +1219,19 @@ title: Configuration Reference
 |factor|Set the factor by which the delay increases when retrying|`float32`|`2`
 |initialDelay|Delay between restarts in the case where we retry to restart the tezos plugin|[`time.Duration`](https://pkg.go.dev/time#Duration)|`5s`
 |maxDelay|Max delay between restarts in the case where we retry to restart the tezos plugin|[`time.Duration`](https://pkg.go.dev/time#Duration)|`1m`
+
+## plugins.blockchain[].tezos.tezosconnect.dns
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|servers|An optional list of DNS server addresses (host or host:port, port defaults to 53) to use instead of the system resolver. Setting this forces use of Go's built-in DNS resolver.|`[]string`|`<nil>`
+|timeout|The dial timeout when contacting a configured DNS server|[`time.Duration`](https://pkg.go.dev/time#Duration)|`<nil>`
+
+## plugins.blockchain[].tezos.tezosconnect.net
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|cidrDenylist|A list of CIDR ranges to which outbound connections are blocked, as a core SSRF mitigation. Empty by default.|`[]string`|`<nil>`
 
 ## plugins.blockchain[].tezos.tezosconnect.proxy
 
@@ -1263,6 +1367,13 @@ title: Configuration Reference
 |initialDelay|Delay between restarts in the case where we retry to restart the data exchange plugin|[`time.Duration`](https://pkg.go.dev/time#Duration)|`5s`
 |maxDelay|Max delay between restarts in the case where we retry to restart the data exchange plugin|[`time.Duration`](https://pkg.go.dev/time#Duration)|`1m`
 
+## plugins.dataexchange[].ffdx.dns
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|servers|An optional list of DNS server addresses (host or host:port, port defaults to 53) to use instead of the system resolver. Setting this forces use of Go's built-in DNS resolver.|`[]string`|`<nil>`
+|timeout|The dial timeout when contacting a configured DNS server|[`time.Duration`](https://pkg.go.dev/time#Duration)|`<nil>`
+
 ## plugins.dataexchange[].ffdx.eventRetry
 
 |Key|Description|Type|Default Value|
@@ -1270,6 +1381,12 @@ title: Configuration Reference
 |factor|The retry backoff factor, for event processing|`float32`|`2`
 |initialDelay|The initial retry delay, for event processing|[`time.Duration`](https://pkg.go.dev/time#Duration)|`50ms`
 |maxDelay|The maximum retry delay, for event processing|[`time.Duration`](https://pkg.go.dev/time#Duration)|`30s`
+
+## plugins.dataexchange[].ffdx.net
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|cidrDenylist|A list of CIDR ranges to which outbound connections are blocked, as a core SSRF mitigation. Empty by default.|`[]string`|`<nil>`
 
 ## plugins.dataexchange[].ffdx.proxy
 
@@ -1360,6 +1477,19 @@ title: Configuration Reference
 |password|Password|`string`|`<nil>`
 |username|Username|`string`|`<nil>`
 
+## plugins.sharedstorage[].ipfs.api.dns
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|servers|An optional list of DNS server addresses (host or host:port, port defaults to 53) to use instead of the system resolver. Setting this forces use of Go's built-in DNS resolver.|`[]string`|`<nil>`
+|timeout|The dial timeout when contacting a configured DNS server|[`time.Duration`](https://pkg.go.dev/time#Duration)|`<nil>`
+
+## plugins.sharedstorage[].ipfs.api.net
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|cidrDenylist|A list of CIDR ranges to which outbound connections are blocked, as a core SSRF mitigation. Empty by default.|`[]string`|`<nil>`
+
 ## plugins.sharedstorage[].ipfs.api.proxy
 
 |Key|Description|Type|Default Value|
@@ -1420,6 +1550,19 @@ title: Configuration Reference
 |---|-----------|----|-------------|
 |password|Password|`string`|`<nil>`
 |username|Username|`string`|`<nil>`
+
+## plugins.sharedstorage[].ipfs.gateway.dns
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|servers|An optional list of DNS server addresses (host or host:port, port defaults to 53) to use instead of the system resolver. Setting this forces use of Go's built-in DNS resolver.|`[]string`|`<nil>`
+|timeout|The dial timeout when contacting a configured DNS server|[`time.Duration`](https://pkg.go.dev/time#Duration)|`<nil>`
+
+## plugins.sharedstorage[].ipfs.gateway.net
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|cidrDenylist|A list of CIDR ranges to which outbound connections are blocked, as a core SSRF mitigation. Empty by default.|`[]string`|`<nil>`
 
 ## plugins.sharedstorage[].ipfs.gateway.proxy
 
@@ -1499,6 +1642,13 @@ title: Configuration Reference
 |initialDelay|Delay between restarts in the case where we retry to restart the token plugin|[`time.Duration`](https://pkg.go.dev/time#Duration)|`5s`
 |maxDelay|Max delay between restarts in the case where we retry to restart the token plugin|[`time.Duration`](https://pkg.go.dev/time#Duration)|`1m`
 
+## plugins.tokens[].fftokens.dns
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|servers|An optional list of DNS server addresses (host or host:port, port defaults to 53) to use instead of the system resolver. Setting this forces use of Go's built-in DNS resolver.|`[]string`|`<nil>`
+|timeout|The dial timeout when contacting a configured DNS server|[`time.Duration`](https://pkg.go.dev/time#Duration)|`<nil>`
+
 ## plugins.tokens[].fftokens.eventRetry
 
 |Key|Description|Type|Default Value|
@@ -1506,6 +1656,12 @@ title: Configuration Reference
 |factor|The retry backoff factor, for event processing|`float32`|`2`
 |initialDelay|The initial retry delay, for event processing|[`time.Duration`](https://pkg.go.dev/time#Duration)|`50ms`
 |maxDelay|The maximum retry delay, for event processing|[`time.Duration`](https://pkg.go.dev/time#Duration)|`30s`
+
+## plugins.tokens[].fftokens.net
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|cidrDenylist|A list of CIDR ranges to which outbound connections are blocked, as a core SSRF mitigation. Empty by default.|`[]string`|`<nil>`
 
 ## plugins.tokens[].fftokens.proxy
 

@@ -7,8 +7,8 @@ package main
 import (
 	"log"
 
+	"github.com/hyperledger-firefly/firefly/custompin_sample/chaincode"
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
-	"github.com/hyperledger/firefly/custompin_sample/chaincode"
 )
 
 func main() {

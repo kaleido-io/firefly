@@ -28,9 +28,9 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/gorilla/websocket"
-	"github.com/hyperledger/firefly-common/pkg/fftypes"
-	"github.com/hyperledger/firefly/pkg/core"
-	"github.com/hyperledger/firefly/test/e2e/client"
+	"github.com/hyperledger-firefly/common/pkg/fftypes"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
+	"github.com/hyperledger-firefly/firefly/test/e2e/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -232,6 +232,26 @@ func checkObject(t *testing.T, expected interface{}, actual interface{}) bool {
 		return expected == actual
 	}
 	return match
+}
+
+func WaitForOperationSucceeded(t *testing.T, client *client.FireFlyClient, operationID *fftypes.UUID) *core.Operation {
+	tries := 600
+	delay := 100 * time.Millisecond
+
+	var op *core.Operation
+	for i := 0; i < tries; i++ {
+		t.Logf("Waiting for invoke operation to succeed: %s", operationID)
+		op = client.GetOperation(t, operationID.String())
+		if op.Status == core.OpStatusSucceeded {
+			t.Logf("Invoke operation succeeded: %s", operationID)
+			return op
+		}
+		require.NotEqualf(t, core.OpStatusFailed, op.Status, "operation '%s' (%s) failed: %s", op.ID, op.Type, op.Error)
+		time.Sleep(delay)
+		t.Logf("Retrying, invoke operation status: %s", op.Status)
+	}
+	require.Failf(t, "operation did not succeed", "operation '%s' (%s) still status=%s after %d tries", op.ID, op.Type, op.Status, tries)
+	return nil
 }
 
 func VerifyAllOperationsSucceeded(t *testing.T, clients []*client.FireFlyClient, startTime time.Time) {

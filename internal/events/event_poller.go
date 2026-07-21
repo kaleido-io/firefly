@@ -22,11 +22,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hyperledger/firefly-common/pkg/ffapi"
-	"github.com/hyperledger/firefly-common/pkg/log"
-	"github.com/hyperledger/firefly-common/pkg/retry"
-	"github.com/hyperledger/firefly/pkg/core"
-	"github.com/hyperledger/firefly/pkg/database"
+	"github.com/hyperledger-firefly/common/pkg/ffapi"
+	"github.com/hyperledger-firefly/common/pkg/log"
+	"github.com/hyperledger-firefly/common/pkg/retry"
+	"github.com/hyperledger-firefly/firefly/pkg/core"
+	"github.com/hyperledger-firefly/firefly/pkg/database"
 )
 
 type eventPoller struct {
@@ -64,7 +64,7 @@ type eventPollerConf struct {
 
 func newEventPoller(ctx context.Context, di database.Plugin, en *eventNotifier, conf *eventPollerConf) *eventPoller {
 	ep := &eventPoller{
-		ctx:             log.WithLogField(ctx, "role", fmt.Sprintf("ep[%s:%s]", conf.namespace, conf.offsetName)),
+		ctx:             log.WithLogFields(ctx, "role", fmt.Sprintf("ep[%s:%s]", conf.namespace, conf.offsetName)),
 		database:        di,
 		shoulderTaps:    make(chan bool, 1),
 		offsetCommitted: make(chan int64, 1),
