@@ -23,14 +23,30 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
+// allowedConflictingPaths lists the specific, pre-existing path pairs that
+// are known to trip kin-openapi's ConflictingPathsError, and are allowed to
+// keep failing that check.
+var allowedConflictingPaths = [][2]string{
+	{"/apis/{id}", "/apis/{apiName}"},
+	{"/namespaces/{ns}/apis/{id}", "/namespaces/{ns}/apis/{apiName}"},
+	{"/identities/{iid}", "/identities/{did}"},
+	{"/namespaces/{ns}/identities/{iid}", "/namespaces/{ns}/identities/{did}"},
+}
+
+func isAllowedConflict(e *openapi3.ConflictingPathsError) bool {
+	for _, pair := range allowedConflictingPaths {
+		if (e.Path1 == pair[0] && e.Path2 == pair[1]) || (e.Path1 == pair[1] && e.Path2 == pair[0]) {
+			return true
+		}
+	}
+	return false
+}
+
 // validateOpenAPIDoc runs the standard kin-openapi validation, but tolerates
-// ConflictingPathsError findings. FireFly intentionally addresses some
-// resources by ID in one route and by name in another at the same path
-// shape (e.g. PUT /apis/{id} vs GET/DELETE /apis/{apiName}, and
-// GET /identities/{iid} vs GET /identities/{did}). The OpenAPI 3 spec
-// disallows this, but it does not affect real routing since each operation
-// is still uniquely dispatched by its HTTP method. Any other validation
-// finding still fails as normal.
+// the specific ConflictingPathsError findings listed in
+// allowedConflictingPaths. Any other validation finding - including a new,
+// previously-unseen conflicting path - still fails as normal.
+// MultiError allows the validate to return all errors individually.
 func validateOpenAPIDoc(doc *openapi3.T) error {
 	err := doc.Validate(context.Background(), openapi3.EnableMultiError())
 	if err == nil {
@@ -45,7 +61,7 @@ func validateOpenAPIDoc(doc *openapi3.T) error {
 	var remaining openapi3.MultiError
 	for _, e := range multi {
 		var conflictErr *openapi3.ConflictingPathsError
-		if !errors.As(e, &conflictErr) {
+		if !errors.As(e, &conflictErr) || !isAllowedConflict(conflictErr) {
 			remaining = append(remaining, e)
 		}
 	}
