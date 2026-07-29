@@ -6,7 +6,7 @@ title: Release Notes
 
 [Full release notes](https://github.com/hyperledger-firefly/firefly/releases)
 
-## [v1.5.0 - Jul 22, 2026](https://github.com/hyperledger-firefly/firefly/releases/tag/v1.5.0)
+## [v1.5.0 - Jul 29, 2026](https://github.com/hyperledger-firefly/firefly/releases/tag/v1.5.0)
 
 What's New:
 
@@ -24,6 +24,7 @@ What's New:
 - Large number of improvements to the FireFly common libraries, used to bootstrap new plugins and features of FireFly
 - Cardano connector maintenance updates, including security fixes and an increased request body limit for large transactions and contract deployments
 - New networking metrics and IP/server configuration options in the common HTTP/TLS/DNS layers used across all FireFly runtimes
+- Updated the Kubo (IPFS) image used by CLI
 - Miscellaneous bug fixes and minor improvements across all components
 - CVE fixes across the board
 
