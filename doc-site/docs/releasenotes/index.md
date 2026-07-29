@@ -24,7 +24,7 @@ What's New:
 - Large number of improvements to the FireFly common libraries, used to bootstrap new plugins and features of FireFly
 - Cardano connector maintenance updates, including security fixes and an increased request body limit for large transactions and contract deployments
 - New networking metrics and IP/server configuration options in the common HTTP/TLS/DNS layers used across all FireFly runtimes
-- Updated the Kubo (IPFS) image used by CLI
+- Updated the Kubo (IPFS) image used by CLI and Helm charts to v0.42.0. Due to an issue with the way networking works in Docker Desktop, which affects peer discovery, fixes were added to the CLI to manually register peers.
 - Miscellaneous bug fixes and minor improvements across all components
 - CVE fixes across the board
 
