@@ -6,7 +6,7 @@ title: Release Notes
 
 [Full release notes](https://github.com/hyperledger-firefly/firefly/releases)
 
-## [v1.5.0 - Aug 3, 2026](https://github.com/hyperledger-firefly/firefly/releases/tag/v1.5.0)
+## [v1.5.0 - Aug 4, 2026](https://github.com/hyperledger-firefly/firefly/releases/tag/v1.5.0)
 
 What's New:
 
