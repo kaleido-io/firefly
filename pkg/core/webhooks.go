@@ -60,20 +60,20 @@ type WebhookSubOptions struct {
 	// WebhookConfirmationModeBestEffort when unset (and when unset with `fastack: true`,
 	// to WebhookConfirmationModeFastAck).
 	ConfirmationMode WebhookConfirmationMode `ffstruct:"WebhookSubOptions" json:"confirmationMode,omitempty" ffenum:"webhookconfirmationmode"`
-	URL              string              `ffstruct:"WebhookSubOptions" json:"url,omitempty"`
-	Method           string              `ffstruct:"WebhookSubOptions" json:"method,omitempty"`
-	JSON             bool                `ffstruct:"WebhookSubOptions" json:"json,omitempty"`
-	Reply            bool                `ffstruct:"WebhookSubOptions" json:"reply,omitempty"`
-	ReplyTag         string              `ffstruct:"WebhookSubOptions" json:"replytag,omitempty"`
-	ReplyTX          string              `ffstruct:"WebhookSubOptions" json:"replytx,omitempty"`
-	Headers          map[string]string   `ffstruct:"WebhookSubOptions" json:"headers,omitempty"`
-	Query            map[string]string   `ffstruct:"WebhookSubOptions" json:"query,omitempty"`
-	TLSConfigName    string              `ffstruct:"WebhookSubOptions" json:"tlsConfigName,omitempty"`
-	TLSConfig        *tls.Config         `ffstruct:"WebhookSubOptions" json:"-" ffexcludeinput:"true"`
-	Input            WebhookInputOptions `ffstruct:"WebhookSubOptions" json:"input,omitempty"`
-	Retry            WebhookRetryOptions `ffstruct:"WebhookSubOptions" json:"retry,omitempty"`
-	HTTPOptions      WebhookHTTPOptions  `ffstruct:"WebhookSubOptions" json:"httpOptions,omitempty"`
-	RestyClient      *resty.Client       `ffstruct:"WebhookSubOptions" json:"-" ffexcludeinput:"true"`
+	URL              string                  `ffstruct:"WebhookSubOptions" json:"url,omitempty"`
+	Method           string                  `ffstruct:"WebhookSubOptions" json:"method,omitempty"`
+	JSON             bool                    `ffstruct:"WebhookSubOptions" json:"json,omitempty"`
+	Reply            bool                    `ffstruct:"WebhookSubOptions" json:"reply,omitempty"`
+	ReplyTag         string                  `ffstruct:"WebhookSubOptions" json:"replytag,omitempty"`
+	ReplyTX          string                  `ffstruct:"WebhookSubOptions" json:"replytx,omitempty"`
+	Headers          map[string]string       `ffstruct:"WebhookSubOptions" json:"headers,omitempty"`
+	Query            map[string]string       `ffstruct:"WebhookSubOptions" json:"query,omitempty"`
+	TLSConfigName    string                  `ffstruct:"WebhookSubOptions" json:"tlsConfigName,omitempty"`
+	TLSConfig        *tls.Config             `ffstruct:"WebhookSubOptions" json:"-" ffexcludeinput:"true"`
+	Input            WebhookInputOptions     `ffstruct:"WebhookSubOptions" json:"input,omitempty"`
+	Retry            WebhookRetryOptions     `ffstruct:"WebhookSubOptions" json:"retry,omitempty"`
+	HTTPOptions      WebhookHTTPOptions      `ffstruct:"WebhookSubOptions" json:"httpOptions,omitempty"`
+	RestyClient      *resty.Client           `ffstruct:"WebhookSubOptions" json:"-" ffexcludeinput:"true"`
 }
 
 type WebhookRetryOptions struct {
