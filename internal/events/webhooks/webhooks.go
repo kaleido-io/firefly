@@ -506,13 +506,8 @@ func (wh *WebHooks) doDelivery(ctx context.Context, connID string, reply bool, s
 	b, _ := json.Marshal(&res)
 	log.L(ctx).Tracef("Webhook response: %s", string(b))
 
-	// Only "assured" mode inspects the response status - "besteffort" (the default) and "fastack"
-	// both fall straight through to the per-event acknowledgement loop below, exactly as before.
-	//
-	// Reply mode is exempt regardless of the mode: the webhook response *is* the payload we relay
-	// back to the original caller, whatever its status, so there is nothing to hold a checkpoint
-	// for. The 502 synthesized above for a network-level failure is treated as a failure here, as
-	// no delivery was confirmed.
+	// Reply mode is exempt regardless of confirmation mode: the webhook response *is* the payload
+	// relayed back to the caller, so there is nothing to hold the checkpoint for.
 	if !reply && confirmationModeFor(sub) == core.WebhookConfirmationModeAssured &&
 		(res.Status < 200 || res.Status >= 300) {
 		log.L(ctx).Errorf("Webhook delivery returned status %d in '%s' confirmation mode - holding the subscription checkpoint and redelivering %d event(s)",
