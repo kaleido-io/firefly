@@ -35,7 +35,7 @@ require (
 require (
 	github.com/golang/protobuf v1.5.4
 	github.com/josharian/intern v1.0.0 // indirect
-	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/mod v0.40.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
