@@ -113,7 +113,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y \
   && apt-get install -y --no-install-recommends \
      ca-certificates \
-  && apt-get install -y --no-install-recommends sqlite3 postgresql \
+  && apt-get install -y --no-install-recommends postgresql-client \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /firefly
 RUN chgrp -R 0 /firefly/ \
