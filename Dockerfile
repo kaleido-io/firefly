@@ -78,7 +78,7 @@ ARG UI_RELEASE
 # so it uses apt
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt update -y \
-  && apt install -y --no-install-recommends curl jq postgresql-client \
+  && apt install -y --no-install-recommends postgresql-client \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /firefly
 RUN chgrp -R 0 /firefly/ \
