@@ -4415,6 +4415,28 @@ func TestUpsertContractAPIDBFail(t *testing.T) {
 	mdi.AssertExpectations(t)
 }
 
+func TestUpsertContractAPINilSkipsCacheDelete(t *testing.T) {
+	cm := newTestContractManager()
+
+	id := fftypes.NewUUID()
+	mdi := cm.database.(*databasemocks.Plugin)
+	mdi.On("GetContractAPIByName", context.Background(), "ns1", "banana").Return(&core.ContractAPI{ID: id}, nil).Once()
+
+	_, err := cm.GetContractAPI(context.Background(), "", "banana")
+	assert.NoError(t, err)
+
+	mdi.On("UpsertContractAPI", context.Background(), (*core.ContractAPI)(nil), database.UpsertOptimizationExisting).Return(nil)
+
+	err = cm.UpsertContractAPI(context.Background(), nil)
+	assert.NoError(t, err)
+
+	// GetContractAPIByName is still expected only once: a nil upsert must not evict the cache.
+	_, err = cm.GetContractAPI(context.Background(), "", "banana")
+	assert.NoError(t, err)
+
+	mdi.AssertExpectations(t)
+}
+
 func TestUpsertContractAPIInvalidatesCache(t *testing.T) {
 	cm := newTestContractManager()
 
