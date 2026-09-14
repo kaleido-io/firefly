@@ -102,6 +102,7 @@ type contractManager struct {
 	operations        operations.Manager
 	syncasync         syncasync.Bridge
 	methodCache       cache.CInterface
+	contractAPICache  cache.CInterface
 }
 
 type methodCacheEntry struct {
@@ -143,6 +144,18 @@ func NewContractManager(ctx context.Context, ns string, di database.Plugin, bi b
 			ctx,
 			coreconfig.CacheMethodsLimit,
 			coreconfig.CacheMethodsTTL,
+			ns,
+		),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	cm.contractAPICache, err = cacheManager.GetCache(
+		cache.NewCacheConfig(
+			ctx,
+			coreconfig.CacheContractAPILimit,
+			coreconfig.CacheContractAPITTL,
 			ns,
 		),
 	)
@@ -488,8 +501,24 @@ func (cm *contractManager) InvokeContract(ctx context.Context, req *core.Contrac
 	}
 }
 
-func (cm *contractManager) InvokeContractAPI(ctx context.Context, apiName, methodPath string, req *core.ContractCallRequest, waitConfirm bool) (interface{}, error) {
+// getContractAPIByName is a read-through cache in front of database.GetContractAPIByName, used by
+// every request path that resolves a contract API by name (query, invoke, listener management).
+// The returned *core.ContractAPI is shared across callers and must be treated as read-only - callers
+// that need to customize it (e.g. addContractURLs) must copy it first.
+func (cm *contractManager) getContractAPIByName(ctx context.Context, apiName string) (*core.ContractAPI, error) {
+	if cached := cm.contractAPICache.Get(apiName); cached != nil {
+		return cached.(*core.ContractAPI), nil
+	}
 	api, err := cm.database.GetContractAPIByName(ctx, cm.namespace, apiName)
+	if err != nil || api == nil {
+		return api, err
+	}
+	cm.contractAPICache.Set(apiName, api)
+	return api, nil
+}
+
+func (cm *contractManager) InvokeContractAPI(ctx context.Context, apiName, methodPath string, req *core.ContractCallRequest, waitConfirm bool) (interface{}, error) {
+	api, err := cm.getContractAPIByName(ctx, apiName)
 	if err != nil {
 		return nil, err
 	} else if api == nil || api.Interface == nil {
@@ -545,9 +574,15 @@ func (cm *contractManager) addContractURLs(httpServerURL string, api *core.Contr
 }
 
 func (cm *contractManager) GetContractAPI(ctx context.Context, httpServerURL, apiName string) (*core.ContractAPI, error) {
-	api, err := cm.database.GetContractAPIByName(ctx, cm.namespace, apiName)
-	cm.addContractURLs(httpServerURL, api)
-	return api, err
+	cached, err := cm.getContractAPIByName(ctx, apiName)
+	if err != nil || cached == nil {
+		return cached, err
+	}
+	// Copy before mutating, as the cached entry is shared across callers (and callers may
+	// request different httpServerURL values for the same contract API).
+	api := *cached
+	cm.addContractURLs(httpServerURL, &api)
+	return &api, nil
 }
 
 func (cm *contractManager) GetContractAPIInterface(ctx context.Context, apiName string) (*fftypes.FFI, error) {
@@ -1139,7 +1174,7 @@ func (cm *contractManager) AddContractListener(ctx context.Context, listener *co
 }
 
 func (cm *contractManager) AddContractAPIListener(ctx context.Context, apiName, eventPath string, listener *core.ContractListener) (output *core.ContractListener, err error) {
-	api, err := cm.database.GetContractAPIByName(ctx, cm.namespace, apiName)
+	api, err := cm.getContractAPIByName(ctx, apiName)
 	if err != nil {
 		return nil, err
 	} else if api == nil || api.Interface == nil {
@@ -1221,7 +1256,7 @@ func (cm *contractManager) GetContractListeners(ctx context.Context, filter ffap
 }
 
 func (cm *contractManager) GetContractAPIListeners(ctx context.Context, apiName, eventPath string, filter ffapi.AndFilter) ([]*core.ContractListener, *ffapi.FilterResult, error) {
-	api, err := cm.database.GetContractAPIByName(ctx, cm.namespace, apiName)
+	api, err := cm.getContractAPIByName(ctx, apiName)
 	if err != nil {
 		return nil, nil, err
 	} else if api == nil || api.Interface == nil {
@@ -1343,6 +1378,10 @@ func (cm *contractManager) DeleteContractAPI(ctx context.Context, apiName string
 		if api.Published {
 			return i18n.NewError(ctx, coremsgs.MsgCannotDeletePublished)
 		}
-		return cm.database.DeleteContractAPI(ctx, cm.namespace, api.ID)
+		if err := cm.database.DeleteContractAPI(ctx, cm.namespace, api.ID); err != nil {
+			return err
+		}
+		cm.contractAPICache.Delete(apiName)
+		return nil
 	})
 }
