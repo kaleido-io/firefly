@@ -578,7 +578,7 @@ func TestPersistContractAPIUpsert(t *testing.T) {
 
 	dh.mdi.On("InsertOrGetContractAPI", mock.Anything, mock.Anything).Return(existing, nil)
 	dh.mcm.On("ResolveContractAPI", context.Background(), "", mock.Anything).Return(nil)
-	dh.mdi.On("UpsertContractAPI", context.Background(), api, database.UpsertOptimizationExisting).Return(nil)
+	dh.mcm.On("UpsertContractAPI", context.Background(), api).Return(nil)
 
 	_, err := dh.persistContractAPI(context.Background(), "", api, true)
 	assert.NoError(t, err)
@@ -597,7 +597,7 @@ func TestPersistContractAPIUpsertFail(t *testing.T) {
 
 	dh.mdi.On("InsertOrGetContractAPI", mock.Anything, mock.Anything).Return(existing, nil)
 	dh.mcm.On("ResolveContractAPI", context.Background(), "", mock.Anything).Return(nil)
-	dh.mdi.On("UpsertContractAPI", context.Background(), api, database.UpsertOptimizationExisting).Return(fmt.Errorf("pop"))
+	dh.mcm.On("UpsertContractAPI", context.Background(), api).Return(fmt.Errorf("pop"))
 
 	_, err := dh.persistContractAPI(context.Background(), "", api, true)
 	assert.EqualError(t, err, "pop")
@@ -616,7 +616,7 @@ func TestPersistContractAPIUpsertNonPublished(t *testing.T) {
 
 	dh.mdi.On("InsertOrGetContractAPI", mock.Anything, mock.Anything).Return(existing, nil)
 	dh.mcm.On("ResolveContractAPI", context.Background(), "", mock.Anything).Return(nil)
-	dh.mdi.On("UpsertContractAPI", context.Background(), api, database.UpsertOptimizationExisting).Return(nil)
+	dh.mcm.On("UpsertContractAPI", context.Background(), api).Return(nil)
 
 	_, err := dh.persistContractAPI(context.Background(), "", api, true)
 	assert.NoError(t, err)
@@ -635,7 +635,7 @@ func TestPersistContractAPIUpsertFailNonPublished(t *testing.T) {
 
 	dh.mdi.On("InsertOrGetContractAPI", mock.Anything, mock.Anything).Return(existing, nil)
 	dh.mcm.On("ResolveContractAPI", context.Background(), "", mock.Anything).Return(nil)
-	dh.mdi.On("UpsertContractAPI", context.Background(), api, database.UpsertOptimizationExisting).Return(fmt.Errorf("pop"))
+	dh.mcm.On("UpsertContractAPI", context.Background(), api).Return(fmt.Errorf("pop"))
 
 	_, err := dh.persistContractAPI(context.Background(), "", api, true)
 	assert.EqualError(t, err, "pop")

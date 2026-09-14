@@ -157,13 +157,13 @@ func (dh *definitionHandler) reconcileContractAPI(ctx context.Context, existing,
 			// API was previously unpublished - if it was now published by this node, upsert the new version
 			api.Name = existing.Name
 			l.Tracef("Reconciling a published API: update API name from '%s' to the existing name '%s'", api.Name, existing.Name)
-			if err := dh.database.UpsertContractAPI(ctx, api, database.UpsertOptimizationExisting); err != nil {
+			if err := dh.contracts.UpsertContractAPI(ctx, api); err != nil {
 				return true, err
 			}
 			return false, nil
 		}
 	} else {
-		if err := dh.database.UpsertContractAPI(ctx, api, database.UpsertOptimizationExisting); err != nil {
+		if err := dh.contracts.UpsertContractAPI(ctx, api); err != nil {
 			return true, err
 		}
 		return false, nil

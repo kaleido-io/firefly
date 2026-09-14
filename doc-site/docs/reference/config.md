@@ -101,6 +101,13 @@ title: Configuration Reference
 |limit|Max number of cached blockchain events for transactions|`int`|`1000`
 |ttl|Time to live of cached blockchain events for transactions|`string`|`5m`
 
+## cache.contractapi
+
+|Key|Description|Type|Default Value|
+|---|-----------|----|-------------|
+|limit|Max number of cached items for contract APIs|`int`|`200`
+|ttl|Time to live of cached items for contract APIs|`string`|`5m`
+
 ## cache.eventlistenertopic
 
 |Key|Description|Type|Default Value|
