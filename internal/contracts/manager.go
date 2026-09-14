@@ -508,19 +508,19 @@ func (cm *contractManager) InvokeContract(ctx context.Context, req *core.Contrac
 // When httpServerURL is set, the caller wants URLs stamped onto the result - since that mutates
 // the object, a private copy is made first so the cached entry (and other callers) are unaffected.
 func (cm *contractManager) getContractAPIByName(ctx context.Context, apiName, httpServerURL string) (*core.ContractAPI, error) {
-	cached, ok := cm.contractAPICache.Get(apiName).(*core.ContractAPI)
+	contract, ok := cm.contractAPICache.Get(apiName).(*core.ContractAPI)
 	if !ok {
 		var err error
-		cached, err = cm.database.GetContractAPIByName(ctx, cm.namespace, apiName)
-		if err != nil || cached == nil {
-			return cached, err
+		contract, err = cm.database.GetContractAPIByName(ctx, cm.namespace, apiName)
+		if err != nil || contract == nil {
+			return contract, err
 		}
-		cm.contractAPICache.Set(apiName, cached)
+		cm.contractAPICache.Set(apiName, contract)
 	}
 	if httpServerURL == "" {
-		return cached, nil
+		return contract, nil
 	}
-	api := *cached
+	api := *contract
 	cm.addContractURLs(httpServerURL, &api)
 	return &api, nil
 }
