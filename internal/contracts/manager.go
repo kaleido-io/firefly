@@ -503,22 +503,29 @@ func (cm *contractManager) InvokeContract(ctx context.Context, req *core.Contrac
 
 // getContractAPIByName is a read-through cache in front of database.GetContractAPIByName, used by
 // every request path that resolves a contract API by name (query, invoke, listener management).
-// The returned *core.ContractAPI is shared across callers and must be treated as read-only - callers
-// that need to customize it (e.g. addContractURLs) must copy it first.
-func (cm *contractManager) getContractAPIByName(ctx context.Context, apiName string) (*core.ContractAPI, error) {
-	if cached := cm.contractAPICache.Get(apiName); cached != nil {
-		return cached.(*core.ContractAPI), nil
+// The cached entry is shared across callers, so it's returned as-is when httpServerURL is "".
+// When httpServerURL is set, the caller wants URLs stamped onto the result - since that mutates
+// the object, a private copy is made first so the cached entry (and other callers) are unaffected.
+func (cm *contractManager) getContractAPIByName(ctx context.Context, apiName, httpServerURL string) (*core.ContractAPI, error) {
+	cached, ok := cm.contractAPICache.Get(apiName).(*core.ContractAPI)
+	if !ok {
+		var err error
+		cached, err = cm.database.GetContractAPIByName(ctx, cm.namespace, apiName)
+		if err != nil || cached == nil {
+			return cached, err
+		}
+		cm.contractAPICache.Set(apiName, cached)
 	}
-	api, err := cm.database.GetContractAPIByName(ctx, cm.namespace, apiName)
-	if err != nil || api == nil {
-		return api, err
+	if httpServerURL == "" {
+		return cached, nil
 	}
-	cm.contractAPICache.Set(apiName, api)
-	return api, nil
+	api := *cached
+	cm.addContractURLs(httpServerURL, &api)
+	return &api, nil
 }
 
 func (cm *contractManager) InvokeContractAPI(ctx context.Context, apiName, methodPath string, req *core.ContractCallRequest, waitConfirm bool) (interface{}, error) {
-	api, err := cm.getContractAPIByName(ctx, apiName)
+	api, err := cm.getContractAPIByName(ctx, apiName, "")
 	if err != nil {
 		return nil, err
 	} else if api == nil || api.Interface == nil {
@@ -574,15 +581,7 @@ func (cm *contractManager) addContractURLs(httpServerURL string, api *core.Contr
 }
 
 func (cm *contractManager) GetContractAPI(ctx context.Context, httpServerURL, apiName string) (*core.ContractAPI, error) {
-	cached, err := cm.getContractAPIByName(ctx, apiName)
-	if err != nil || cached == nil {
-		return cached, err
-	}
-	// Copy before mutating, as the cached entry is shared across callers (and callers may
-	// request different httpServerURL values for the same contract API).
-	api := *cached
-	cm.addContractURLs(httpServerURL, &api)
-	return &api, nil
+	return cm.getContractAPIByName(ctx, apiName, httpServerURL)
 }
 
 func (cm *contractManager) GetContractAPIInterface(ctx context.Context, apiName string) (*fftypes.FFI, error) {
@@ -1174,7 +1173,7 @@ func (cm *contractManager) AddContractListener(ctx context.Context, listener *co
 }
 
 func (cm *contractManager) AddContractAPIListener(ctx context.Context, apiName, eventPath string, listener *core.ContractListener) (output *core.ContractListener, err error) {
-	api, err := cm.getContractAPIByName(ctx, apiName)
+	api, err := cm.getContractAPIByName(ctx, apiName, "")
 	if err != nil {
 		return nil, err
 	} else if api == nil || api.Interface == nil {
@@ -1256,7 +1255,7 @@ func (cm *contractManager) GetContractListeners(ctx context.Context, filter ffap
 }
 
 func (cm *contractManager) GetContractAPIListeners(ctx context.Context, apiName, eventPath string, filter ffapi.AndFilter) ([]*core.ContractListener, *ffapi.FilterResult, error) {
-	api, err := cm.getContractAPIByName(ctx, apiName)
+	api, err := cm.getContractAPIByName(ctx, apiName, "")
 	if err != nil {
 		return nil, nil, err
 	} else if api == nil || api.Interface == nil {
