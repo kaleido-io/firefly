@@ -4381,6 +4381,65 @@ func TestDeleteContractAPIInvalidatesCache(t *testing.T) {
 	mdi.AssertExpectations(t)
 }
 
+func TestUpsertContractAPI(t *testing.T) {
+	cm := newTestContractManager()
+
+	api := &core.ContractAPI{
+		ID:   fftypes.NewUUID(),
+		Name: "banana",
+	}
+
+	mdi := cm.database.(*databasemocks.Plugin)
+	mdi.On("UpsertContractAPI", context.Background(), api, database.UpsertOptimizationExisting).Return(nil)
+
+	err := cm.UpsertContractAPI(context.Background(), api)
+	assert.NoError(t, err)
+
+	mdi.AssertExpectations(t)
+}
+
+func TestUpsertContractAPIDBFail(t *testing.T) {
+	cm := newTestContractManager()
+
+	api := &core.ContractAPI{
+		ID:   fftypes.NewUUID(),
+		Name: "banana",
+	}
+
+	mdi := cm.database.(*databasemocks.Plugin)
+	mdi.On("UpsertContractAPI", context.Background(), api, database.UpsertOptimizationExisting).Return(fmt.Errorf("pop"))
+
+	err := cm.UpsertContractAPI(context.Background(), api)
+	assert.EqualError(t, err, "pop")
+
+	mdi.AssertExpectations(t)
+}
+
+func TestUpsertContractAPIInvalidatesCache(t *testing.T) {
+	cm := newTestContractManager()
+
+	id := fftypes.NewUUID()
+	api := &core.ContractAPI{ID: id, Name: "banana"}
+
+	mdi := cm.database.(*databasemocks.Plugin)
+	mdi.On("GetContractAPIByName", context.Background(), "ns1", "banana").Return(&core.ContractAPI{ID: id}, nil).Once()
+
+	_, err := cm.GetContractAPI(context.Background(), "", "banana")
+	assert.NoError(t, err)
+
+	mdi.On("UpsertContractAPI", context.Background(), api, database.UpsertOptimizationExisting).Return(nil)
+
+	err = cm.UpsertContractAPI(context.Background(), api)
+	assert.NoError(t, err)
+
+	mdi.On("GetContractAPIByName", context.Background(), "ns1", "banana").Return(&core.ContractAPI{ID: id}, nil).Once()
+
+	_, err = cm.GetContractAPI(context.Background(), "", "banana")
+	assert.NoError(t, err)
+
+	mdi.AssertExpectations(t)
+}
+
 func TestDeleteContractAPIFailGet(t *testing.T) {
 	cm := newTestContractManager()
 

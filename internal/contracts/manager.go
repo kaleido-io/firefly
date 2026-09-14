@@ -71,6 +71,7 @@ type Manager interface {
 	GetContractAPIs(ctx context.Context, httpServerURL string, filter ffapi.AndFilter) ([]*core.ContractAPI, *ffapi.FilterResult, error)
 	ResolveContractAPI(ctx context.Context, httpServerURL string, api *core.ContractAPI) error
 	DeleteContractAPI(ctx context.Context, apiName string) error
+	UpsertContractAPI(ctx context.Context, api *core.ContractAPI) error
 
 	ConstructContractListenerSignature(ctx context.Context, listener *core.ContractListenerInput) (output *core.ContractListenerSignatureOutput, err error)
 	AddContractListener(ctx context.Context, listener *core.ContractListenerInput) (output *core.ContractListener, err error)
@@ -1383,4 +1384,12 @@ func (cm *contractManager) DeleteContractAPI(ctx context.Context, apiName string
 		cm.contractAPICache.Delete(apiName)
 		return nil
 	})
+}
+
+func (cm *contractManager) UpsertContractAPI(ctx context.Context, api *core.ContractAPI) error {
+	if err := cm.database.UpsertContractAPI(ctx, api, database.UpsertOptimizationExisting); err != nil {
+		return err
+	}
+	cm.contractAPICache.Delete(api.Name)
+	return nil
 }
