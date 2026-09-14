@@ -64,14 +64,14 @@ func BenchmarkContractAPILookup(b *testing.B) {
 			Return(api, nil).Once()
 
 		// Prime the cache, exactly like the first request in a burst would.
-		if _, err := cm.getContractAPIByName(context.Background(), apiName); err != nil {
+		if _, err := cm.getContractAPIByName(context.Background(), apiName, ""); err != nil {
 			b.Fatal(err)
 		}
 
 		b.ResetTimer()
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				_, _ = cm.getContractAPIByName(context.Background(), apiName)
+				_, _ = cm.getContractAPIByName(context.Background(), apiName, "")
 			}
 		})
 	})
