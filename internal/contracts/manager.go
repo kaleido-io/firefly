@@ -1390,6 +1390,8 @@ func (cm *contractManager) UpsertContractAPI(ctx context.Context, api *core.Cont
 	if err := cm.database.UpsertContractAPI(ctx, api, database.UpsertOptimizationExisting); err != nil {
 		return err
 	}
-	cm.contractAPICache.Delete(api.Name)
+	if api != nil {
+		cm.contractAPICache.Delete(api.Name)
+	}
 	return nil
 }
