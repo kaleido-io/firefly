@@ -393,7 +393,7 @@ func TestDefineContractAPINonMultipartyUpdate(t *testing.T) {
 	}
 	ds.mcm.On("ResolveContractAPI", context.Background(), url, api).Return(nil)
 	ds.mdi.On("InsertOrGetContractAPI", mock.Anything, mock.Anything).Return(api, nil)
-	ds.mdi.On("UpsertContractAPI", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	ds.mcm.On("UpsertContractAPI", mock.Anything, mock.Anything).Return(nil)
 	ds.mdi.On("InsertEvent", mock.Anything, mock.Anything).Return(nil)
 
 	err := ds.DefineContractAPI(context.Background(), url, api, false, nil)

@@ -71,6 +71,7 @@ type Manager interface {
 	GetContractAPIs(ctx context.Context, httpServerURL string, filter ffapi.AndFilter) ([]*core.ContractAPI, *ffapi.FilterResult, error)
 	ResolveContractAPI(ctx context.Context, httpServerURL string, api *core.ContractAPI) error
 	DeleteContractAPI(ctx context.Context, apiName string) error
+	UpsertContractAPI(ctx context.Context, api *core.ContractAPI) error
 
 	ConstructContractListenerSignature(ctx context.Context, listener *core.ContractListenerInput) (output *core.ContractListenerSignatureOutput, err error)
 	AddContractListener(ctx context.Context, listener *core.ContractListenerInput) (output *core.ContractListener, err error)
@@ -102,6 +103,7 @@ type contractManager struct {
 	operations        operations.Manager
 	syncasync         syncasync.Bridge
 	methodCache       cache.CInterface
+	contractAPICache  cache.CInterface
 }
 
 type methodCacheEntry struct {
@@ -143,6 +145,18 @@ func NewContractManager(ctx context.Context, ns string, di database.Plugin, bi b
 			ctx,
 			coreconfig.CacheMethodsLimit,
 			coreconfig.CacheMethodsTTL,
+			ns,
+		),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	cm.contractAPICache, err = cacheManager.GetCache(
+		cache.NewCacheConfig(
+			ctx,
+			coreconfig.CacheContractAPILimit,
+			coreconfig.CacheContractAPITTL,
 			ns,
 		),
 	)
@@ -488,8 +502,31 @@ func (cm *contractManager) InvokeContract(ctx context.Context, req *core.Contrac
 	}
 }
 
+// getContractAPIByName is a read-through cache in front of database.GetContractAPIByName, used by
+// every request path that resolves a contract API by name (query, invoke, listener management).
+// The cached entry is shared across callers, so it's returned as-is when httpServerURL is "".
+// When httpServerURL is set, the caller wants URLs stamped onto the result - since that mutates
+// the object, a private copy is made first so the cached entry (and other callers) are unaffected.
+func (cm *contractManager) getContractAPIByName(ctx context.Context, apiName, httpServerURL string) (*core.ContractAPI, error) {
+	contract, ok := cm.contractAPICache.Get(apiName).(*core.ContractAPI)
+	if !ok {
+		var err error
+		contract, err = cm.database.GetContractAPIByName(ctx, cm.namespace, apiName)
+		if err != nil || contract == nil {
+			return contract, err
+		}
+		cm.contractAPICache.Set(apiName, contract)
+	}
+	if httpServerURL == "" {
+		return contract, nil
+	}
+	api := *contract
+	cm.addContractURLs(httpServerURL, &api)
+	return &api, nil
+}
+
 func (cm *contractManager) InvokeContractAPI(ctx context.Context, apiName, methodPath string, req *core.ContractCallRequest, waitConfirm bool) (interface{}, error) {
-	api, err := cm.database.GetContractAPIByName(ctx, cm.namespace, apiName)
+	api, err := cm.getContractAPIByName(ctx, apiName, "")
 	if err != nil {
 		return nil, err
 	} else if api == nil || api.Interface == nil {
@@ -545,9 +582,7 @@ func (cm *contractManager) addContractURLs(httpServerURL string, api *core.Contr
 }
 
 func (cm *contractManager) GetContractAPI(ctx context.Context, httpServerURL, apiName string) (*core.ContractAPI, error) {
-	api, err := cm.database.GetContractAPIByName(ctx, cm.namespace, apiName)
-	cm.addContractURLs(httpServerURL, api)
-	return api, err
+	return cm.getContractAPIByName(ctx, apiName, httpServerURL)
 }
 
 func (cm *contractManager) GetContractAPIInterface(ctx context.Context, apiName string) (*fftypes.FFI, error) {
@@ -1106,13 +1141,32 @@ func (cm *contractManager) AddContractListener(ctx context.Context, listener *co
 		return nil, err
 	}
 
-	if err = cm.blockchain.AddContractListener(ctx, &listener.ContractListener, ""); err != nil {
+	if listener.Name == "" {
+		listener.Name = listener.ID.String() // default to the same name as the ID (cannot use the backendID here as not created yet)
+	}
+
+	// Placeholder backend ID until we've created in the backend - which happens after we store in the DB (see below)
+	listener.BackendID = "pending-" + listener.ID.String()
+
+	// Create the listener in our DB, checking for duplicates (only one concurrent API can win here)
+	if err = cm.database.InsertContractListener(ctx, verifiedContractListener); err != nil {
+		if existing, lookupErr := cm.database.GetContractListener(ctx, cm.namespace, listener.Name); lookupErr == nil && existing != nil && !existing.ID.Equals(listener.ID) {
+			return nil, i18n.NewError(ctx, coremsgs.MsgContractListenerNameExists, cm.namespace, listener.Name)
+		}
 		return nil, err
 	}
-	if listener.Name == "" {
-		listener.Name = listener.BackendID
+
+	if err = cm.blockchain.AddContractListener(ctx, &listener.ContractListener, ""); err != nil {
+		// Cleanup our DB record before return, in case of a failure to create in the backend
+		if delErr := cm.database.DeleteContractListenerByID(ctx, cm.namespace, listener.ID); delErr != nil {
+			log.L(ctx).Errorf("Failed to delete listener %s after connector subscription creation failed: %s", listener.ID, delErr)
+		}
+		return nil, err
 	}
-	if err = cm.database.InsertContractListener(ctx, verifiedContractListener); err != nil {
+
+	// Store the backend ID now we've created it
+	if err = cm.database.UpdateContractListener(ctx, cm.namespace, listener.ID,
+		database.ContractListenerQueryFactory.NewUpdate(ctx).Set("backendid", listener.BackendID)); err != nil {
 		return nil, err
 	}
 
@@ -1120,7 +1174,7 @@ func (cm *contractManager) AddContractListener(ctx context.Context, listener *co
 }
 
 func (cm *contractManager) AddContractAPIListener(ctx context.Context, apiName, eventPath string, listener *core.ContractListener) (output *core.ContractListener, err error) {
-	api, err := cm.database.GetContractAPIByName(ctx, cm.namespace, apiName)
+	api, err := cm.getContractAPIByName(ctx, apiName, "")
 	if err != nil {
 		return nil, err
 	} else if api == nil || api.Interface == nil {
@@ -1202,7 +1256,7 @@ func (cm *contractManager) GetContractListeners(ctx context.Context, filter ffap
 }
 
 func (cm *contractManager) GetContractAPIListeners(ctx context.Context, apiName, eventPath string, filter ffapi.AndFilter) ([]*core.ContractListener, *ffapi.FilterResult, error) {
-	api, err := cm.database.GetContractAPIByName(ctx, cm.namespace, apiName)
+	api, err := cm.getContractAPIByName(ctx, apiName, "")
 	if err != nil {
 		return nil, nil, err
 	} else if api == nil || api.Interface == nil {
@@ -1324,6 +1378,20 @@ func (cm *contractManager) DeleteContractAPI(ctx context.Context, apiName string
 		if api.Published {
 			return i18n.NewError(ctx, coremsgs.MsgCannotDeletePublished)
 		}
-		return cm.database.DeleteContractAPI(ctx, cm.namespace, api.ID)
+		if err := cm.database.DeleteContractAPI(ctx, cm.namespace, api.ID); err != nil {
+			return err
+		}
+		cm.contractAPICache.Delete(apiName)
+		return nil
 	})
+}
+
+func (cm *contractManager) UpsertContractAPI(ctx context.Context, api *core.ContractAPI) error {
+	if err := cm.database.UpsertContractAPI(ctx, api, database.UpsertOptimizationExisting); err != nil {
+		return err
+	}
+	if api != nil {
+		cm.contractAPICache.Delete(api.Name)
+	}
+	return nil
 }

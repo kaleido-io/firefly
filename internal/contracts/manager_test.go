@@ -164,6 +164,27 @@ func TestNewContractManagerCacheConfigFail(t *testing.T) {
 	assert.Regexp(t, "pop", err)
 }
 
+func TestNewContractManagerContractAPICacheConfigFail(t *testing.T) {
+	mdi := &databasemocks.Plugin{}
+	mdm := &datamocks.Manager{}
+	mbm := &broadcastmocks.Manager{}
+	mpm := &privatemessagingmocks.Manager{}
+	mbp := &batchmocks.Manager{}
+	mim := &identitymanagermocks.Manager{}
+	mbi := &blockchainmocks.Plugin{}
+	mom := &operationmocks.Manager{}
+	txw := &txwritermocks.Writer{}
+	cmi := &cachemocks.Manager{}
+	// methodCache is constructed successfully, but the contractAPICache construction that follows fails.
+	cmi.On("GetCache", mock.Anything).Return(cache.NewUmanagedCache(context.Background(), 100, 5*time.Minute), nil).Once()
+	cmi.On("GetCache", mock.Anything).Return(nil, fmt.Errorf("pop"))
+	txHelper := &txcommonmocks.Helper{}
+	msa := &syncasyncmocks.Bridge{}
+	mbi.On("GetFFIParamValidator", mock.Anything).Return(nil, nil)
+	_, err := NewContractManager(context.Background(), "ns1", mdi, mbi, mdm, mbm, mpm, mbp, mim, mom, txHelper, txw, msa, cmi)
+	assert.Regexp(t, "pop", err)
+}
+
 func TestNewContractManagerFFISchemaLoader(t *testing.T) {
 	mdi := &databasemocks.Plugin{}
 	mdm := &datamocks.Manager{}
@@ -806,6 +827,7 @@ func TestAddContractListenerInline(t *testing.T) {
 	mdi.On("GetContractListeners", context.Background(), "ns1", mock.Anything).Return(nil, nil, nil)
 	mbi.On("AddContractListener", context.Background(), &sub.ContractListener, "").Return(nil)
 	mdi.On("InsertContractListener", context.Background(), &sub.ContractListener).Return(nil)
+	mdi.On("UpdateContractListener", context.Background(), "ns1", mock.Anything, mock.Anything).Return(nil)
 
 	result, err := cm.AddContractListener(context.Background(), sub)
 	assert.NoError(t, err)
@@ -847,6 +869,7 @@ func TestAddContractListenerInlineNilLocation(t *testing.T) {
 		return cl.Location == nil
 	}), "").Return(nil)
 	mdi.On("InsertContractListener", context.Background(), &sub.ContractListener).Return(nil)
+	mdi.On("UpdateContractListener", context.Background(), "ns1", mock.Anything, mock.Anything).Return(nil)
 
 	result, err := cm.AddContractListener(context.Background(), sub)
 	assert.NoError(t, err)
@@ -885,6 +908,7 @@ func TestAddContractListenerNoLocationOK(t *testing.T) {
 	mdi.On("GetContractListeners", context.Background(), "ns1", mock.Anything).Return(nil, nil, nil)
 	mbi.On("AddContractListener", context.Background(), &sub.ContractListener, "").Return(nil)
 	mdi.On("InsertContractListener", context.Background(), &sub.ContractListener).Return(nil)
+	mdi.On("UpdateContractListener", context.Background(), "ns1", mock.Anything, mock.Anything).Return(nil)
 
 	result, err := cm.AddContractListener(context.Background(), sub)
 	assert.NoError(t, err)
@@ -937,6 +961,7 @@ func TestAddContractListenerByEventPath(t *testing.T) {
 	mdi.On("GetFFIByID", context.Background(), "ns1", interfaceID).Return(&fftypes.FFI{}, nil)
 	mdi.On("GetFFIEvent", context.Background(), "ns1", interfaceID, sub.EventPath).Return(event, nil)
 	mdi.On("InsertContractListener", context.Background(), &sub.ContractListener).Return(nil)
+	mdi.On("UpdateContractListener", context.Background(), "ns1", mock.Anything, mock.Anything).Return(nil)
 
 	result, err := cm.AddContractListener(context.Background(), sub)
 	assert.NoError(t, err)
@@ -1648,7 +1673,10 @@ func TestAddContractListenerBlockchainFail(t *testing.T) {
 	mbi.On("GenerateEventSignature", context.Background(), mock.Anything).Return("changed", nil)
 	mbi.On("GenerateEventSignatureWithLocation", context.Background(), mock.Anything, mock.Anything).Return("0x123:changed", nil)
 	mdi.On("GetContractListeners", context.Background(), "ns1", mock.Anything).Return(nil, nil, nil)
+	mdi.On("InsertContractListener", context.Background(), &sub.ContractListener).Return(nil)
 	mbi.On("AddContractListener", context.Background(), &sub.ContractListener, "").Return(fmt.Errorf("pop"))
+	// The connector failure compensates by deleting the row inserted above
+	mdi.On("DeleteContractListenerByID", context.Background(), "ns1", mock.Anything).Return(nil)
 
 	_, err := cm.AddContractListener(context.Background(), sub)
 	assert.EqualError(t, err, "pop")
@@ -1686,8 +1714,181 @@ func TestAddContractListenerUpsertSubFail(t *testing.T) {
 	mbi.On("GenerateEventSignature", context.Background(), mock.Anything).Return("changed", nil)
 	mbi.On("GenerateEventSignatureWithLocation", context.Background(), mock.Anything, mock.Anything).Return("0x123:changed", nil)
 	mdi.On("GetContractListeners", context.Background(), "ns1", mock.Anything).Return(nil, nil, nil)
-	mbi.On("AddContractListener", context.Background(), &sub.ContractListener, "").Return(nil)
 	mdi.On("InsertContractListener", context.Background(), &sub.ContractListener).Return(fmt.Errorf("pop"))
+	mdi.On("GetContractListener", context.Background(), "ns1", mock.Anything).Return(nil, nil)
+
+	_, err := cm.AddContractListener(context.Background(), sub)
+	assert.EqualError(t, err, "pop")
+
+	mbi.AssertExpectations(t)
+	mdi.AssertExpectations(t)
+}
+
+func TestAddContractListenerInsertNameRace(t *testing.T) {
+	cm := newTestContractManager()
+	mbi := cm.blockchain.(*blockchainmocks.Plugin)
+	mdi := cm.database.(*databasemocks.Plugin)
+
+	sub := &core.ContractListenerInput{
+		ContractListener: core.ContractListener{
+			Name: "sub1",
+			Location: fftypes.JSONAnyPtr(fftypes.JSONObject{
+				"address": "0x123",
+			}.String()),
+			Event: &core.FFISerializedEvent{
+				FFIEventDefinition: fftypes.FFIEventDefinition{
+					Name: "changed",
+					Params: fftypes.FFIParams{
+						{
+							Name:   "value",
+							Schema: fftypes.JSONAnyPtr(`{"type": "integer"}`),
+						},
+					},
+				},
+			},
+			Topic: "test-topic",
+		},
+	}
+
+	mbi.On("NormalizeContractLocation", context.Background(), blockchain.NormalizeListener, sub.Location).Return(sub.Location, nil)
+	mbi.On("GenerateEventSignature", context.Background(), mock.Anything).Return("changed", nil)
+	mbi.On("GenerateEventSignatureWithLocation", context.Background(), mock.Anything, mock.Anything).Return("0x123:changed", nil)
+	mdi.On("GetContractListeners", context.Background(), "ns1", mock.Anything).Return(nil, nil, nil)
+	mdi.On("GetContractListener", context.Background(), "ns1", "sub1").Return(nil, nil).Once()
+	mdi.On("InsertContractListener", context.Background(), &sub.ContractListener).Return(fmt.Errorf("unique constraint violation")) // sim another thread winning
+	mdi.On("GetContractListener", context.Background(), "ns1", "sub1").Return(&core.ContractListener{ID: fftypes.NewUUID(), Name: "sub1"}, nil).Once()
+
+	_, err := cm.AddContractListener(context.Background(), sub)
+	assert.Regexp(t, "FF10312", err)
+
+	mbi.AssertExpectations(t)
+	mdi.AssertExpectations(t)
+}
+
+func TestAddContractListenerBlockchainFailDeleteFail(t *testing.T) {
+	cm := newTestContractManager()
+	mbi := cm.blockchain.(*blockchainmocks.Plugin)
+	mdi := cm.database.(*databasemocks.Plugin)
+
+	sub := &core.ContractListenerInput{
+		ContractListener: core.ContractListener{
+			Location: fftypes.JSONAnyPtr(fftypes.JSONObject{
+				"address": "0x123",
+			}.String()),
+			Event: &core.FFISerializedEvent{
+				FFIEventDefinition: fftypes.FFIEventDefinition{
+					Name: "changed",
+					Params: fftypes.FFIParams{
+						{
+							Name:   "value",
+							Schema: fftypes.JSONAnyPtr(`{"type": "integer"}`),
+						},
+					},
+				},
+			},
+			Topic: "test-topic",
+		},
+	}
+
+	mbi.On("NormalizeContractLocation", context.Background(), blockchain.NormalizeListener, sub.Location).Return(sub.Location, nil)
+	mbi.On("GenerateEventSignature", context.Background(), mock.Anything).Return("changed", nil)
+	mbi.On("GenerateEventSignatureWithLocation", context.Background(), mock.Anything, mock.Anything).Return("0x123:changed", nil)
+	mdi.On("GetContractListeners", context.Background(), "ns1", mock.Anything).Return(nil, nil, nil)
+	mdi.On("InsertContractListener", context.Background(), &sub.ContractListener).Return(nil)
+	mbi.On("AddContractListener", context.Background(), &sub.ContractListener, "").Return(fmt.Errorf("pop"))             // backend failure
+	mdi.On("DeleteContractListenerByID", context.Background(), "ns1", mock.Anything).Return(fmt.Errorf("delete failed")) // deletion failure
+
+	_, err := cm.AddContractListener(context.Background(), sub)
+	assert.EqualError(t, err, "pop")
+
+	mbi.AssertExpectations(t)
+	mdi.AssertExpectations(t)
+}
+
+func TestAddContractListenerUnnamedProvisionalBackendID(t *testing.T) {
+	cm := newTestContractManager()
+	mbi := cm.blockchain.(*blockchainmocks.Plugin)
+	mdi := cm.database.(*databasemocks.Plugin)
+
+	sub := &core.ContractListenerInput{
+		ContractListener: core.ContractListener{
+			Location: fftypes.JSONAnyPtr(fftypes.JSONObject{
+				"address": "0x123",
+			}.String()),
+			Event: &core.FFISerializedEvent{
+				FFIEventDefinition: fftypes.FFIEventDefinition{
+					Name: "changed",
+					Params: fftypes.FFIParams{
+						{
+							Name:   "value",
+							Schema: fftypes.JSONAnyPtr(`{"type": "integer"}`),
+						},
+					},
+				},
+			},
+			Topic: "test-topic",
+		},
+	}
+
+	mbi.On("NormalizeContractLocation", context.Background(), blockchain.NormalizeListener, sub.Location).Return(sub.Location, nil)
+	mbi.On("GenerateEventSignature", context.Background(), mock.Anything).Return("changed", nil)
+	mbi.On("GenerateEventSignatureWithLocation", context.Background(), mock.Anything, mock.Anything).Return("0x123:changed", nil)
+	mdi.On("GetContractListeners", context.Background(), "ns1", mock.Anything).Return(nil, nil, nil)
+	// The unnamed listener is inserted with its ID as the name, and a unique provisional backend ID
+	mdi.On("InsertContractListener", context.Background(), mock.MatchedBy(func(l *core.ContractListener) bool {
+		return l.Name == l.ID.String() && l.BackendID == "pending-"+l.ID.String()
+	})).Return(nil)
+	// The connector assigns the real backend ID, which is written back to the row
+	mbi.On("AddContractListener", context.Background(), mock.MatchedBy(func(l *core.ContractListener) bool {
+		l.BackendID = "sb-12345"
+		return true
+	}), "").Return(nil)
+	mdi.On("UpdateContractListener", context.Background(), "ns1", mock.Anything, mock.MatchedBy(func(u ffapi.Update) bool {
+		uu, _ := u.Finalize()
+		return strings.Contains(uu.String(), "sb-12345")
+	})).Return(nil)
+
+	result, err := cm.AddContractListener(context.Background(), sub)
+	assert.NoError(t, err)
+	assert.Equal(t, result.ID.String(), result.Name)
+	assert.Equal(t, "sb-12345", result.BackendID)
+
+	mbi.AssertExpectations(t)
+	mdi.AssertExpectations(t)
+}
+
+func TestAddContractListenerUpdateBackendIDFail(t *testing.T) {
+	cm := newTestContractManager()
+	mbi := cm.blockchain.(*blockchainmocks.Plugin)
+	mdi := cm.database.(*databasemocks.Plugin)
+
+	sub := &core.ContractListenerInput{
+		ContractListener: core.ContractListener{
+			Location: fftypes.JSONAnyPtr(fftypes.JSONObject{
+				"address": "0x123",
+			}.String()),
+			Event: &core.FFISerializedEvent{
+				FFIEventDefinition: fftypes.FFIEventDefinition{
+					Name: "changed",
+					Params: fftypes.FFIParams{
+						{
+							Name:   "value",
+							Schema: fftypes.JSONAnyPtr(`{"type": "integer"}`),
+						},
+					},
+				},
+			},
+			Topic: "test-topic",
+		},
+	}
+
+	mbi.On("NormalizeContractLocation", context.Background(), blockchain.NormalizeListener, sub.Location).Return(sub.Location, nil)
+	mbi.On("GenerateEventSignature", context.Background(), mock.Anything).Return("changed", nil)
+	mbi.On("GenerateEventSignatureWithLocation", context.Background(), mock.Anything, mock.Anything).Return("0x123:changed", nil)
+	mdi.On("GetContractListeners", context.Background(), "ns1", mock.Anything).Return(nil, nil, nil)
+	mdi.On("InsertContractListener", context.Background(), &sub.ContractListener).Return(nil)
+	mbi.On("AddContractListener", context.Background(), &sub.ContractListener, "").Return(nil)
+	mdi.On("UpdateContractListener", context.Background(), "ns1", mock.Anything, mock.Anything).Return(fmt.Errorf("pop"))
 
 	_, err := cm.AddContractListener(context.Background(), sub)
 	assert.EqualError(t, err, "pop")
@@ -1732,6 +1933,7 @@ func TestAddContractAPIListener(t *testing.T) {
 	mdi.On("InsertContractListener", context.Background(), mock.MatchedBy(func(l *core.ContractListener) bool {
 		return *l.Filters[0].Interface.ID == *interfaceID && l.Filters[0].Event.Name == "changed" && l.Topic == "test-topic"
 	})).Return(nil)
+	mdi.On("UpdateContractListener", context.Background(), "ns1", mock.Anything, mock.Anything).Return(nil)
 
 	_, err := cm.AddContractAPIListener(context.Background(), "simple", "changed", listener)
 	assert.NoError(t, err)
@@ -3565,6 +3767,76 @@ func TestGetContractAPI(t *testing.T) {
 	assert.Equal(t, "http://localhost/api/v1/namespaces/ns1/apis/banana", result.URLs.API)
 }
 
+func TestGetContractAPICached(t *testing.T) {
+	cm := newTestContractManager()
+	mdb := cm.database.(*databasemocks.Plugin)
+
+	api := &core.ContractAPI{
+		Namespace: "ns1",
+		Name:      "banana",
+	}
+	mdb.On("GetContractAPIByName", mock.Anything, "ns1", "banana").Return(api, nil).Once()
+
+	result1, err := cm.GetContractAPI(context.Background(), "http://host1", "banana")
+	assert.NoError(t, err)
+
+	// Second call, with a different httpServerURL, is served from the cache - the DB mock is
+	// only set up to be called Once(), so a second DB hit here would fail AssertExpectations.
+	result2, err := cm.GetContractAPI(context.Background(), "http://host2", "banana")
+	assert.NoError(t, err)
+
+	// Asserted only after both calls: if the cached entry were mutated in place rather than
+	// copied, this second call's URLs would have clobbered result1's too.
+	assert.Equal(t, "http://host1/apis/banana", result1.URLs.API)
+	assert.Equal(t, "http://host2/apis/banana", result2.URLs.API)
+
+	mdb.AssertExpectations(t)
+}
+
+func TestContractAPICacheSharedAcrossLookupPaths(t *testing.T) {
+	cm := newTestContractManager()
+	mdb := cm.database.(*databasemocks.Plugin)
+	mim := cm.identity.(*identitymanagermocks.Manager)
+	mth := cm.txHelper.(*txcommonmocks.Helper)
+	mom := cm.operations.(*operationmocks.Manager)
+	mbi := cm.blockchain.(*blockchainmocks.Plugin)
+	txw := cm.txWriter.(*txwritermocks.Writer)
+
+	api := &core.ContractAPI{
+		Interface: &fftypes.FFIReference{ID: fftypes.NewUUID()},
+		Location:  fftypes.JSONAnyPtr(""),
+	}
+	mdb.On("GetContractAPIByName", mock.Anything, "ns1", "banana").Return(api, nil).Once()
+
+	_, err := cm.GetContractAPI(context.Background(), "", "banana")
+	assert.NoError(t, err)
+
+	req := &core.ContractCallRequest{
+		Type:      core.CallTypeInvoke,
+		Interface: fftypes.NewUUID(),
+		Location:  fftypes.JSONAnyPtr(""),
+		Method: &fftypes.FFIMethod{
+			ID:   fftypes.NewUUID(),
+			Name: "peel",
+		},
+		IdempotencyKey: "idem1",
+	}
+	mim.On("ResolveInputSigningKey", mock.Anything, "", identity.KeyNormalizationBlockchainPlugin).Return("key-resolved", nil)
+	txw.On("WriteTransactionAndOps", mock.Anything, core.TransactionTypeContractInvoke, core.IdempotencyKey("idem1"), mock.Anything).Return(&core.Transaction{ID: fftypes.NewUUID()}, nil)
+	mom.On("RunOperation", mock.Anything, mock.Anything, true).Return(nil, nil)
+	opaqueData := "anything"
+	mbi.On("ParseInterface", mock.Anything, req.Method, req.Errors).Return(opaqueData, nil)
+	mbi.On("ValidateInvokeRequest", mock.Anything, opaqueData, req.Input, false).Return(nil)
+
+	// InvokeContractAPI looks up the same contract API by name - this must be served from the
+	// cache populated by the GetContractAPI call above, not a second DB round trip.
+	_, err = cm.InvokeContractAPI(context.Background(), "banana", "peel", req, false)
+	assert.NoError(t, err)
+
+	mdb.AssertExpectations(t)
+	mth.AssertExpectations(t)
+}
+
 func TestGetContractAPIs(t *testing.T) {
 	cm := newTestContractManager()
 	mdb := cm.database.(*databasemocks.Plugin)
@@ -4064,6 +4336,127 @@ func TestDeleteContractAPI(t *testing.T) {
 	mdi.On("DeleteContractAPI", context.Background(), "ns1", id).Return(nil)
 
 	err := cm.DeleteContractAPI(context.Background(), "banana")
+	assert.NoError(t, err)
+
+	mdi.AssertExpectations(t)
+}
+
+func TestDeleteContractAPIDBDeleteFail(t *testing.T) {
+	cm := newTestContractManager()
+
+	id := fftypes.NewUUID()
+
+	mdi := cm.database.(*databasemocks.Plugin)
+	mdi.On("GetContractAPIByName", context.Background(), "ns1", "banana").Return(&core.ContractAPI{ID: id}, nil)
+	mdi.On("DeleteContractAPI", context.Background(), "ns1", id).Return(fmt.Errorf("pop"))
+
+	err := cm.DeleteContractAPI(context.Background(), "banana")
+	assert.EqualError(t, err, "pop")
+
+	mdi.AssertExpectations(t)
+}
+
+func TestDeleteContractAPIInvalidatesCache(t *testing.T) {
+	cm := newTestContractManager()
+
+	id := fftypes.NewUUID()
+
+	mdi := cm.database.(*databasemocks.Plugin)
+	// GetContractAPIByName is expected exactly twice: once to populate the cache via the
+	// initial GetContractAPI call, and once more after the delete evicts that cache entry.
+	mdi.On("GetContractAPIByName", context.Background(), "ns1", "banana").Return(&core.ContractAPI{ID: id}, nil).Once()
+	mdi.On("DeleteContractAPI", context.Background(), "ns1", id).Return(nil)
+
+	_, err := cm.GetContractAPI(context.Background(), "", "banana")
+	assert.NoError(t, err)
+
+	err = cm.DeleteContractAPI(context.Background(), "banana")
+	assert.NoError(t, err)
+
+	mdi.On("GetContractAPIByName", context.Background(), "ns1", "banana").Return(&core.ContractAPI{ID: id}, nil).Once()
+
+	_, err = cm.GetContractAPI(context.Background(), "", "banana")
+	assert.NoError(t, err)
+
+	mdi.AssertExpectations(t)
+}
+
+func TestUpsertContractAPI(t *testing.T) {
+	cm := newTestContractManager()
+
+	api := &core.ContractAPI{
+		ID:   fftypes.NewUUID(),
+		Name: "banana",
+	}
+
+	mdi := cm.database.(*databasemocks.Plugin)
+	mdi.On("UpsertContractAPI", context.Background(), api, database.UpsertOptimizationExisting).Return(nil)
+
+	err := cm.UpsertContractAPI(context.Background(), api)
+	assert.NoError(t, err)
+
+	mdi.AssertExpectations(t)
+}
+
+func TestUpsertContractAPIDBFail(t *testing.T) {
+	cm := newTestContractManager()
+
+	api := &core.ContractAPI{
+		ID:   fftypes.NewUUID(),
+		Name: "banana",
+	}
+
+	mdi := cm.database.(*databasemocks.Plugin)
+	mdi.On("UpsertContractAPI", context.Background(), api, database.UpsertOptimizationExisting).Return(fmt.Errorf("pop"))
+
+	err := cm.UpsertContractAPI(context.Background(), api)
+	assert.EqualError(t, err, "pop")
+
+	mdi.AssertExpectations(t)
+}
+
+func TestUpsertContractAPINilSkipsCacheDelete(t *testing.T) {
+	cm := newTestContractManager()
+
+	id := fftypes.NewUUID()
+	mdi := cm.database.(*databasemocks.Plugin)
+	mdi.On("GetContractAPIByName", context.Background(), "ns1", "banana").Return(&core.ContractAPI{ID: id}, nil).Once()
+
+	_, err := cm.GetContractAPI(context.Background(), "", "banana")
+	assert.NoError(t, err)
+
+	mdi.On("UpsertContractAPI", context.Background(), (*core.ContractAPI)(nil), database.UpsertOptimizationExisting).Return(nil)
+
+	err = cm.UpsertContractAPI(context.Background(), nil)
+	assert.NoError(t, err)
+
+	// GetContractAPIByName is still expected only once: a nil upsert must not evict the cache.
+	_, err = cm.GetContractAPI(context.Background(), "", "banana")
+	assert.NoError(t, err)
+
+	mdi.AssertExpectations(t)
+}
+
+func TestUpsertContractAPIInvalidatesCache(t *testing.T) {
+	cm := newTestContractManager()
+
+	id := fftypes.NewUUID()
+	api := &core.ContractAPI{ID: id, Name: "banana"}
+
+	mdi := cm.database.(*databasemocks.Plugin)
+	mdi.On("GetContractAPIByName", context.Background(), "ns1", "banana").Return(&core.ContractAPI{ID: id}, nil).Once()
+
+	_, err := cm.GetContractAPI(context.Background(), "", "banana")
+	assert.NoError(t, err)
+
+	mdi.On("UpsertContractAPI", context.Background(), api, database.UpsertOptimizationExisting).Return(nil)
+
+	err = cm.UpsertContractAPI(context.Background(), api)
+	assert.NoError(t, err)
+
+	mdi.On("GetContractAPIByName", context.Background(), "ns1", "banana").Return(&core.ContractAPI{ID: id}, nil).Once()
+
+	_, err = cm.GetContractAPI(context.Background(), "", "banana")
 	assert.NoError(t, err)
 
 	mdi.AssertExpectations(t)
